@@ -1,0 +1,35 @@
+{% load url from future %}
+
+<li class='mmenu_item'>
+    <a id="snugglefish-search-btn" href="#">Snugglefish Search</a>
+</li>
+<li class='mmenu_item'>
+    <a href="{% url 'snugglefish_service.views.snugglefish_status' %}">Snugglefish Status</a>
+</li>
+
+<div id="snuggle-search-form">
+    <form id="form-snuggle-search" action="{% url 'snugglefish_service.views.snugglefish_search' %}" method="POST" enctype="multipart/form-data">
+        <table id="snugglefish_form_table" class="form">
+        </table>
+        <button type="submit">Search</button>
+    </form>
+</div>
+<script>
+    var snug_dialog;
+    $(document).ready(function() {
+        $.ajax({
+            type: "GET",
+            url: "{% url 'snugglefish_service.views.get_snugglefish_search_form' %}",
+            dataType: "json",
+            success: function(data) {
+                if (data) {
+                    snug_dialog = create_dialog('#snuggle-search-form', 375, 200);
+                    $("#snugglefish-search-btn").click(function(e) {
+                        snug_dialog.dialog('option', {'title':"Snugglefish Search"}).dialog('open');
+                    });
+                    $("#snugglefish_form_table").html(data.form);
+                }
+            }
+        });
+    });
+</script>

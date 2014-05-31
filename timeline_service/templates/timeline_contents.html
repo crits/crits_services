@@ -1,0 +1,98 @@
+<style>
+    #timeline_table {
+        width: 100%;
+        border-spacing: 10px;
+    }
+
+    .timeline_day td.timeline_day_info {
+        border-bottom: 2px solid #333;
+    }
+
+    .timeline_day_date {
+        border-right: 1px solid #333;
+        border-bottom: 1px solid #333;
+        background-image: -webkit-gradient(
+            linear,
+            left top,
+            left bottom,
+            color-stop(0, #FFFFFF),
+            color-stop(1, #8FCDFF)
+        );
+        background-image: -o-linear-gradient(bottom, #FFFFFF 0%, #8FCDFF 100%);
+        background-image: -moz-linear-gradient(bottom, #FFFFFF 0%, #8FCDFF 100%);
+        background-image: -webkit-linear-gradient(bottom, #FFFFFF 0%, #8FCDFF 100%);
+        background-image: -ms-linear-gradient(bottom, #FFFFFF 0%, #8FCDFF 100%);
+        background-image: linear-gradient(to bottom, #FFFFFF 0%, #8FCDFF 100%);
+        text-align: center;
+        vertical-align: middle;
+    }
+
+    .timeline_day_instances {
+        border-spacing: 5px;
+    }
+
+    .timeline_day_data div {
+        min-width: 100%;
+        border-bottom: 1px solid #333;
+        text-align: left;
+        padding: 5px 0px 5px 5px;
+        margin-bottom: 5px;
+        vertical-align: middle;
+    }
+
+    .timeline_day_data span.data {
+        width: 75%;
+        max-width: 75%;
+        word-break: break-word;
+        display: inline-block;
+    }
+
+    .timeline_day_data span.date {
+        float: right;
+        width: 19%;
+        height: 100%;
+        min-height: 100%;
+        max-width: 19%;
+        display: inline-block;
+        text-align: right;
+        vertical-align: top;
+    }
+
+</style>
+<table id="timeline_table">
+    <thead>
+        <colgroup>
+            <col width="10%" />
+            <col width="90%" />
+        </colgroup>
+    </thead>
+    <tbody>
+    {% for k in timeline %}
+        <tr class="timeline_day">
+            <td class="timeline_day_date">{{ k.0 }}</td>
+            <td class="timeline_day_info">
+                <table class="timeline_day_instances" width="100%">
+                    <tbody>
+                {% for d in k.1 %}
+                    <tr class="timeline_day_instance">
+                        <td class="timeline_day_data">
+                            <div>
+                                <span class="data">
+                                    {% autoescape off %}
+                                        {{ d.1 }}
+                                    {% endautoescape %}
+                                </span>
+                                <span class="date">
+                                    {{ d.0 }}
+                                </span>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>

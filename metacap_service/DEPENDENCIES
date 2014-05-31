@@ -1,0 +1,11 @@
+MetaCap has several dependencies outside of those required for CRITs to run.
+
+- Chopshop >= v4.0
+- tcpdump
+- tshark (part of wireshark)
+
+Chopshop is necessary for running the Metacap service.
+tcpdump is used for running the PCAP through tcpdump and displaying the output
+in the UI.
+tshark is used for generating a PDML representation of the PCAP which allows us
+to provide a "wireshark-like" lazy-browsing interface in the UI.

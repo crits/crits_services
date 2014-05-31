@@ -1,0 +1,2 @@
+The carver service allows you to provide a start and end offset for a Sample and
+carve the contents as a new related Sample.

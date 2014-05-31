@@ -1,0 +1,4 @@
+The pehash service requires:
+
+pefile: https://code.google.com/p/pefile/
+bitstring: https://pypi.python.org/pypi/bitstring

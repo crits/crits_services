@@ -1,0 +1,6 @@
+The Relationships service works for every top-level object. It leverages the D3
+javascript framework to generate a visual representation of the relationships a
+top-level object has.
+
+You can alter the data in the graph by adjusting the relationships depth to
+traverse as well as what types of top-level objects to render.

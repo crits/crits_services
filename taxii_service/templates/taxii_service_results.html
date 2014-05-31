@@ -1,0 +1,50 @@
+{% load url from future %}
+{% load filters %}
+{% load service_tags %}
+
+{% regroup analysis.results by subtype as result_list %}
+{% for result_subtype in result_list %}
+    <table class="chart">
+
+    {% for result in result_subtype.list %}
+    {% if forloop.first %}
+    {# Create the header the first time through the loop. #}
+    <thead>
+        <tr>
+            <th>Result</th>
+            {% for key, value in result.items %}
+            {% if key != 'subtype' and key != 'result' %}
+            <th>{{ key|capfirst }}</th>
+            {% endif %}
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+    {% endif %}
+        <tr>
+            <td>
+                {% if result.result %}
+                    {{ result.result }}
+                {% endif %}
+            </td>
+            <td>
+            {% for key, value in result.items %}
+                {% if key != 'subtype' and key != 'result' %}
+                    {% if value|user_source:user_source_list %}
+                        {{ value }}
+                    {% else %}
+                        Restricted
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+        </tr>
+    {% endfor %}
+    </tbody>
+    </table>
+{% empty %}
+    {% if analysis.status == 'started' %}
+        <p> This service is still running. </p>
+    {% else %}
+        <p> This service produced no results. </p>
+    {% endif %}
+{% endfor %}

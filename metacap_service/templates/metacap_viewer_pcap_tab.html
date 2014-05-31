@@ -1,0 +1,42 @@
+{% load url from future %}
+
+<script>
+$(document).ready(function() {
+    $("#get_pdml").click(function() {
+      $('.pdml_loader').html('<img src="/new_images/loader.gif" />');
+      $.ajax({
+        type: "GET",
+        url: "{% url 'metacap_service.views.get_pcap_pdml' pcap.md5 %}",
+        dataType: "json",
+        success: function(data) {
+          if (data) {
+              $("#pcap_pdml").html(data['html']);
+              $('.pdml_loader').html('');
+              if (data.object_html) {
+                  $('#object_box_container').parent().html(data.object_html);
+              }
+          }
+        }
+      });
+    });
+});
+</script>
+
+<div id="metacap_viewer" width="100%">
+
+    <span class="horizontal_menu">
+    <ul class="hmenu">
+        <li class="right">
+            <a href="#" id="get_pdml">View PCAP</a>
+        </li>
+    </ul>
+    </span>
+    <span class="pdml_loader horizontal_menu"></span>
+
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader" with="100%">
+            <span>PCAP: {{ pcap.filename }}</span>
+        </h3>
+        <div id="pcap_pdml" style="width:100%;max-height:450px;overflow:auto;font-size:150%;"></div>
+    </div>
+</div>

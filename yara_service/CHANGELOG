@@ -1,0 +1,9 @@
+Version 1.1.0
+-------------
+Convert 'sigfiles' config option from a comma-separated list (STRING type)
+to the new LIST type.
+
+
+Version 1.0.0
+-------------
+Initial version.

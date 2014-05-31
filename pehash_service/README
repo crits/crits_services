@@ -1,0 +1,8 @@
+PEHash is a hash calculated of certain pieces of a PE executable file that was
+described by Georg Wicherski in the paper:
+
+peHash: A Novel Approach to Fast Malware Clustering
+
+It can be found here:
+
+https://www.usenix.org/legacy/event/leet09/tech/full_papers/wicherski/wicherski_html/

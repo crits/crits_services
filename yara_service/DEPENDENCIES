@@ -1,0 +1,4 @@
+The Yara service requires:
+
+- Yara >= 2.0 (1.6 will work but we recommend the latest version)
+- yara-python

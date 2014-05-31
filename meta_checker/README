@@ -1,0 +1,4 @@
+The meta-checker service compares the Analysis results for a given sample to
+other samples in the database. It provided some basic counts and search links
+for you to quick discover and look at the other samples that have those similar
+results.

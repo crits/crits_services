@@ -1,0 +1,103 @@
+Dictionary Names Module Explained:
+
+PARSING:
+
+Extra Fields are parsed according to the byte breakdown described by PKWare. However, PKWare does not describe the
+breakdown for all extra fields. Classes marked by an asterisk break down the extra field according to third party
+mappings. 
+
+Class: HeaderIdMapping() -
+  Function: HeaderIds()  – Holds the dictionary, headers, whose keys are the header tags for the different extra 
+  field content. There are two values that correspond with each key. First is name which is the name of a given block
+  of data within the extra field. It is marked by the first two bytes of each data block within the extra field and is
+  what is used to determine how to parse that data block. Then is parseField, which points to a class that will parse
+  the extra field bytes appropriately according to the header id/name and the PKware breakdown of that id.
+
+Class: NTFS() - 
+  Function: parse() -
+     •	First, the static 8 bytes that appear in all NTFS extra fields are unpacked and stored appropriately within a
+        dictionary
+     •	Next, A variable, NTFSPosition, is initialized to serve as placeholders when walking through the extra field. 
+     
+        o	The extra field for an NTFS block contains a variable amount of attribute tags to be parsed. NTFSPosition
+          will be used to keep track of the amount of information as it is being parsed. So, when parsing the 
+          information for a tag, a comparison between the amount already parsed (NTFSPosition) and the total size of 
+          all the tags needed to be parsed (TSIZE), can determine if there are still tags left to parse.
+  
+     •	Next, Check if there is an attribute tag that exists and if so unpack the name and size (attributeTag(),
+        attributeSize()).
+     •	Parse the NTFS field tags according to the attributeSize(). As long as the amount of information already 
+        parsed (NTFSPosition) does not equal the total amount of information in the NTFS block needed to be parsed,
+        then the while loop will continue executing, parsing all the tags in the NTFS block.
+     •	Returns Dictionary of the parsed information.
+
+Note: Function operates under the assumption that the first 8 Bytes are always MTime, next 8 are always ATime,
+and last 8 are always CTime. It is unclear if this is true or if any 8 bytes can represent any of the timestamps.
+
+Class Unix() -
+  Function parse() - Information unpacked and stored in dictionary according to the PKware breakdown. Returned
+  is the Dictionary of parsed information.
+
+Class Unix2() -
+  Function parse() - Information unpacked and stored in dictionary according to the PKware breakdown. Returned 
+  is the Dictionary of parsed information.
+
+Class InfoZipUnixOld() -
+  Function parse() - Information unpacked and stored in dictionary according to the PKware breakdown. Returned is
+  the Dictionary of parsed information.
+
+Class: ExtendedTimeStamp()* -
+  Function parse() - The first five bytes are unpacked and stored appropriately in a dictionary. The fifth byte is
+  a flag to mark the various time stamps. MTime is present if bit 0 is set, ATime if bit 1 is set, and CTime if bit
+  2 is set, the remaining 5 bytes are all reserved to serve as indications for future timestamps.  If either bit 0,1,
+  or 2 is found to be set the appropriate timestamp is added to the dictionary and returned along with the rest of 
+  the extra field. If not, the dictionary without the timestamp is returned. 
+
+Class: InfoZipUnixNew() –
+  Function: parse() - 
+  Information unpacked and stored in dictionary according to the PKware breakdown. Returned is the Dictionary of
+  parsed information.
+
+Class: WindowsNTSecurityDescriptor()*-
+  Function: parse() - Information unpacked and stored in dictionary according to a third party mapping.
+  Returned is the Dictionary of parsed information.
+
+Class: Zip64Extended():* - 
+  Function: parse() - Information unpacked and stored in dictionary according to Third party mapping.
+  The first four bytes are static and are unpacked into a dictionary. The remainder of the extra field is determined
+  by the information provided in the central directory. The Zip64 Extended Information extra field block can contain
+  information regarding Uncompressed Size, Compressed Size, Relative Offset, and Start Disk. This information is only
+  found in the extra field when the data is too large to be defined by the number of bytes allocated to them in the
+  central directory. If this is ever the case then the information is set to either 0xFFFF or 0xFFFFFFFF in the 
+  central directory and is stored in the extra field. Because of this when parsing those fields each of their 
+  functions does a test to determine if the data is set to the maximum hex value the bytes allow. If so a 
+  corresponding zip64 variable is set to true and is used to parse the extra field accordingly.
+
+Class: OS2() & OS2ACL()–
+  Function: parse() - Information unpacked and stored in dictionary according to the PKware breakdown.
+  Returned is the Dictionary of parsed.
+
+Class: x_509()–
+  Function: parse() -Information unpacked and stored in dictionary according to the PKware breakdown.
+  Returned is the Dictionary of parsed information.
+
+Class: ASiUnix()–
+  Function: parse() - Information unpacked and stored in dictionary according to the PKware breakdown.
+  Returned is the Dictionary of parsed information.
+
+Class: TimeAdjust() – 
+  Function(): ConvertTime() – Will return a date time string if given the amount of nanoseconds since the epoch of
+  Jan 1, 1601
+
+____________________________________________________________________________________________________________________
+
+PKWare:
+http://www.pkware.com/documents/APPNOTE/APPNOTE-6.2.0.txt
+
+THIRD PARTY MAPPINGS:
+https://github.com/LuaDist/zip/blob/master/proginfo/extrafld.txt
+
+  A quick google search located the Xceed Headers here:
+  ftp://ftp.xceed.com/XceedExtraHeaders.doc
+
+____________________________________________________________________________________________________________________

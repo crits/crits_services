@@ -1,0 +1,109 @@
+{% load url from future %}
+
+<script>
+$(document).ready(function() {
+
+    var s = null;
+    var inputBox = document.getElementById("pyew_command");
+    var pyew = $('#pyew_console');
+    var port = 9876;
+    var secure = false;
+    $.ajax({
+        type: 'POST',
+        url: "{% url 'pyew.views.pyew_port' %}",
+        data: {},
+        datatype: 'json',
+        success: function(data) {
+            if (data.port) {
+                port = data.port;
+                if (data.secure != "False") {
+                    secure = true;
+                }
+            }
+        },
+    });
+
+    $('#pyew_button').unbind().click(function(e) {
+        $('#pyew_command').focus();
+        try {
+            var token = null;
+            $.ajax({
+                type: 'POST',
+                url: "{% url 'pyew.views.pyew_tokenize' %}",
+                data: {},
+                async: false,
+                datatype: 'json',
+                success: function(data) {
+                    if (data.token) {
+                        token = data.token;
+                    }
+                },
+            });
+            if (secure) {
+                var host = "wss://" + window.location.hostname + ":" + port + "/pyew?id={{ sample.id }}&token=" + token;
+            } else {
+                var host = "ws://" + window.location.hostname + ":" + port + "/pyew?id={{ sample.id }}&token=" + token;
+            }
+            if (!s) {
+                s = new WebSocket(host);
+            }
+            s.onopen = function (e) {
+                //console.log("Socket opened.");
+                pyew.text("Establishing connection to local Pyew web socket...");
+            };
+            s.onclose = function (e) {
+                //console.log("Socket closed.");
+                pyew.text(pyew.val() + "\nSocket closed.");
+                pyew.scrollTop(pyew[0].scrollHeight - pyew.height());
+            };
+            s.onmessage = function (e) {
+                // this shows up in the first response. no clue why, so just removing it when
+                // it is seen. should probably fix that...
+                var data = atob(e.data);
+                data = data.replace('[?1034h', '');
+                pyew.text(pyew.val() + data);
+                var height = pyew.height();
+                pyew.scrollTop(pyew.scrollTop() + height);
+            };
+            s.onerror = function (e) {
+                //console.log("Socket error:", e);
+                pyew.text(pyew.val() + "\nSocket error: " + e.message);
+                pyew.scrollTop(pyew[0].scrollHeight - pyew.height());
+            };
+        } catch (ex) {
+            //console.log("Socket exception:", ex);
+            pyew.text(pyew.val() + "\nSocket exception: " + ex.message);
+            pyew.scrollTop(pyew[0].scrollHeight - pyew.height());
+        }
+    });
+
+    $('#pyew_command').keypress(function(e) {
+        if (e.which == 13) {
+            e.preventDefault();
+            s.send(btoa(inputBox.value));
+            inputBox.value = "";
+        }
+    });
+});
+</script>
+<style>
+    #pyew_console {
+        font-family: Consolas;
+        font-size: 120%;
+        width: 99%;
+        min-height: 450px;
+        max-height: 450px;
+        overflow: auto;
+    }
+</style>
+
+<div id="pyew" width="100%">
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader" with="100%">
+            <span>PYEW: {{ sample.md5 }}</span>
+        </h3>
+        <textarea id="pyew_console" readonly>
+        </textarea>
+        <input type="text" name="pyew_command" id="pyew_command" value="" size="200">
+    </div>
+</div>

@@ -1,0 +1,2 @@
+The ANB service adds a tab to the Campaign and Event details pages. It generates
+a set of CSV's which are compatible for input into Analyst's Notebook.

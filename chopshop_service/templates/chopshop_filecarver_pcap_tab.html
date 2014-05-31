@@ -1,0 +1,65 @@
+{% load url from future %}
+
+<script>
+$(document).ready(function() {
+    $.ajax({
+        type: "GET",
+        url: "{% url 'chopshop_service.views.get_filecarver_config_form' %}",
+        dataType: "json",
+        success: function(data) {
+            if (data) {
+                $("#filecarver_form_table").html(data.form);
+            }
+        }
+    });
+    $("#filecarver_submit").click(function() {
+      $('.filecarver_loader').html('<img src="/new_images/loader.gif" />');
+      var form_data = $('#filecarver_config_form').serialize();
+      $.ajax({
+        type: "POST",
+        url: "{% url 'chopshop_service.views.run_filecarver' pcap.md5 %}",
+        data: form_data,
+        dataType: "json",
+        success: function(data) {
+          $("#carved_files > pre").text('');
+          $("#carved_files > pre").html(data['message']);
+          $('.filecarver_loader').html('');
+        }
+      });
+    });
+    $("#filecarver_configure").click(function() {
+        $("#filecarver_config_container").slideToggle();
+    });
+});
+</script>
+
+<div id="chopshop_filecarver" width="100%">
+
+    <span class="horizontal_menu" style="text-align: center;">
+        <button class="form_submit_button" id="filecarver_configure" name="filecarver_configure">Configure File Carving</button><br />
+        <div id="filecarver_config_container" style="display: none;">
+            <br />
+            <div class='content_box content_details' style="width: 100%;">
+                <h3 class="titleheader" with="100%">
+                    <span>File Carving Configuration Options</span>
+                </h3>
+                <form id="filecarver_config_form">
+                    <table id="filecarver_form_table" class="form">
+                    </table>
+                </form>
+            </div>
+        </div>
+        <button class="form_submit_button" id="filecarver_submit" name="filecarver_execute">Carve Files</button>
+    </span>
+    <span class="filecarver_loader horizontal_menu"></span>
+
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader" with="100%">
+            <span>PCAP: {{ pcap.filename }}</span>
+        </h3>
+        <div id="carved_files" style="width:100%;max-height:450px;overflow:auto;font-size:120%;">
+            <pre>
+            </pre>
+        </div>
+    </div>
+</div>

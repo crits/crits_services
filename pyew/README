@@ -1,0 +1,97 @@
+Pyew Service for CRITs.
+
+Summary:
+
+    The Pyew service adds an interface to any CRITs Sample which allows you to
+    run the sample through Pyew, a static malware analysis tool. Using
+    websockets, the interface sends commands to the pyew instance running on the
+    sample. Output of the command is returned to the interface and displayed in
+    the UI.
+
+Dependencies:
+
+    All dependencies are listed in the DEPENDENCIES file.
+
+Setup:
+
+    After all dependencies are installed, you can restart your CRITs webserver
+    and go to the CRITs Control Panel to setup the Pyew service.
+
+    The 'pyew' configuration option needs to be set to the full path to the
+    'pyew.py' file that came with the Pyew code base.
+
+    The 'port' configuration option tells the system which port you are going to
+    be running the pyew websocket server on.
+
+    The 'Secure' configuration option tells the system to use secure websockets
+    instead of plain websockets.
+
+    Once this is configured, the Pyew service needs the pyew websocket server
+    running. A CRITs script is available to run a generic web socket server:
+
+        python manage.py runscript crits_scripts wss -- -h
+
+    The only things you really need to specify are the -p (port) option and the
+    -w (handler directory) option.
+
+    The port should be the same as the port you configured your Pyew service to
+    connect to. The -w option needs to be set to the full path to the 'scripts'
+    directory of the 'pyew' service. This allows it to import the pyew_wsh.py
+    file. Ultimately your command looks something like this:
+
+        python manage.py runscript crits_scripts wss -- -p 9876 -w /data/crits_services/pyew/scripts
+
+    When you run this, you'll see a bunch of output which is a by-product of the
+    core Services going through and validating all of the services.
+
+    If you would like to run a secure websocket, you will need the following:
+
+        - a private key (this could be the same private key you use with Apache)
+        - a certificate (this could be the same certificate you use with Apache)
+
+    You would then change the above command to look something like this:
+
+        python manage.py runscript crits_scripts wss -- -p 9876 -w /data/crits_services/pyew/scripts
+            -t -k /path/to/private.key -c /path/to/cert.crt --tls-module=pyopenssl
+
+    Note that the process will start even if the user running this command does
+    not have permissions to the private key or certificate file, so please
+    ensure they have access before running this.
+
+Usage:
+
+    With the websocket service running, you can now view the details of any
+    Sample, and click on the 'Pyew' tab.
+
+    By clicking on the tab, it will immediately connect to the pyew websocket
+    server. It will lookup the Sample (see notes below), write it to a temp file
+    on disk, and start the pyew process on the server. The initial output of the
+    process will be sent back to the UI for you to view.
+
+    When you see the 'pyew' prompt (looks something like: [0x00000000]>) then
+    you are ready to send it commands. To see a list of all commands, you can
+    type 'help'.
+
+    When you are done doing analysis, you can type 'exit' and it will kill the
+    process on the server.
+
+    When you see 'Socket closed' it is an indication that the process on the
+    server has ended.
+
+    You can safely switch tabs without losing your websocket. It will however be
+    killed if you refresh the page, requiring you to click on the Pyew tab again
+    to establish a new session.
+
+Security Notes:
+
+    In order to determine if a user can see the sample they are requesting, we
+    use a single-use token approach. When the Pyew tab is clicked on, an AJAX
+    request is sent to the server which generates a token. This token is added
+    to the user's document in the database. Immediately after the AJAX request
+    returns with the token, it uses that token to initiate the websocket. The
+    first thing we do is deconstruct the URL to get the ObjectId and the token.
+    Once we do that, we search for the user in the database which has that
+    token. We immediately remove that token from the user's database entry after
+    we've collected the user's source access information. We then use that
+    source access list to locate the Sample, ensuring they have access to it
+    before providing it to them.

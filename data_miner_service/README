@@ -1,0 +1,13 @@
+The Data Miner service works against Samples and Raw Data. It will parse out the
+contents of the top-level object in an attempt to find potential Domains, IPs,
+and Email addresses.
+
+When working against Raw Data, it will use the contents of the "data" field. If
+running against a Sample, it will use the output of "strings" against the
+filedata in GridFS.
+
+The list it returns is compared against the contents in the database. If the
+Domain, IP, or Email Address already exist at the time the service is run, it
+will be logged and a link will be provided to that top-level object. You can
+also add the value as a new top-level object or edit the value prior to adding
+if you wish.

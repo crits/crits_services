@@ -1,0 +1,6 @@
+The Pyew service requires:
+
+pexpect 2.4:            https://pypi.python.org/pypi/pexpect
+mod_pywebsocket 0.7.9:  https://code.google.com/p/pywebsocket/downloads/list
+pyew 2.0:               https://code.google.com/p/pyew/downloads/list
+distorm64:              https://code.google.com/p/pyew/downloads/list

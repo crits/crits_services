@@ -1,0 +1,11 @@
+Version 0.0.1
+-------------
+Initial version of PEhash service
+
+It computes PEHash that looks very similar to sha1 output, and is good for clustering PE files.
+
+For all the details please see http://totalhash.com/pehash-source-code/. The code came from http://totalhash.com/download/pehash.py , all I did was wraping it up for CRITs.
+
+It requires bitstring(https://pypi.python.org/pypi/bitstring) and pefile.
+
+https://www.usenix.org/legacy/event/leet09/tech/full_papers/wicherski/wicherski_html/

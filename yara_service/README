@@ -1,0 +1,6 @@
+The Yara service will run a binary through yara with a given set of rule files.
+It will return the results and store them for reference.
+
+Along with the Yara service comes the Yara Rule Checker. This adds a tab to the
+UI which allows you to craft and test yara rules against a binary without having
+to download the binary locally.

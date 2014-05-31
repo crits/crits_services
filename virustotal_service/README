@@ -1,0 +1,6 @@
+Check the VirusTotal database to see if it contains this sample, domain or IP.
+
+This does not submit the file to VirusTotal, but only performs a lookup of the
+sample's MD5.
+
+Requires an API key available from virustotal.com

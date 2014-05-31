@@ -1,0 +1,7 @@
+This is a collection of scripts that developers have contributed which assist in
+the administration and use of CRITs.
+
+Many scripts are designed to perform bulk tasks which normally take a long time
+to run and are not suitable for executing through a web interface. Others allow
+you to perform database tasks which are normally not safe to allow users to run
+but might be necessary for administrators or "power users".

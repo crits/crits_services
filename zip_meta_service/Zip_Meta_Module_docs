@@ -1,0 +1,119 @@
+Zip_Meta Module Explained:
+
+Class: ZipParse() – 
+
+Function __init__() – First, the binary for a provided file is stored in the variable called data.
+Then, calls to the parseEndDirectory() function pull out both the offset for the start of the central
+directory and the central directory’s total size. These two pieces of data are used to divide the variable
+data into two chunks. First, the localDirectory chunk, which contains all the local directories of the zip.
+Then the CentralDirectory chunk, which similarly contains all the central directories of the zip. 
+A Dictionary of Boolean flags is also initialized and all those flags are set to false. These flags will be
+set to true if at any point when parsing the central directory a field denotes a zip 64 extra field.
+
+Fucntion: parseAllFiles() – First check the centralDirectory data block’s first 4 bytes against its magic
+number to ensure we are in the central directory. Next, a call is made to parseCentralDirectory() is made
+and the dictionary which the function returns is appended to the list parsedFiles. We then search for the
+next central directory and adjust the centralDirectory block, slicing the recently parsed information.
+
+Function: parseCentralDirectory() – Returns a dictionary called centralDirectory that holds the information
+located in a central directory by making calls to the appropriate functions. 
+
+Note: All the following listed functions are needed and called (either directly or indirectly) to fill the
+dictionary.
+
+Function: getVersionMadeBy() – Unpacks the appropriate two bytes. The high byte is passed to getVersionMadeByName()
+where the version made by name is determined. The unpacked lower byte (divided by 10) is the zip specification
+version. Both values are returned and stored in the dictionary centralDirectory.
+
+Function: getVersionMadeByName(highByte) - Compares the value passed by getVersionMadeBy() against a dictionary
+of possible version names and returns the name that corresponds with that byte. If no matches found then a string
+indicating such is returned.
+
+Function: getRequiredVersion() – Unpacks the appropriate two bytes whose decimal value (divided by 10) represents
+the minimum PKZip version required for extraction. That is the value returned to centralDirectory.
+Function: getFlags() - Unpacks the appropriate two bytes and checks all 16 bits to see which are set. If a bit
+is set a call to the function getFlagNames(flag) compares it against a dictionary and returns the corresponding
+name for the set flag. All set flags are stored and returned in an list called setFlags. If the list is empty
+(no flags were set) the function returns “No Flags Found”
+
+Function: getCompressionMethod() - Unpacks the appropriate two bytes and compares them against a dictionary.
+If the value is found in the dictionary the corresponding name is returned. If not, “Unknown Compression Method”
+returned.
+
+Function: getCrc() – Unpacks the appropriate four bytes and returns the hexadecimal value.
+
+Functions: getUncompressedSize() and getCompressedSize() - Both Unpack the appropriate four bytes and return
+a decimal value of the uncompressed and compressed sizes respectively in bytes.
+Note: These functions also check if their values are set to “\xFF\xFF”and if so the functions sets their
+corresponding zip 64 Boolean to true to denote that the accurate information is found in the zip 64 extra field.
+
+Functions: getFileNameLength(), getExtraFieldLength(), and getCommentLength() – Each unpack two bytes and return
+the decimal value of its appropriate length in bytes
+
+Function: getFileStartDisk() – Unpacks the appropriate two bytes and returns the Disk number that the file starts on.
+
+Note: This function also checks if its value is set to “\xFF\xFF” and if so the function sets its corresponding
+zip 64 Boolean to true to denote that the accurate information is found in the zip 64 extra field.
+
+Function: getInternalAttributes() - Unpacks the appropriate two bytes and checks all 16 bits to see which are set.
+If a bit is set a call to the function getInternalAttributeNames() compares it against a dictionary and returns
+the corresponding name for the attribute. All attribute names are returned to getInternalAttributes() and are
+stored in an list called attributes. This list is returned to the dictionary centralDirectory. However, If the
+list is empty (no attributes found) the function returns “No Internal Attributes Found”
+
+Function: getRealtiveOffset()- Unpacks the appropriate four bytes and returns the offset the central directory
+starts on.
+
+Note: This function also checks if its value is set to “\xFF\xFF\xFF\xFF” and if so the function sets its
+corresponding zip 64 Boolean to true to denote that the accurate information is found in the zip 64 extra field.
+
+Function: getFileName() – Uses the getFileNameLength() function to determine how to slice the string
+centralDirectory in order to parse the file name from it. If length set to zero then “No File Name Found”
+is returned. If the name exists then it is returned.
+
+Function: getModifyDate() – Unpacks the appropriate four bytes which represent time in seconds that has
+occurred between the MS-DOS epoch (Jan 1, 1980) and the modify date and returns that modify date as a string
+
+Function: getExtraField() - Uses the getExtraFieldLDLength() function to determine how to slice the string,
+localDirectory, in order to parse the extra field from it. The parsing is stored in a variable called 
+extraField and passed to a function parseExtraField(). However, if the length is set to 0 None is returned.
+Note that the extra field that is being parsed is NOT that of the central directory like the rest of the data,
+it is the extra field located in the local directory. This is because the local directory extra field contains
+more information. This means that the offset of each local directory is used, and is critical to finding and then
+parsing the local directory’s extra field.
+
+In the case of a zip64 file whose relative offset does not fit in the central directory, the important relative
+offset information is stored in the extra field of both the central and local directory. Because we cannot locate
+the local directory without this offset we instead parse the central directory for this unique case. From the
+parsing we obtain the offset and now locate and parse the local directory’s extra field just as we would with
+any other file type.
+
+Function: parseExtraField() – Creates an instance of the class HeaderIdMapping() and makes a call to the
+HeaderIds() function which returns a dictionary of all the extra field header ids. This dictionary is stored
+in a variable called efMappings. The function then slices the first two bytes of the extra field (where the
+id is located) and stores the info in a variable blockMagic. Then slices the next two bytes (bytes 2-4) and
+stores them in a variable call blockSize. Next, blockMagic is compared against the ids located in the dictionary
+efMappings. If there is a match, the appropriate class is instantiated and a call to the parse() function,
+which receives the first extra field block, parses that headers info, and returns that info. This process is
+repeated via a while loop until the entire extra field is parsed. If for whatever reason there is an unkown header,
+or no match when comparing against efMapping, a standard error dictionary is returned and the parser continues. 
+
+Function: getFileComment () – Uses the getCommentLength() function to determine how to slice the string
+centralDirectory in order to parse the file comment from it. If length set to zero then “No Comment Found”
+is returned. If the comment exists then it is returned.
+
+Note: The end directory can also be parsed if needed. Just as with the central directory all information is
+parsed via calls to the appropriate functions and the returned values are stored in a dictionary. These functions 
+simply unpack the bytes at the appropriate locations and return them.
+
+____________________________________________________________________________________________________________________
+
+PKWare:
+http://www.pkware.com/documents/APPNOTE/APPNOTE-6.2.0.txt
+
+Zip BreakDown:
+https://users.cs.jmu.edu/buchhofp/forensics/formats/pkzip.html
+
+THIRD PARTY MAPPINGS:
+https://github.com/LuaDist/zip/blob/master/proginfo/extrafld.txt
+____________________________________________________________________________________________________________________

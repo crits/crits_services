@@ -1,0 +1,7 @@
+The Chopshop service adds the ability to process a PCAP with Chopshop modules.
+Currently the service only supports http_extractor and dns_extractor.
+
+It also comes with a carver feature which will allow you to carve HTTP
+Requests/Responses, SMTP, and Raw data. It also allows you to specify the
+Content-Types you wish to limit to (if any). Any content carved will be added to
+CRITs and automatically related back to the PCAP.

@@ -1,0 +1,174 @@
+{% load url from future %}
+{% load service_tags %}
+
+<style>
+    .create_raw_indicator {
+        display: inline-block;
+        min-width: 15px;
+        max-width: 15px;
+    }
+    .edit_raw_indicator {
+        display: inline-block;
+        min-width: 15px;
+        max-width: 15px;
+    }
+    .potential_indicator {
+        text-align: left;
+    }
+    #raw_indicator_value {
+        min-width: 100%;
+        max-width: 100%;
+    }
+</style>
+
+<script>
+    function create_raw_indicator(ind_type, value, me) {
+        data = {
+            'value': value,
+            'oid': "{{ subscription.id }}",
+            'type': ind_type,
+        };
+        $.ajax({
+            type: "POST",
+            url: "{% url 'crits.indicators.views.indicator_from_raw' %}",
+            data: data,
+            dataType: "json",
+            success: function(data) {
+                if (data.success) {
+                    $('#relationship_box_container').parent().html(data.message);
+                    if (typeof me !== "undefined") {
+                        $(me).attr('title', 'Success!');
+                    } else {
+                        $('#creation_result').text("Success!");
+                    }
+                    $(me)
+                    .css({
+                        'background-image': "url('/css/images/ui-icons_70b2e1_256x240.png')"});
+                } else {
+                    if (typeof me !== "undefined") {
+                        $(me).attr('title', data.message);
+                    } else {
+                        $('#creation_result').html(data.message);
+                    }
+                }
+            }
+        });
+    }
+
+    function clear_create_clicks() {
+        $('.create_raw_indicator').off('click');
+    }
+
+    function generate_dialog(me) {
+        $('#create_raw_indicator_dialog').show();
+        $('#create_raw_indicator_dialog').dialog({
+            title: 'Create Indicator',
+            autoOpen: false,
+            modal: true,
+            width: "auto",
+            height: "auto",
+            buttons: {
+                'Add Indicator': function() {
+                    ind_type = $('#raw_indicator_type').text();
+                    value = $('#raw_indicator_value').val();
+                    create_raw_indicator(ind_type, value, me);
+                    $(this).dialog('close');
+                },
+                'Cancel': function() {
+                    $(this).dialog('close');
+                }
+            }
+        }).dialog('open');
+    }
+
+    $(document).ready(function() {
+
+        clear_create_clicks();
+
+        $('.create_raw_indicator').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var me = $(this);
+            var value = me.closest('tr').find('a').text();
+            var type = me.attr('data-type');
+            if (type == "Domain") {
+                ind_type = 'URI - Domain Name';
+            } else if (type == "IP Address") {
+                ind_type = 'Address - ipv4-addr';
+            } else if (type == "Email") {
+                ind_type = 'Address - email-addr';
+            }
+            create_raw_indicator(ind_type, value, me);
+        });
+        $(document).on('click', '.edit_raw_indicator', function(e) {
+            var me = $(this);
+            var value = me.closest('tr').find('a').text();
+            var type = me.attr('data-type');
+            $('#raw_indicator_value').val(value);
+            if (type == "Domain") {
+                $('#raw_indicator_type').text('URI - Domain Name');
+            } else if (type == "IP Address") {
+                $('#raw_indicator_type').text('Address - ipv4-addr');
+            } else if (type == "Email") {
+                $('#raw_indicator_type').text('Address - email-addr');
+            }
+            $('#creation_result').text('');
+            generate_dialog(me);
+        });
+    });
+</script>
+
+{% regroup analysis.results by subtype as result_list %}
+{% for result_subtype in result_list %}
+    <h4> {{ result_subtype.grouper }} </h4>
+    <table class="chart">
+
+    {% for result in result_subtype.list %}
+    {% if forloop.first %}
+    {# Create the header the first time through the loop. #}
+    <thead>
+        <colgroup>
+            <col width="15px" />
+            <col width="80%" />
+            <col width="15%" />
+        </colgroup>
+        <tr>
+            <th colspan="2">Result</th>
+            <th>Existed On Run</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% endif %}
+        <tr>
+            <td class="ui-icon ui-icon-plusthick create_raw_indicator" data-type="{{ result.Type }}"></td>
+            <td class="ui-icon ui-icon-pencil edit_raw_indicator" data-type="{{ result.Type }}"></td>
+            <td class="potential_indicator">
+                {% if result.result %}
+                <a class="potential_link" href="{% url 'crits.core.views.global_search_listing' %}?search_type=detectexact&q={{result.result|urlencode}}">{{result.result}}</a>
+                {% endif %}
+            </td>
+            <td>
+                <span class="indicator_exists">
+                    {% if result.exists %}
+                        <a href="{% url 'crits.indicators.views.indicator' result.exists %}">Existed</a>
+                    {% endif %}
+                </span>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+    </table>
+{% empty %}
+    {% if analysis.status == 'started' %}
+        <p> This service is still running. </p>
+    {% else %}
+        <p> This service produced no results. </p>
+    {% endif %}
+{% endfor %}
+<div id="create_raw_indicator_dialog" style="display: none;">
+    <form id="form-raw-indicator">
+        <b>Type:</b> <span id="raw_indicator_type"></span><br />
+        <b>Value:</b> <input type="text" id="raw_indicator_value" />
+    </form>
+    <div id="creation_result"></div>
+</div>

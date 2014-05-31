@@ -1,0 +1,6 @@
+The peinfo service requires:
+
+pefile: https://code.google.com/p/pefile/
+
+It is recommended that you get at least version 1.2.10-139 as that has support
+for import hashing (imphash).

@@ -1,0 +1,2 @@
+ZipMeta will parse a zip file as-is (without extracting anything) and return
+rich metadata about the file.

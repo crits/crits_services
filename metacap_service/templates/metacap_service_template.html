@@ -1,0 +1,406 @@
+{% load url from future %}
+{% load filters %}
+{% load service_tags %}
+
+<style type="text/css" media="screen">
+    <!--
+        .metacarve {
+            float: none;
+            padding-left: 10px;
+            margin-left: 10px;
+            border-left: 1px solid #bbb;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .bpf_filter {
+            float: none;
+        }
+
+        .flow_outer {
+            display: inline-block;
+            min-height: 125px;
+            min-width: 99%;
+            max-width: 99%;
+            overflow-x: auto;
+            overflow-y: visible;
+            white-space: nowrap;
+        }
+
+        .flow_inner {
+            display: inline-block;
+            padding-left: 90px;
+            padding-right: 90px;
+            margin-left: 5px;
+            overflow: visible;
+            min-height: 125px;
+            white-space: nowrap;
+        }
+
+        .packet {
+            border: 1px solid #bbb;
+            margin-right: -2px;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            padding: 0px;
+            height: 50px;
+            display: inline-block;
+        }
+
+        .trigger {
+            width: 100%;
+            height: 100%;
+            margin: 0px;
+            padding: 0px;
+            border-collapse: collapse;
+            border: 0px;
+        }
+
+        .entropy {
+            background-color: #000;
+        }
+
+        .entropy_max {
+            height: 1px;
+            width: 100%;
+            position: absolute;
+            top: 10px;
+            left: 0px;
+            background-color: #000;
+            border: none;
+        }
+
+        .bubbleInfo {
+            position: relative;
+            display: inline-block;
+            top: 0px;
+            left: 0px;
+            width: 100%;
+            height: 50px;
+            overflow: visible;
+        }
+
+        /* Bubble pop-up */
+
+        .popup {
+            position: relative;
+            display: none;
+            z-index: 50;
+            border-collapse: collapse;
+            border: 1px solid #bbb;
+            width: 172px;
+        }
+
+        .popup td.corner {
+            height: 15px;
+            width: 19px;
+        }
+
+        .popup td.bottom img { display: block; margin: 0 auto; }
+
+        .popup table.popup-contents {
+            font-size: 12px;
+            line-height: 1.2em;
+            background-color: #fff;
+            color: #666;
+            font-family: "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", sans-serif;
+            width: 100%;
+            }
+
+        table.popup-contents th {
+            text-align: right;
+            text-transform: lowercase;
+            }
+
+        table.popup-contents td {
+            text-align: left;
+            }
+    -->
+</style>
+<script type="text/javascript">
+
+    $(function () {
+        $('.create-ip-indicator').on('click', function(e) {
+            var me = $(this);
+            data = {
+                'ip': $(this).attr('data-value'),
+                'type': "PCAP",
+                'oid': "{{ subscription.id }}",
+            };
+            $.ajax({
+                type: "POST",
+                url: "{% url 'crits.indicators.views.indicator_and_ip' %}",
+                data: data,
+                dataType: "json",
+                success: function(data) {
+                    if (data.success) {
+                        $('#relationship_box_container').parent().html(data.message);
+                        me.removeClass('ui-icon-plusthick');
+                        me.addClass('ui-icon-circle-check');
+                        me.attr('title', "Success!");
+                    } else {
+                        me.removeClass('ui-icon-plusthick');
+                        me.addClass('ui-icon-alert');
+                        me.attr('title', data.message);
+                    }
+                }
+            });
+        });
+        $('.metacarve').on('click', function(e) {
+            var me = $(this);
+            var filter = me.siblings('.bpf_filter').text();
+            var form_data = "bpf=" + filter + "&carve=on";
+            $.ajax({
+                type: "POST",
+                url: "{% url 'metacap_service.views.get_pcap_tcpdump' identifier %}",
+                data: form_data,
+                dataType: "json",
+                success: function(data) {
+                  if (data) {
+                      me.html(data['html']);
+                  }
+                }
+            });
+        })
+        $('.packet').each(function() {
+            $(this).width($(this).attr('data-width')/75);
+        });
+        $('.entropy').each(function() {
+            var eheight = $(this).attr('data-height') * 4;
+            if (eheight == 0) {
+                $(this).remove();
+            } else {
+                $(this).height(eheight);
+            }
+        });
+        $('.bubbleInfo').each(function () {
+            var time = 150;
+            var hideDelay = 100;
+
+            var hideDelayTimer = null;
+
+            var beingShown = false;
+            var shown = false;
+            var trigger = $('.trigger', this);
+            var info = $('.popup', this).css('opacity', 0);
+
+
+            $([trigger.get(0), info.get(0)]).mouseover(function () {
+                if (hideDelayTimer) clearTimeout(hideDelayTimer);
+                if (beingShown || shown) {
+                    // don't trigger the animation again
+                    return;
+                } else {
+                    // reset position of info box
+                    beingShown = true;
+
+                    info.css({
+                        top: 5,
+                        left: -86,
+                        display: 'block'
+                    }).animate({
+                        opacity: 1
+                    }, time, 'swing', function() {
+                        beingShown = false;
+                        shown = true;
+                    });
+                }
+
+                return false;
+            }).mouseout(function () {
+                if (hideDelayTimer) clearTimeout(hideDelayTimer);
+                hideDelayTimer = setTimeout(function () {
+                    hideDelayTimer = null;
+                    info.animate({
+                        opacity: 0
+                    }, time, 'swing', function () {
+                        shown = false;
+                        info.css('display', 'none');
+                    });
+
+                }, hideDelay);
+
+                return false;
+            });
+        });
+    });
+    
+    //-->
+</script>
+
+{% regroup analysis.results by subtype as result_list %}
+{% for result_subtype in result_list %}
+    <h4> {{ result_subtype.grouper }} </h4>
+
+    {% if result_subtype.grouper == "PCAP Statistics" %}
+        <table class="chart">
+                <colgroup>
+                    <col width="200px">
+                    <col width="80%">
+                </colgroup>
+        {% for result in result_subtype.list %}
+            {% if forloop.first %}
+                {# Create the header the first time through the loop. #}
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+            {% endif %}
+            {% for name, val in result.items %}
+                {% if name == 'result' %}
+                    {% for k,v in val.items %}
+                        <tr>
+                            <td>
+                                {{ k|nicify }}
+                            <td>
+                                {{ v }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+        </tbody>
+        </table>
+        <div style="margin-left: 5px;">
+            <h5>Flow Browser Legend</h5>
+            <span style="background-color: #9afe2e;">&nbsp;</span> = To Client
+            <span style="background-color: #fe2e2e;">&nbsp;</span> = To Server
+            <span style="background-color: #000000;">&nbsp;</span> = Entropy
+            <span>--</span> = Max Entropy
+            <div>- Height of entropy box relative to level of entropy.</div>
+            <div>- Width of container denotes payload size.</div>
+        </div>
+    {% else %}
+        {% for result in result_subtype.list %}
+            {% for name, val in result.items %}
+                {% if name == 'result' %}
+                    <table class="chart">
+                        <colgroup>
+                            <col width="200px">
+                            <col width="80%">
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    Start Time
+                                <td>
+                                    {{ val.start_time }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    End Time
+                                <td>
+                                    {{ val.end_time }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Source<span type="ip" title="Create IP/Indicator" style="float: right;" class="ui-icon ui-icon-plusthick create-ip-indicator" data-value="{{ val.src }}"></span>
+                                <td>
+                                    <a href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&search=Go&force_full=1&q={{ val.src }}" style="display: inline-block;">{{ val.src }}</a>:{{ val.sport }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Destination<span type="ip" title="Create IP/Indicator" style="float: right;" class="ui-icon ui-icon-plusthick create-ip-indicator" data-value="{{ val.dst }}"></span>
+                                <td>
+                                    <a href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&search=Go&force_full=1&q={{ val.dst }}" style="display: inline-block;">{{ val.dst }}</a>:{{ val.dport }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Client Data Transfer
+                                <td>
+                                    {{ val.client_data_transfer }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Server Data Transfer
+                                <td>
+                                    {{ val.server_data_transfer }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    Total Packets
+                                <td>
+                                    {{ val.total_packets }}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    BPF Filter
+                                <td>
+                                    <span class="bpf_filter" style="float: none;">host {{ val.src }} and host {{ val.dst }} and port {{ val.sport }} and port {{ val.dport }}</span>
+                                    <span class="metacarve" style="float: none;">
+                                        Carve Flow
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="flow_outer">
+                    <div class="flow_inner">
+                    {% for comm in val.comm_order %}
+                        {% if comm.data_to == "C" %}
+                            <span class="packet" style="background-color: #9afe2e;" data-width="{{ comm.data_len }}">
+                        {% else %}
+                            <span class="packet" style="background-color: #fe2e2e;" data-width="{{ comm.data_len }}">
+                        {% endif %}
+                            <span class="bubbleInfo">
+                                <table class="trigger">
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <hr class="entropy_max"></hr>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="entropy" data-height="{{ comm.entropy }}">
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <table id="dpop" class="popup">
+                                    <tbody>
+                                    <tr>
+                                        <td><table class="popup-contents">
+                                            <tbody>
+                                            {% for k,v in comm.items %}
+                                                <tr>
+                                                    <th>{{ k|nicify }}:</th>
+                                                    <td>{{ v }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody></table>
+                                        </td>
+                                    </tr>
+                                </tbody></table>
+                            </span>
+                        </span>
+                    {% endfor %}
+                    </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        {% endfor %}
+    {% endif %}
+{% empty %}
+    {% if analysis.status == 'started' %}
+        <p> This service is still running. </p>
+    {% else %}
+        <p> This service produced no results. </p>
+    {% endif %}
+{% endfor %}

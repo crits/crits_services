@@ -1,0 +1,165 @@
+{% load url from future %}
+
+<script src="/js/d3.v2.min.js"></script>
+<script>
+$(document).ready(function() {
+    // default graph lists
+    var nodes = [];
+    var links = [];
+    var labelAnchors = [];
+    var labelAnchorLinks = [];
+    $("#relationships_service_button").click(function() {
+        // don't load data more than once.
+        // allows switching of tabs without losing graph.
+        if (nodes.length > 0) {
+            return;
+        }
+
+        // get data from server.
+        $('#relationships_service').html('');
+        $.ajax({
+            type: "GET",
+            url: "{% url 'relationships_service.views.get_relationships' subscription.type subscription.id %}",
+            dataType: "json",
+            async: false,
+            success: function(data) {
+                if (data.success) {
+                    nodes = data.message.nodes;
+                    links = data.message.links;
+                    labelAnchors = data.message.labelAnchors;
+                    labelAnchorLinks = data.message.labelAnchorLinks;
+                }
+            }
+        });
+
+        // define our graph and add to page
+        var w = 1300, h = 900;
+        var vis = d3.select("#relationships_service")
+                  .append("svg:svg")
+                  .attr("width", w)
+                  .attr("height", h);
+
+        // define our forces
+        // force: node linking
+        var force = d3.layout.force()
+                    .nodes(nodes)
+                    .links(links)
+                    .size([w, h])
+                    .gravity(1)
+                    .linkDistance(50)
+                    .charge(-3000)
+                    .linkStrength(function(x) {
+                        return x.weight * 10;
+                    })
+        force.start()
+
+        // force2: label linking
+        var force2 = d3.layout.force()
+                     .nodes(labelAnchors)
+                     .links(labelAnchorLinks)
+                     .size([w, h])
+                     .gravity(0)
+                     .linkDistance(0)
+                     .charge(-100)
+                     .linkStrength(8)
+        force2.start()
+
+        // define link lines.
+        var link = vis.selectAll("line.link")
+                   .data(links)
+                   .enter()
+                   .append("svg:line")
+                   .attr("class", "link")
+                   .style("stroke", "#CCC");
+
+        // define node dots.
+        var node = vis.selectAll("g.node")
+                   .data(force.nodes())
+                   .enter()
+                   .append("svg:g")
+                   .attr("class", "node");
+
+        // append node to graph.
+        node.append("svg:circle")
+        .attr("r", 5)
+        .style("fill", "#555")
+        .style("stroke", "#FFF")
+        .style("stroke-width", 3);
+        node.call(force.drag);
+
+        // define link anchors.
+        var anchorLink = vis.selectAll("line.anchorLink")
+                         .data(labelAnchorLinks)
+
+        // define label anchors.
+        var anchorNode = vis.selectAll("g.anchorNode")
+                         .data(force2.nodes())
+                         .enter()
+                         .append("svg:g")
+                         .attr("class", "anchorNode");
+
+        // append invisible anchor node to graph for label.
+        anchorNode.append("svg:circle")
+        .attr("r", 0)
+        .style("fill", "#FFF");
+
+        // append label as a link to invisible node.
+        anchorNode.append("svg:a")
+        .attr("xlink:href", function(d) {
+            return d.url;
+        })
+        .append("svg:text")
+        .text(function(d) {
+            return d.node.label;
+        })
+        .style("fill", "#3399ff")
+        .style("font-family", "Arial")
+        .style("font-size", 12);
+
+        // voodoo math to make graph alive and update nodes dynamically.
+        var updateLink = function() {
+            this.attr("x1", function(d) {
+                return d.source.x;
+            }).attr("y1", function(d) {
+                return d.source.y;
+            }).attr("x2", function(d) {
+                return d.target.x;
+            }).attr("y2", function(d) {
+                return d.target.y;
+            });
+        }
+
+        var updateNode = function() {
+            this.attr("transform", function(d) {
+                return "translate(" + d.x + "," + d.y + ")";
+            });
+        }
+
+        force.on("tick", function() {
+            force2.start();
+            node.call(updateNode);
+            anchorNode.each(function(d, i) {
+                if(i % 2 == 0) {
+                    d.x = d.node.x;
+                    d.y = d.node.y;
+                } else {
+                    var b = this.childNodes[1].getBBox();
+                    var diffX = d.x - d.node.x;
+                    var diffY = d.y - d.node.y;
+                    var dist = Math.sqrt(diffX * diffX + diffY * diffY);
+                    var shiftX = b.width * (diffX - dist) / (dist * 2);
+                    shiftX = Math.max(-b.width, Math.min(0, shiftX));
+                    var shiftY = 5;
+                    this.childNodes[1].setAttribute("transform", "translate(" + shiftX + "," + shiftY + ")");
+                }
+            });
+            anchorNode.call(updateNode);
+            link.call(updateLink);
+            anchorLink.call(updateLink);
+        });
+    });
+});
+</script>
+
+<div id="relationships_service" width="100%">
+</div>

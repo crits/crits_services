@@ -1,0 +1,76 @@
+{% load url from future %}
+{% load service_tags %}
+
+{% regroup analysis.results by subtype as result_list %}
+{% for result_subtype in result_list %}
+    <h4> {{ result_subtype.grouper }} </h4>
+    <table class="chart">
+
+    {% for result in result_subtype.list %}
+    {% if forloop.first %}
+    {# Create the header the first time through the loop. #}
+    <thead>
+        <tr>
+            <th width="200px">Result</th>
+            {% for key, value in result.items %}
+            {% if key != 'subtype' and key != 'result' %}
+            <th>{{ key|capfirst }}</th>
+            {% endif %} 
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+    {% endif %}
+        <tr>
+            {% for key, value in result.items %}
+            {% if key != 'subtype' and key != 'result' %}
+                <td width="200px">
+                {# If this is a list, make a subtable #}
+                {% if value|needs_subtable %}
+                    <table class="chart">
+                    {% for subrow in value %}
+                    {% if forloop.first %}
+                    <thead>
+                        <tr>
+                        {% for k2, v2 in subrow.items %}
+                            <th>{{ k2|capfirst }}</th>
+                        {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% endif %}
+                        <tr>
+                        {% for k2, v2 in subrow.items %}
+                            <td>{{ v2 }}</td>
+                        {% endfor %}
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                    </table>
+                {# Otherwise, just put the result #}
+                {% else %}
+                    {{ value }}
+                {% endif %}
+                </td>
+            {% endif %} 
+            {% endfor %}
+            <td>
+                {% if result.result %}
+                    {% if result.subtype == 'Response Body MD5' or result.subtype == 'Request Body MD5' %}
+                        <a href="{% url 'crits.samples.views.samples_listing' %}?search_type=md5search&q={{result.result|urlencode}}">{{result.result}}</a>
+                    {% else %}
+                        <a href="{% url 'crits.samples.views.samples_listing' %}?search_type=detectexact&q={{result.result|urlencode}}">{{result.result}}</a>
+                    {% endif %}
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+    </table>
+{% empty %}
+    {% if analysis.status == 'started' %}
+        <p> This service is still running. </p>
+    {% else %}
+        <p> This service produced no results. </p>
+    {% endif %}
+{% endfor %} 

@@ -1,0 +1,4 @@
+PDFInfo will parse a PDF file and generate rich metadata about the document. It
+leverages the pdf-parser script from Didier Stevens.
+
+http://blog.didierstevens.com/programs/pdf-tools/

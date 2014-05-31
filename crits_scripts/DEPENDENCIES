@@ -1,0 +1,3 @@
+Most CRITs scripts only require the core dependencies for CRITs to run. The
+major exception currently is wss.py which is a web-socket server for CRITs. It
+requires mod_pywebsocket and its dependencies to run.

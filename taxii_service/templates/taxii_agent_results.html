@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load url from future %}
+
+{% block title %}TAXII Import Results{% endblock %}
+
+{% block content %}
+
+<div class="content_box">
+    <h3 class="titleheader">
+    <span>Results:</span>
+    </h3>
+    <div class="content_body">
+    Status: {{ result.status }}<br>
+    {% if not result.status %}
+    Reason: {{ result.reason }}<br>
+    {% endif %}
+    Successes: {{ result.successes }}<br>
+    Failures: {{ result.failures }}<br>
+    Events: {{ result.events|length }}<br>
+        {% for event in result.events %}
+        <a href="{% url 'crits.events.views.view_event' event %}">{{ event }}</a>
+        {% endfor %}
+    Samples: {{ result.samples|length }}<br>
+        {% for sample in result.samples %}
+        <a href="{% url 'crits.samples.views.detail' sample %}">{{ sample }}</a>
+        {% endfor %}
+    Emails: {{ result.emails|length }}<br>
+        {% for email in result.emails %}
+        <a href="{% url 'crits.emails.views.email_detail' email %}">{{ email }}</a>
+        {% endfor %}
+    Indicators: {{ result.indicators|length }}<br>
+        {% for indicator in result.indicators %}
+        <a href="{% url 'crits.indicators.views.indicator' indicator %}">{{ indicator }}</a>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}

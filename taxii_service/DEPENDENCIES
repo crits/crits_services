@@ -1,0 +1,4 @@
+The TAXII service requires:
+
+- M2Crypto
+- libtaxii and its dependencies

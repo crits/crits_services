@@ -1,0 +1,2 @@
+The OPSWAT service has no direct dependencies outside of what's necessary for
+CRITs to run. It does, however, require an OPSWAT appliance to push Samples to.

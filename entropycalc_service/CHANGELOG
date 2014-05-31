@@ -1,0 +1,10 @@
+Version 0.0.1
+-------------
+Initial version of cryptodetect service
+
+For now it only computes entropy for any file (except an empty one). Code for entropy taken from pefile.
+No external dependencies other than math and array imports.
+
+For future inspiration:
+http://kerckhoffs.googlecode.com/files/Groebert-Automatic.Identification.of.Cryptographic.Primitives.in.Software.pdfi
+

@@ -1,0 +1,224 @@
+{% load url from future %}
+
+<script src="/js/d3.v2.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('#draggable').draggable();
+    $('#graph_config').draggable();
+    // default graph lists
+    var nodes = [];
+    var links = [];
+    //var labelAnchors = []; // used if we want to do force labels
+    //var labelAnchorLinks = []; // used if we want to do force labels
+
+    $(document).on('click', '#change_graph', function(e) {
+        $('#graph_container').empty();
+        // get data from server.
+        var depth = $('#node_depth').val();
+        var types = $("#node_types option:selected").map(function(){return this.value}).get().join(",");
+        data = {
+            depth: depth,
+            types: types,
+        }
+        console.log(data);
+        $.ajax({
+            type: "POST",
+            url: "{% url 'relationships_service.views.get_relationships' subscription.type subscription.id %}",
+            dataType: "json",
+            data: data,
+            async: false,
+            success: function(data) {
+                if (data.success) {
+                    nodes = data.message.nodes;
+                    links = data.message.links;
+                    // labelAnchors = data.message.labelAnchors;
+                    // labelAnchorLinks = data.message.labelAnchorLinks;
+                }
+            }
+        });
+        generate_graph(nodes, links);
+    });
+
+    $("#relationships_service_button").click(function() {
+        // don't load data more than once.
+        // allows switching of tabs without losing graph.
+        if (nodes.length > 0) {
+            return;
+        }
+        $('#change_graph').trigger('click');
+    });
+
+    function generate_graph(nodes, links) {
+
+        // define our graph and add to page
+        var w = 1000, h = 800;
+
+        var svg = d3.select("#svg_container > svg")
+        .attr("preserveAspectRatio", "xMidYMid meet")
+        .attr('width', w)
+        .attr('height', h)
+        .append('svg:g')
+        .call(d3.behavior.zoom().on("zoom", redraw))
+        .append('svg:g');
+
+        svg.append('svg:rect')
+        .attr('width', w)
+        .attr('height', h)
+        .attr('fill', 'white');
+
+        // define our forces
+        // force: node linking
+        var force = d3.layout.force()
+                    .nodes(nodes)
+                    .links(links)
+                    .size([w, h])
+                    .gravity(1)
+                    .linkDistance(100)
+                    .charge(-4000)
+                    .linkStrength(function(x) {
+                        return x.weight * 10;
+                    })
+                    .on("tick", tick)
+                    .start();
+
+        var link = svg.selectAll("line.link")
+                   .data(links)
+                   .enter()
+                   .append("svg:line")
+                   .attr("class", "link")
+                   .style("stroke", "#CCC");
+
+        var node = svg.selectAll(".node")
+                   .data(nodes)
+                   .enter()
+                   .append("g")
+                   .attr("class", "node")
+                   .on("mouseover", mouseover)
+                   .on("mouseout", mouseout)
+                   .call(force.drag);
+
+        node.append("circle")
+            .attr("r", 8)
+            .style('stroke', '#CCC')
+            .style("fill", function(d) {
+                return d.color;
+            });
+
+        //node.append("text")
+        //    .attr("x", 12)
+        //    .attr("dy", ".35em")
+        //    .text(function(d) { return d.label; });
+        node.append("svg:a")
+        .attr("xlink:href", function(d) {
+            return d.url;
+        })
+        .append("svg:text")
+        .text(function(d) {
+            if (d.campaign) {
+                return d.label + " (" + d.campaign + ")";
+            } else {
+                return d.label;
+            }
+        })
+        .style("fill", "#3399ff")
+        .style("font-family", "Arial")
+        .style("font-size", 12)
+        .attr("x", 12)
+        .attr("dy", ".35em");
+
+        function redraw() {
+            svg.attr("transform",
+                "translate(" + d3.event.translate + ")"
+                + " scale(" + d3.event.scale + ")");
+        }
+
+        function tick() {
+          link
+              .attr("x1", function(d) { return d.source.x; })
+              .attr("y1", function(d) { return d.source.y; })
+              .attr("x2", function(d) { return d.target.x; })
+              .attr("y2", function(d) { return d.target.y; });
+
+          node
+              .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
+        }
+
+        function mouseover() {
+          d3.select(this).select("circle").transition()
+              .duration(350)
+              .attr("r", 16);
+        }
+
+        function mouseout() {
+          d3.select(this).select("circle").transition()
+              .duration(350)
+              .attr("r", 8);
+        }
+
+        $('#draggable').show()
+        .css({'position': 'absolute', 'top': 60, 'left' : 20});
+        $('#graph_config').show()
+        .css({'position': 'absolute', 'top': 60, 'right' : 20});
+    }
+});
+</script>
+<style>
+#draggable {
+    width: 100px;
+    z-index: 5;
+    float: left;
+}
+#graph_config {
+    width: 100px;
+    z-index: 5;
+    float: right;
+}
+#svg_container {
+    border: 1px solid #CCCCCC;
+    margin-left: 150px;
+    margin-right: 150px;
+}
+#graph_legend {
+    margin-left: -15px;
+}
+</style>
+
+<div id="relationships_service" width="100%">
+    <div id="svg_container">
+        <svg id="graph_container"></svg>
+    </div>
+    <div id="graph_config" class="ui-widget-content" style="display: none;">
+        <div style="vertical-align: top; padding-top: 8px;">Depth:
+            <input id="node_depth" size="3" type="text" value="3" name="depth" style="vertical-align: top;"></input>
+        </div>
+        <select id="node_types" name="types" size=11 multiple>
+            <option value="Campaign" selected="selected">Campaigns</option>
+            <option value="Certificate" selected="selected">Certificates</option>
+            <option value="Domain" selected="selected">Domains</option>
+            <option value="Email" selected="selected">Emails</option>
+            <option value="Event" selected="selected">Events</option>
+            <option value="Indicator" selected="selected">Indicators</option>
+            <option value="IP" selected="selected">IPs</option>
+            <option value="PCAP" selected="selected">PCAPs</option>
+            <option value="RawData" selected="selected">Raw Data</option>
+            <option value="Sample" selected="selected">Samples</option>
+            <option value="Target" selected="selected">Targets</option>
+        </select>
+        <button id="change_graph" style="vertical-align: top;">Update</button>
+    </div>
+    <div id="draggable" class="ui-widget-content" style="display: none;">
+        <ul id="graph_legend">
+            <li style="color: #FF3737;"><span style="color: #000;">Campaigns</span></li>
+            <li style="color: #FFA837;"><span style="color: #000;">Certificates</span></li>
+            <li style="color: #33EB33;"><span style="color: #000;">Domains</span></li>
+            <li style="color: #FF8989;"><span style="color: #000;">Emails</span></li>
+            <li style="color: #B05151;"><span style="color: #000;">Events</span></li>
+            <li style="color: #B08751;"><span style="color: #000;">Indicators</span></li>
+            <li style="color: #90570C;"><span style="color: #000;">IPs</span></li>
+            <li style="color: #FFCC89;"><span style="color: #000;">PCAPs</span></li>
+            <li style="color: #4A7797;"><span style="color: #000;">Raw Data</span></li>
+            <li style="color: #8CCBF8;"><span style="color: #000;">Samples</span></li>
+            <li style="color: #4AA24A;"><span style="color: #000;">Targets</span></li>
+        </ul>
+    </div>
+</div>

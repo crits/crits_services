@@ -1,0 +1,11 @@
+The Timeline service works for any top-level object. It parses the object and
+generates a timeline of things that happened to that object. It is an easy way
+to see what things happened on which days in chronological order such as:
+
+- Adding the content to CRITs
+- Adding bucket list items
+- Adding relationships
+- Adding objects
+- Adding comments
+- Running services
+- etc.

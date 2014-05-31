@@ -1,0 +1,74 @@
+{% load url from future %}
+
+<script>
+$(document).ready(function() {
+    get_tcpdump_form();
+    $("#tcpdump_submit").click(function() {
+      $('.tcpdump_loader').html('<img src="/new_images/loader.gif" />');
+      var form_data = $('#tcpdump_config_form').serialize();
+      $.ajax({
+        type: "POST",
+        url: "{% url 'metacap_service.views.get_pcap_tcpdump' pcap.md5 %}",
+        data: form_data,
+        dataType: "json",
+        success: function(data) {
+          if (data) {
+              $("#pcap_tcpdump > pre").text('');
+              if ($('#id_carve').is(':checked')) {
+                  $("#pcap_tcpdump > pre").html(data['html']);
+              } else {
+                  $("#pcap_tcpdump > pre").text(data['html']);
+              }
+              $('.tcpdump_loader').html('');
+          }
+        }
+      });
+    });
+    $("#tcpdump_configure").click(function() {
+        $("#tcpdump_config_container").slideToggle();
+    });
+    function get_tcpdump_form() {
+        $.ajax({
+            type: "GET",
+            url: "{% url 'metacap_service.views.get_tcpdump_config_form' %}",
+            dataType: "json",
+            success: function(data) {
+                if (data) {
+                    $("#tcpdump_form_table").html(data.form);
+                }
+            }
+        });
+    }
+});
+</script>
+
+<div id="metacap_tcpdump" width="100%">
+
+    <span class="horizontal_menu" style="text-align: center;">
+        <button class="form_submit_button" id="tcpdump_configure" name="tcpdump_configure">Configure TCPDump</button><br />
+        <div id="tcpdump_config_container" style="display: none;">
+            <br />
+            <div class='content_box content_details' style="width: 100%;">
+                <h3 class="titleheader" with="100%">
+                    <span>TCPDump Configuration Options (<a href="http://www.tcpdump.org/tcpdump_man.html" style="display: inline-block;"> man page</a>)</span>
+                </h3>
+                <form id="tcpdump_config_form">
+                    <table id="tcpdump_form_table" class="form">
+                    </table>
+                </form>
+            </div>
+        </div>
+        <button class="form_submit_button" id="tcpdump_submit" name="tcpdump_execute">Run TCPDump</button>
+    </span>
+    <span class="tcpdump_loader horizontal_menu"></span>
+
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader" with="100%">
+            <span>PCAP: {{ pcap.filename }}</span>
+        </h3>
+        <div id="pcap_tcpdump" style="width:100%;max-height:450px;overflow:auto;font-size:120%;">
+            <pre>
+            </pre>
+        </div>
+    </div>
+</div>

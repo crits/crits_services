@@ -1,0 +1,24 @@
+The MetaCap service allows you to use the Chopshop MetaCap module against a PCAP
+in CRITs. It generated a summary of the PCAP, and then a summary of each flow
+found in the PCAP. Each flow comes with statistics, source and destination
+information, as well as a "flow browser".
+
+The source and destination can automatically be added to the Indicators
+collection. The "flow browser" is a quick visual representation of the packets
+in the flow. By color and size you can scroll through very quick and determine
+the direction, size, and entropy of each packet in the flow.
+
+MetaCap allows you to carve each flow as a new PCAP which is automatically
+related back to the parent PCAP. Each flow also comes with a BPF Filter for use
+in other applications or the MetaCap TCPDump tab (described below).
+
+Along with the MetaCap service comes a couple tabs to assist with browsing the
+contents of the PCAP.
+
+The MetaCap Viewer allows you to generate PDML using tshark and then browse the
+PCAP using a wireshark-like interface.
+
+The MetaCap TCPDump tab allows you to run the PCAP through tcpdump (with some
+basic configuration options) and view the results directly through the
+interface. This tab also allows you to carve the results of this tcpdump command
+to a new PCAP.

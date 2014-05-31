@@ -1,0 +1,111 @@
+{% load url from future %}
+
+<script>
+$(document).ready(function() {
+    $("#get_csv").click(function() {
+      $('.anb_loader').html('<img src="/new_images/loader.gif" />');
+      $.ajax({
+        type: "GET",
+        url: "{% url 'anb_service.views.get_anb_data' 'Event' event.id %}",
+        dataType: "json",
+        success: function(data) {
+          if (data['success'] != "true") {
+              $("#csv_events").text(data['message']);
+              $("#csv_emails").text(data['message']);
+              $("#csv_samples").text(data['message']);
+              $("#csv_objects").text(data['message']);
+              $("#csv_indicators").text(data['message']);
+              $("#csv_ips").text(data['message']);
+              $("#csv_domains").text(data['message']);
+              $('.anb_loader').html('');
+          } else {
+              var msg = data['message'];
+              $("#csv_events").text(msg['events']);
+              $("#csv_emails").text(msg['emails']);
+              $("#csv_samples").text(msg['samples']);
+              $("#csv_objects").text(msg['objects']);
+              $("#csv_indicators").text(msg['indicators']);
+              $("#csv_ips").text(msg['ips']);
+              $("#csv_domains").text(msg['domains']);
+              $('.anb_loader').html('');
+          }
+        }
+      });
+    });
+    $('#csv_events, #csv_emails, #csv_samples, #csv_objects, #csv_indicators, #csv_ips, #csv_domains').click(
+        function(){
+            select_all(this);
+        }
+    );
+
+    function select_all(el) {
+        if (typeof window.getSelection != "undefined" && typeof document.createRange != "undefined") {
+            var range = document.createRange();
+            range.selectNodeContents(el);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+        } else if (typeof document.selection != "undefined" && typeof document.body.createTextRange != "undefined") {
+            var textRange = document.body.createTextRange();
+            textRange.moveToElementText(el);
+            textRange.select();
+        }
+    }
+
+});
+</script>
+
+<div id="anb_service" width="100%">
+
+    <span class="horizontal_menu">
+    <ul class="hmenu">
+        <li class="right" id="anb_csv">
+            <a href="#" id="get_csv">CSV</a>
+        </li>
+    </ul>
+    </span>
+    <span class="anb_loader horizontal_menu"></span>
+
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader" with="100%">
+            <span>Events</span>
+        </h3>
+        <div id="csv_events" style="width:100%;max-height:300px;overflow:auto;"></div>
+    </div>
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader" with="100%">
+            <span>Emails</span>
+        </h3>
+        <div id="csv_emails" style="width:100%;max-height:300px;overflow:auto;"></div>
+    </div>
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader">
+            <span>Samples</span>
+        </h3>
+        <div id="csv_samples" style="width:100%;max-height:300px;overflow:auto;"></div>
+    </div>
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader">
+            <span>Objects</span>
+        </h3>
+        <div id="csv_objects" style="width:100%;max-height:300px;overflow:auto;"></div>
+    </div>
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader">
+            <span>Indicators</span>
+        </h3>
+        <div id="csv_indicators" style="width:100%;max-height:300px;overflow:auto;"></div>
+    </div>
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader">
+            <span>IPs</span>
+        </h3>
+        <div id="csv_ips" style="width:100%;max-height:300px;overflow:auto;"></div>
+    </div>
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader">
+            <span>Domains</span>
+        </h3>
+        <div id="csv_domains" style="width:100%;max-height:300px;overflow:auto;"></div>
+    </div>
+</div>
