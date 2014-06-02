@@ -7,6 +7,7 @@ from hashlib import md5
 
 from crits.services.core import Service, ServiceConfigOption
 from crits.services.core import ServiceConfigError
+from crits.core.class_mapper import class_from_value
 
 logger = logging.getLogger(__name__)
 
@@ -17,9 +18,11 @@ class YaraService(Service):
     """
 
     name = "yara"
-    version = '1.1.2'
+    version = '2.0.0'
+    distributed = True
     type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
+    required_fields = ['md5']
     default_config = [
         ServiceConfigOption('sigdir',
                             ServiceConfigOption.STRING,
@@ -33,7 +36,13 @@ class YaraService(Service):
     "A list of signature files. If `sigdir` is defined, each "
     "sigfile should relative to this directory; otherwise it should be an "
     "absolute path. Do not put quotes around file names.",
-                            required=True)
+                            required=True),
+        ServiceConfigOption('distribution_url',
+                            ServiceConfigOption.STRING,
+                            description=
+    "URL to use if distributing to multiple workers. "
+    "Leave empty to run locally.",
+                            private=True)
     ]
 
     @staticmethod
@@ -90,29 +99,57 @@ class YaraService(Service):
             self._info("No data to scan, skipping")
             return
 
-        for sigset in self.sigsets:
-            logger.debug("Signature set name: %s" % sigset['name'])
-            self._info("Scanning with %s (%s)" % (sigset['name'], sigset['md5']))
-            matches = sigset['rules'].match(data=context.data)
-            for match in matches:
-                strings = {}
-                for s in match.strings:
-                    s_name = s[1]
-                    s_offset = s[0]
-                    try:
-                        s_data = s[2].decode('ascii')
-                    except UnicodeError:
-                        s_data = "Hex: " + binascii.hexlify(s[2])
-                    s_key = "{0}-{1}".format(s_name, s_data)
-                    if s_key in strings:
-                        strings[s_key]['offset'].append(s_offset)
-                    else:
-                        strings[s_key] = {
-                            'offset':       [s_offset],
-                            'name':         s_name,
-                            'data':         s_data,
-                            }
-                string_list = []
-                for key in strings:
-                    string_list.append(strings[key])
-                self._add_result(self.name, match.rule, {'strings': string_list})
+        if self.config['distribution_url']:
+            # Get object ID to pass along.
+            obj = class_from_value(context.crits_type, context.identifier)
+            if not obj:
+                self._error("Unable to get object.")
+                return
+            try:
+                from crits.services.connector import *
+                conn = Connector(connector="amqp", uri=self.config['distribution_url'])
+                queue = conn.connection.SimpleQueue('yara')
+                message = {'analysis_id': self.current_task.task_id,
+                           'start_date': self.current_task.start_date,
+                           'username': self.current_task.username,
+                           'results_to': 'crits',
+                           'sigfiles': self.config['sigfiles'],
+                           'md5': context.md5,
+                           'object_type': context.crits_type,
+                           'object_id': str(obj.id),
+                           'url_arg': context.url_arg,
+                           'filename': context.filename}
+                queue.put(message)
+                conn.release()
+            except Exception as e:
+                self._error("Missing necessary library: %s" % e)
+                return
+            self._info("Submitted job to yara queue.")
+        else:
+            for sigset in self.sigsets:
+                logger.debug("Signature set name: %s" % sigset['name'])
+                self._info("Scanning with %s (%s)" % (sigset['name'], sigset['md5']))
+                matches = sigset['rules'].match(data=context.data)
+                for match in matches:
+                    strings = {}
+                    for s in match.strings:
+                        s_name = s[1]
+                        s_offset = s[0]
+                        try:
+                            s_data = s[2].decode('ascii')
+                        except UnicodeError:
+                            s_data = "Hex: " + binascii.hexlify(s[2])
+                        s_key = "{0}-{1}".format(s_name, s_data)
+                        if s_key in strings:
+                            strings[s_key]['offset'].append(s_offset)
+                        else:
+                            strings[s_key] = {
+                                'offset':       [s_offset],
+                                'name':         s_name,
+                                'data':         s_data,
+                                }
+                    string_list = []
+                    for key in strings:
+                        string_list.append(strings[key])
+                    self._add_result(self.name, match.rule, {'strings': string_list})
+            self.finalize()
