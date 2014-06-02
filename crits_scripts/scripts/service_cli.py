@@ -19,7 +19,7 @@ class CRITsScript(CRITsBaseScript):
             print "Beginning scanning of files\n-------------------\n"
         for (sample_md5, sample_id) in sample_list:
             try:
-                context = env.create_context("Sample", sample_id, 'command_line')
+                context = env.create_context("Sample", sample_id, self.username)
             except Exception as e:
                 print "    [-] error fetching md5 {0}, {1}".format(sample_md5, e)
                 continue
