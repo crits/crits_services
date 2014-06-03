@@ -122,5 +122,5 @@ class PEhashService(Service):
         output = m.hexdigest()
         print output
         self._add_result('PEhash value', "%s" % output, {'Value': output})
-
+        self._add_result('Totalhash Lookup:', "http://totalhash.com/search/hash:%s" % output )
 
