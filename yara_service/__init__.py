@@ -50,12 +50,6 @@ class YaraService(Service):
         #Try to compile the rules files.
         YaraService._compile_rules(config['sigdir'], config['sigfiles'])
 
-    def __init__(self, *args, **kwargs):
-        super(YaraService, self).__init__(*args, **kwargs)
-        logger.debug("Initializing Yara scanner.")
-        self.sigsets = self._compile_rules(self.config['sigdir'],
-                                           self.config['sigfiles'])
-
     @staticmethod
     def _compile_rules(sigdir, sigfiles):
         if not sigfiles:
@@ -93,18 +87,13 @@ class YaraService(Service):
         logger.debug(str(sigsets))
         return sigsets
 
-    def _scan(self, context):
+    def _scan(self, obj):
         logger.debug("Scanning...")
-        if not context.data:
+        if obj.filedata == None:
             self._info("No data to scan, skipping")
             return
 
         if self.config['distribution_url']:
-            # Get object ID to pass along.
-            obj = class_from_value(context.crits_type, context.identifier)
-            if not obj:
-                self._error("Unable to get object.")
-                return
             try:
                 from crits.services.connector import *
                 conn = Connector(connector="amqp", uri=self.config['distribution_url'])
@@ -114,22 +103,22 @@ class YaraService(Service):
                            'username': self.current_task.username,
                            'results_to': 'crits',
                            'sigfiles': self.config['sigfiles'],
-                           'md5': context.md5,
-                           'object_type': context.crits_type,
-                           'object_id': str(obj.id),
-                           'url_arg': context.url_arg,
-                           'filename': context.filename}
+                           'md5': obj.md5,
+                           'object_type': obj._meta['crits_type'],
+                           'object_id': str(obj.id)}
                 queue.put(message)
                 conn.release()
             except Exception as e:
-                self._error("Missing necessary library: %s" % e)
+                self._error("Distribution error: %s" % e)
                 return
             self._info("Submitted job to yara queue.")
         else:
+            self.sigsets = self._compile_rules(self.config['sigdir'],
+                                               self.config['sigfiles'])
             for sigset in self.sigsets:
                 logger.debug("Signature set name: %s" % sigset['name'])
                 self._info("Scanning with %s (%s)" % (sigset['name'], sigset['md5']))
-                matches = sigset['rules'].match(data=context.data)
+                matches = sigset['rules'].match(data=obj.filedata.read())
                 for match in matches:
                     strings = {}
                     for s in match.strings:
