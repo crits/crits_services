@@ -65,19 +65,19 @@ class TotalHashService(Service):
         self._get_pehash(pe)
 
         # If we have an API key, go ahead and look it up.
-        import xmltodict
-
         key = str(self.config.get('th_api_key', ''))
         user = self.config.get('th_user', '')
         url = self.config.get('th_query_url', '')
 
-        if not key:
-            self._info("No API key, not checking Totalhash.")
-            return
-
         # XXX: Context doesn't provide sha1. When we move away from contexts
         # this can just use str(obj.sha1)
         h = hashlib.sha1(context.data).hexdigest()
+
+        if not key:
+            self._add_result('Analysis Link', url + "/analysis/" + h)
+            self._info("No API key, not checking Totalhash.")
+            return
+
         signature = hmac.new(key, msg=h, digestmod=hashlib.sha256).hexdigest()
         params = "/analysis/" + h + "&id=" + user + "&sign=" + signature
         req = urllib2.Request(url + params)
