@@ -16,5 +16,5 @@ class SnugglefishService(Service):
     def __init__(self, *args, **kwargs):
         super(SnugglefishService, self).__init__(*args, **kwargs)
 
-    def _scan(self, context):
+    def _scan(self, obj):
         pass
