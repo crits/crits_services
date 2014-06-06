@@ -49,7 +49,7 @@ class VirusTotalService(Service):
                             private=True),
     ]
 
-    def _scan(self, context):
+    def _scan(self, obj):
         key = self.config.get('vt_api_key', '')
         sample_url = self.config.get('vt_query_url', '')
         domain_url = self.config.get('vt_domain_url', '')
@@ -58,16 +58,16 @@ class VirusTotalService(Service):
             self._error("No valid VT key found")
             return
 
-        if context.crits_type == 'Sample':
-            parameters = {"resource": context.md5, "apikey": key}
+        if obj._meta['crits_type'] == 'Sample':
+            parameters = {"resource": obj.md5, "apikey": key}
             vt_data = urllib.urlencode(parameters)
             req = urllib2.Request(sample_url, vt_data)
-        elif context.crits_type == 'Domain':
-            parameters = {'domain': context.domain_dict['domain'], 'apikey': key}
+        elif obj._meta['crits_type'] == 'Domain':
+            parameters = {'domain': obj.domain, 'apikey': key}
             vt_data = urllib.urlencode(parameters)
             req = urllib2.Request("%s?%s" % (domain_url, vt_data))
-        elif context.crits_type == 'IP':
-            parameters = {'ip': context.ip_dict['ip'], 'apikey': key}
+        elif obj._meta['crits_type'] == 'IP':
+            parameters = {'ip': obj.ip, 'apikey': key}
             vt_data = urllib.urlencode(parameters)
             req = urllib2.Request("%s?%s" % (ip_url, vt_data))
 
@@ -87,7 +87,7 @@ class VirusTotalService(Service):
         if response_dict.get('response_code', 0) != 1:
             return
 
-        if context.crits_type == 'Sample':
+        if obj._meta['crits_type'] == 'Sample':
             self._debug(response_dict.get('verbose_msg', 'No message from VT'))
             stats = {
                 'scan_date':        response_dict.get('scan_date', ''),
@@ -110,7 +110,7 @@ class VirusTotalService(Service):
                     "version":      scans[scan].get('version', ''),
                 }
                 self._add_result('av_result', result, detection)
-        elif context.crits_type == 'Domain':
+        elif obj._meta['crits_type'] == 'Domain':
             for detected_url in response_dict.get('detected_urls', []):
                 stats = {
                           'scan_date': detected_url.get('scan_date', ''),
@@ -125,7 +125,7 @@ class VirusTotalService(Service):
 
             for category in response_dict.get('categories', []):
                 self._add_result('Categories', category, {})
-        elif context.crits_type == 'IP':
+        elif obj._meta['crits_type'] == 'IP':
             for samp in response_dict.get('detected_communicating_samples', []):
                 stats = {
                           'date': samp.get('date', ''),
