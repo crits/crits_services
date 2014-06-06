@@ -31,13 +31,13 @@ class PEInfoService(Service):
         ]
 
     @staticmethod
-    def valid_for(context):
+    def valid_for(obj):
         # Only run on PE files
-        return context.is_pe()
+        return obj.is_pe()
 
-    def _scan(self, context):
+    def _scan(self, obj):
         try:
-            pe = pefile.PE(data=context.data)
+            pe = pefile.PE(data=obj.filedata.read())
         except pefile.PEFormatError as e:
             self._error("A PEFormatError occurred: %s" % e)
             return
