@@ -29,7 +29,7 @@ class SSDeepService(Service):
 
     def _scan(self, obj):
         threshold = self.config.get("threshold", 50)
-        target_ssdeep = obj.ssdeep)
+        target_ssdeep = obj.ssdeep
         target_md5 = obj.md5
         target_mimetype = obj.mimetype
         if not target_ssdeep:
