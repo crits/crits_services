@@ -12,13 +12,22 @@ class MachOInfoService(Service):
     default_config = []
 
     @staticmethod
-    def valid_for(context):
-        if len(context.data) < 4:
+    def valid_for(obj):
+        if obj.filedata == None:
             return False
-        return context.has_data() and struct.unpack('@I', context.data[:4])[0] in [MachOEntity.FAT_MAGIC, MachOEntity.FAT_CIGAM, MachOEntity.MH_MAGIC, MachOEntity.MH_CIGAM, MachOEntity.MH_MAGIC_64, MachOEntity.MH_CIGAM_64]
 
-    def _scan(self, context):
-        mop = MachOParser(context.data)
+        data = obj.filedata.read()
+        if len(data) < 4:
+            return False
+
+        # Reset the read pointer.
+        obj.filedata.seek(0)
+
+        return struct.unpack('@I', data)[0] in [MachOEntity.FAT_MAGIC, MachOEntity.FAT_CIGAM, MachOEntity.MH_MAGIC, MachOEntity.MH_CIGAM, MachOEntity.MH_MAGIC_64, MachOEntity.MH_CIGAM_64]
+
+    def _scan(self, obj):
+        data = obj.filedata.read()
+        mop = MachOParser(data)
         try:
             mop.parse()
         except MachOParserError, e:
