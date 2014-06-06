@@ -37,9 +37,9 @@ class EntropycalcService(Service):
     ]
 
     @staticmethod
-    def valid_for(context):
+    def valid_for(obj):
         # Only run if there's data
-        return context.has_data()
+        return not obj.filedata == None
 
     def _calculate_entropy(self, data):
 
@@ -60,8 +60,8 @@ class EntropycalcService(Service):
         return entropy
 
 
-    def _scan(self, context):
+    def _scan(self, obj):
         start_offset = self.config.get("start_offset", DEFAULT_START)
         end_offset = self.config.get("end_offset", DEFAULT_END)
-	output = self._calculate_entropy(context.data[start_offset:end_offset])
+	output = self._calculate_entropy(context.filedata.read()[start_offset:end_offset])
         self._add_result('Entropy calculation', "%.1f" % output, {'Value': output})
