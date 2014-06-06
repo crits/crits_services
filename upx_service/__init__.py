@@ -42,11 +42,10 @@ class UpxService(Service):
             raise ServiceConfigError("Executable does not appear"
                                          " to be UPX.")
 
-    def _scan(self, context):
+    def _scan(self, obj):
         upx_path = self.config.get("upx_path", "")
 
-        # The _write_to_file() context manager will delete this file at the
-        # end of the "with" block.
+        # _write_to_file() will delete this file at the end of the "with" block.
         with self._write_to_file() as tmp_file:
             (working_dir, filename) = os.path.split(tmp_file)
             args = [upx_path, "-q", "-d", filename]
