@@ -23,9 +23,9 @@ class PDFInfoService(Service):
     supported_types = ['Sample']
 
     @staticmethod
-    def valid_for(context):
-        # Only run on PE files
-        return context.is_pdf()
+    def valid_for(obj):
+        # Only run on PDF files
+        return obj.is_pdf()
 
     def H(self, data):
         if not data:
@@ -45,8 +45,8 @@ class PDFInfoService(Service):
         else:
             return "0.0"
 
-    def _scan(self, context):
-        data = context.data
+    def _scan(self, obj):
+        data = obj.filedata.read()
         self.object_summary = {
             'XRef':             0,
             'Catalog':          0,
