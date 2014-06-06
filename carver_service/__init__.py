@@ -27,10 +27,10 @@ class CarverService(Service):
     ]
 
     @staticmethod
-    def valid_for(context):
-        return context.has_data()
+    def valid_for(obj):
+        return not obj.filedata == None
 
-    def _scan(self, context):
+    def _scan(self, obj):
         start_offset = self.config.get("start_offset", DEFAULT_START)
         end_offset = self.config.get("end_offset", DEFAULT_END)
         # Start must be 0 or higher. If end is greater than zero it must
@@ -39,7 +39,7 @@ class CarverService(Service):
             self._error("Invalid offsets.")
             return
 
-        data = context.data[start_offset:end_offset]
+        data = obj.filedata.read()[start_offset:end_offset]
         if not data:
             self._error("No data.")
         else:
