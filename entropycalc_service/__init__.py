@@ -63,5 +63,5 @@ class EntropycalcService(Service):
     def _scan(self, obj):
         start_offset = self.config.get("start_offset", DEFAULT_START)
         end_offset = self.config.get("end_offset", DEFAULT_END)
-	output = self._calculate_entropy(context.filedata.read()[start_offset:end_offset])
+	output = self._calculate_entropy(obj.filedata.read()[start_offset:end_offset])
         self._add_result('Entropy calculation', "%.1f" % output, {'Value': output})
