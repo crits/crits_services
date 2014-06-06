@@ -27,11 +27,11 @@ class SSDeepService(Service):
                             default=50),
     ]
 
-    def _scan(self, context):
+    def _scan(self, obj):
         threshold = self.config.get("threshold", 50)
-        target_ssdeep = context.sample_dict.get('ssdeep', None)
-        target_md5 = context.md5
-        target_mimetype = context.sample_dict.get('mimetype', None)
+        target_ssdeep = obj.ssdeep)
+        target_md5 = obj.md5
+        target_mimetype = obj.mimetype
         if not target_ssdeep:
             logger.error = "Could not get the target ssdeep value for sample"
             self._error("Could not get the target ssdeep value for sample")
