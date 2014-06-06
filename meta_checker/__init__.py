@@ -33,16 +33,16 @@ class MetaChecker(Service):
         total_count = self._fetch_meta(query, {'md5': 1}).count()
         return total_count
 
-    def _scan(self, context):
+    def _scan(self, obj):
         max_result = self.config.get("max_result", DEFAULT_MAX)
-        my_md5 = context.md5
-        my_results = self._fetch_meta({'md5': my_md5}, {'analysis': 1})
-        if "analysis" not in my_results[0]:
+        my_md5 = obj.md5
+        my_results = obj.analysis
+        if len(my_results) == 0:
             logger.error = "Could not get analysis results for %s" % my_md5
             self._error("Could not get analysis results for %s" % my_md5)
             return
         completed_results = []
-        for result_set in my_results[0]["analysis"]:
+        for result_set in my_results:
             # skip our own results so we don't get nasty feedback
             if result_set["service_name"] == self.name:
                 continue
