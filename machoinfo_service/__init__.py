@@ -13,7 +13,7 @@ class MachOInfoService(Service):
 
     @staticmethod
     def valid_for(obj):
-        if obj.filedata == None:
+        if obj.filedata.grid_id == None:
             return False
 
         data = obj.filedata.read()

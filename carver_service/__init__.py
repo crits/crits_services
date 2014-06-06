@@ -28,7 +28,7 @@ class CarverService(Service):
 
     @staticmethod
     def valid_for(obj):
-        return not obj.filedata == None
+        return not obj.filedata.grid_id == None
 
     def _scan(self, obj):
         start_offset = self.config.get("start_offset", DEFAULT_START)

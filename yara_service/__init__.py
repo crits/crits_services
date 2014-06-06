@@ -89,7 +89,7 @@ class YaraService(Service):
 
     def _scan(self, obj):
         logger.debug("Scanning...")
-        if obj.filedata == None:
+        if obj.filedata.grid_id == None:
             self._info("No data to scan, skipping")
             return
 

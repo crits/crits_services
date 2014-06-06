@@ -39,7 +39,7 @@ class EntropycalcService(Service):
     @staticmethod
     def valid_for(obj):
         # Only run if there's data
-        return not obj.filedata == None
+        return not obj.filedata.grid_id == None
 
     def _calculate_entropy(self, data):
 

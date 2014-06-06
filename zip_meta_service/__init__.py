@@ -14,7 +14,7 @@ class ZipMetaService(Service):
     @staticmethod
     def valid_for(obj):
         # Only run on zip files
-        if obj.filedata == None:
+        if obj.filedata.grid_id == None:
             return False
 
         data = obj.filedata.read()

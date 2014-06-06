@@ -28,7 +28,7 @@ class OPSWATService(Service):
     ]
 
     def _scan(self, obj):
-        if obj.filedata == None:
+        if obj.filedata.grid_id == None:
             self._info("No binary found.")
             return
 
