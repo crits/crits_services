@@ -5,7 +5,6 @@ from crits.services.core import Service
 from crits.raw_data.raw_data import RawData
 from crits.domains.domain import TLD
 from crits.indicators.indicator import Indicator
-from crits.services.contexts import RawDataContext, SampleContext
 from crits.core.data_tools import make_ascii_strings
 
 logger = logging.getLogger(__name__)
@@ -28,15 +27,11 @@ class DataMinerService(Service):
     default_config = [
         ]
 
-    def _scan(self, context):
-        if isinstance(context, RawDataContext):
-            raw_data = RawData.objects(id=context.identifier).first()
-            if not raw_data:
-                self._debug("Could not find raw data to parse.")
-                return
-            data = raw_data.data
-        elif isinstance(context, SampleContext):
-            data = make_ascii_strings(md5=context.identifier)
+    def _scan(self, obj):
+        if isinstance(obj, RawData):
+            data = obj.data
+        elif isinstance(obj, Sample):
+            data = make_ascii_strings(md5=obj.md5)
             if not data:
                 self._debug("Could not find sample data to parse.")
                 return
