@@ -34,7 +34,7 @@ class PassiveTotalService(Service):
                             private=True),
     ]
 
-    def _scan(self, context):
+    def _scan(self, obj):
         headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
         apiKey = self.config.get('pt_api_key', '')
         queryUrl = self.config.get('pt_query_url', '')
@@ -42,12 +42,10 @@ class PassiveTotalService(Service):
         if not apiKey:
             self._error("PassiveTotal API key is invalid or blank")
 
-        if context.crits_type == 'Domain':
-            params = json.dumps({ 'value': context.domain_dict['domain'],
-                                  'apiKey': apiKey })
-        elif context.crits_type == 'IP':
-            params = json.dumps({ 'value': context.ip_dict['ip'],
-                                  'apiKey': apiKey })
+        if obj._meta['crits_type'] == 'Domain':
+            params = json.dumps({ 'value': obj.domain, 'apiKey': apiKey })
+        elif obj._meta['crits_type'] == 'IP':
+            params = json.dumps({ 'value': obj.ip, 'apiKey': apiKey })
         else:
             logger.error("PassiveTotal: Invalid type.")
             self._error("Invalid type.")
@@ -70,7 +68,7 @@ class PassiveTotalService(Service):
             self._error("PassiveTotal: query error (%s)" % str(loaded['errors']))
 
         results = loaded['results']
-        if context.crits_type == 'Domain':
+        if obj._meta['crits_type'] == 'Domain':
             for resolve in results['resolutions']:
                 stats = {
                     'value': results['focusPoint'],
@@ -83,7 +81,7 @@ class PassiveTotalService(Service):
                     'network': resolve['network']
                 }
                 self._add_result('Passive DNS Data', resolve['value'], stats)
-        elif context.crits_type == 'IP':
+        elif obj._meta['crits_type'] == 'IP':
             stats = {
                 'as_name': results['as_name'],
                 'asn': results['asn'],
