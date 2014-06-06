@@ -24,14 +24,17 @@ class OfficeMetaService(Service):
     ]
 
     @staticmethod
-    def valid_for(context):
+    def valid_for(obj):
         office_magic = "\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
-        if context.data:
-            return office_magic in context.data
+        if obj.filedata != None:
+            data = obj.filedata.read()
+            # Need to reset the read pointer.
+            obj.filedata.seek(0)
+            return office_magic in data
         return False
 
-    def _scan(self, context):
-        oparser = OfficeParser(context.data)
+    def _scan(self, obj):
+        oparser = OfficeParser(obj.filedata.read())
         oparser.parse_office_doc()
         if not oparser.office_header.get('maj_ver'):
             self._error("Could not parse file as an office document")
