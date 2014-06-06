@@ -13,14 +13,6 @@ DEFAULT_MODULES=["HTTP", "DNS"]
 
 logger = logging.getLogger(__name__)
 
-# When running under mod_wsgi we have to make sure sys.stdout is not
-# going to the real stdout. This is because multiprocessing (used by
-# choplib internally) does sys.stdout.flush(), which mod_wsgi doesn't
-# like. Work around by pointing sys.stdout somewhere that mod_wsgi
-# doesn't care about.
-sys.stdout = sys.stderr
-sys.stdin = open(os.devnull)
-
 class ChopShopService(Service):
     """
     Run a PCAP through ChopShop.
@@ -47,6 +39,14 @@ class ChopShopService(Service):
 
     def __init__(self, *args, **kwargs):
         super(ChopShopService, self).__init__(*args, **kwargs)
+        # When running under mod_wsgi we have to make sure sys.stdout is not
+        # going to the real stdout. This is because multiprocessing (used by
+        # choplib internally) does sys.stdout.flush(), which mod_wsgi doesn't
+        # like. Work around by pointing sys.stdout somewhere that mod_wsgi
+        # doesn't care about.
+        sys.stdout = sys.stderr
+        sys.stdin = open(os.devnull)
+
         logger.debug("Initializing ChopShop service.")
         self.base_dir = self.config['basedir']
         self.modules = ""
