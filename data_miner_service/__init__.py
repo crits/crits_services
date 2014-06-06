@@ -38,7 +38,7 @@ class DataMinerService(Service):
                 return
 
             samp_data = obj.filedata.read()
-            data = make_ascii_strings(samp_data)
+            data = make_ascii_strings(data=samp_data)
             if not data:
                 self._debug("Could not find sample data to parse.")
                 return
