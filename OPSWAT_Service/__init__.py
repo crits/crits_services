@@ -2,7 +2,6 @@ import urllib2
 import xml.parsers.expat
 
 from datetime import datetime
-from crits.core.mongo_tools import get_file
 from crits.core.data_tools import create_zip
 
 from crits.services.core import Service, ServiceConfigOption
@@ -28,8 +27,12 @@ class OPSWATService(Service):
                             private=True),
     ]
 
-    def _scan(self, context):
-        data = get_file(context.md5)
+    def _scan(self, obj):
+        if obj.filedata == None:
+            self._info("No binary found.")
+            return
+
+        data = obj.filedata.read()
         zipdata = create_zip([("samples", data)])
         url = self.config.get('OPSWAT_url', '')
 
