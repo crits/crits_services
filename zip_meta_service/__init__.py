@@ -12,14 +12,22 @@ class ZipMetaService(Service):
     supported_types = ['Sample']
 
     @staticmethod
-    def valid_for(context):
+    def valid_for(obj):
         # Only run on zip files
-        if len(context.data) < 4:
-            return false
-        return context.data[:4] in [ZipParser.zipLDMagic, ZipParser.zipCDMagic]
+        if obj.filedata == None:
+            return False
 
-    def _scan(self, context):
-        zparser = ZipParser(context.data)
+        data = obj.filedata.read()
+        # Reset the read pointer.
+        obj.filedata.seek(0)
+
+        if len(data) < 4:
+            return False
+
+        return data[:4] in [ZipParser.zipLDMagic, ZipParser.zipCDMagic]
+
+    def _scan(self, obj):
+        zparser = ZipParser(obj.filedata.read())
         parsedZip =  zparser.parseZipFile()
         if not parsedZip:
             self._error("Could not parse document as a zip file")
