@@ -15,7 +15,7 @@ class RelationshipsService(Service):
     def __init__(self, *args, **kwargs):
         pass
 
-    def _scan(self, context):
+    def _scan(self, obj):
         pass
 
     def stop(self):
