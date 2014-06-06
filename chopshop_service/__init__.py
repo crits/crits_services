@@ -56,7 +56,7 @@ class ChopShopService(Service):
             self.modules += ";dns | dns_extractor"
         self.template = "chopshop_analysis.html"
 
-    def _scan(self, context):
+    def _scan(self, obj):
         logger.debug("Setting up shop...")
         shop_path = "%s/shop" % self.base_dir
         if not os.path.exists(self.base_dir):
