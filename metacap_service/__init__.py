@@ -53,7 +53,7 @@ class MetaCapService(Service):
         self.base_dir = self.config['basedir']
         self.modules = "metacap -b"
 
-    def _scan(self, context):
+    def _scan(self, obj):
         logger.debug("Setting up shop...")
         shop_path = "%s/shop" % self.base_dir
         if not os.path.exists(self.base_dir):
