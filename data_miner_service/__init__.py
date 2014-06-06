@@ -3,6 +3,7 @@ import logging
 
 from crits.services.core import Service
 from crits.raw_data.raw_data import RawData
+from crits.samples.sample import Sample
 from crits.domains.domain import TLD
 from crits.indicators.indicator import Indicator
 from crits.core.data_tools import make_ascii_strings
@@ -24,6 +25,7 @@ class DataMinerService(Service):
     type_ = Service.TYPE_CUSTOM
     template = "data_miner_service_template.html"
     supported_types = ['RawData', 'Sample']
+    required_fields = []
     default_config = [
         ]
 
@@ -31,7 +33,12 @@ class DataMinerService(Service):
         if isinstance(obj, RawData):
             data = obj.data
         elif isinstance(obj, Sample):
-            data = make_ascii_strings(md5=obj.md5)
+            if obj.filedata.grid_id == None:
+                self._info("No data to parse.")
+                return
+
+            samp_data = obj.filedata.read()
+            data = make_ascii_strings(samp_data)
             if not data:
                 self._debug("Could not find sample data to parse.")
                 return
