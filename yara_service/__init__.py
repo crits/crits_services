@@ -19,7 +19,7 @@ class YaraService(Service):
     """
 
     name = "yara"
-    version = '2.0.0'
+    version = '2.0.1'
     distributed = True
     type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
@@ -43,7 +43,17 @@ class YaraService(Service):
                             description=
     "URL to use if distributing to multiple workers. "
     "Leave empty to run locally.",
-                            private=True)
+                            private=True),
+        ServiceConfigOption('distribution_exchange',
+                            ServiceConfigOption.STRING,
+                            description= "Exchange to use for distribution.",
+                            default='woodchipper',
+                            private=True),
+        ServiceConfigOption('distribution_routing_key',
+                            ServiceConfigOption.STRING,
+                            description= "Routing key to use for distribution.",
+                            default='file.crits',
+                            private=True),
     ]
 
     @staticmethod
@@ -95,33 +105,36 @@ class YaraService(Service):
             return
 
         if self.config['distribution_url']:
+            msg = {
+                'type': 'fileref',
+                'source': {
+                    'type': 'crits',
+                    'data': settings.INSTANCE_URL
+                },
+                'destination': {
+                    'type': 'crits_api',
+                    'data': settings.INSTANCE_URL
+                },
+                'config': {
+                    'sigfiles': self.config['sigfiles']
+                },
+                'analysis_meta': {
+                     'md5': obj.md5,
+                     'object_type': obj._meta['crits_type'],
+                     'object_id': str(obj.id),
+                     'analysis_id': self.current_task.task_id,
+                     'start_date': self.current_task.start_date,
+                     'username': self.current_task.username
+                }
+            }
+
+            exch = self.config['distribution_exchange']
+            routing_key = self.config['distribution_routing_key']
             try:
                 from crits.services.connector import *
                 conn = Connector(connector="amqp",
                                  uri=self.config['distribution_url'])
-                msg = {
-                    'type': 'fileref',
-                    'source': {
-                        'type': 'crits',
-                        'data': settings.INSTANCE_URL
-                    },
-                    'destination': {
-                        'type': 'crits_api',
-                        'data': settings.INSTANCE_URL
-                    },
-                    'config': {
-                        'sigfiles': self.config['sigfiles']
-                    },
-                    'analysis_meta': {
-                         'md5': obj.md5,
-                         'object_type': obj._meta['crits_type'],
-                         'object_id': str(obj.id),
-                         'analysis_id': self.current_task.task_id,
-                         'start_date': self.current_task.start_date,
-                         'username': self.current_task.username
-                    }
-                }
-                conn.send_msg(msg, 'file.crits')
+                conn.send_msg(msg, exch, routing_key)
                 conn.release()
             except Exception as e:
                 self._error("Distribution error: %s" % e)
