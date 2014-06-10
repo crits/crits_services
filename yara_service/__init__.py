@@ -4,6 +4,7 @@ import os.path
 import yara
 
 from hashlib import md5
+from django.conf import settings
 
 from crits.services.core import Service, ServiceConfigOption
 from crits.services.core import ServiceConfigError
@@ -96,17 +97,31 @@ class YaraService(Service):
         if self.config['distribution_url']:
             try:
                 from crits.services.connector import *
-                conn = Connector(connector="amqp", uri=self.config['distribution_url'])
-                queue = conn.connection.SimpleQueue('yara')
-                message = {'analysis_id': self.current_task.task_id,
-                           'start_date': self.current_task.start_date,
-                           'username': self.current_task.username,
-                           'results_to': 'crits',
-                           'sigfiles': self.config['sigfiles'],
-                           'md5': obj.md5,
-                           'object_type': obj._meta['crits_type'],
-                           'object_id': str(obj.id)}
-                queue.put(message)
+                conn = Connector(connector="amqp",
+                                 uri=self.config['distribution_url'])
+                msg = {
+                    'type': 'fileref',
+                    'source': {
+                        'type': 'crits',
+                        'data': settings.INSTANCE_URL
+                    },
+                    'destination': {
+                        'type': 'crits_api',
+                        'data': settings.INSTANCE_URL
+                    },
+                    'config': {
+                        'sigfiles': self.config['sigfiles']
+                    },
+                    'analysis_meta': {
+                         'md5': obj.md5,
+                         'object_type': obj._meta['crits_type'],
+                         'object_id': str(obj.id),
+                         'analysis_id': self.current_task.task_id,
+                         'start_date': self.current_task.start_date,
+                         'username': self.current_task.username
+                    }
+                }
+                conn.send_msg(msg, 'file.crits')
                 conn.release()
             except Exception as e:
                 self._error("Distribution error: %s" % e)
