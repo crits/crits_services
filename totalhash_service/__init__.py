@@ -35,6 +35,7 @@ class TotalHashService(Service):
     name = "totalhash"
     version = '0.1.0'
     type_ = Service.TYPE_CUSTOM
+    rerunnable = True
     supported_types = ['Sample']
     default_config = [
         ServiceConfigOption('th_api_key',
