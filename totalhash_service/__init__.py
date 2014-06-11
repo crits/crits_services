@@ -35,7 +35,6 @@ class TotalHashService(Service):
     name = "totalhash"
     version = '0.1.0'
     type_ = Service.TYPE_CUSTOM
-    rerunnable = True
     supported_types = ['Sample']
     default_config = [
         ServiceConfigOption('th_api_key',
@@ -55,18 +54,15 @@ class TotalHashService(Service):
                             private=True),
     ]
 
-    @staticmethod
-    def valid_for(context):
-        # Only run on PE files
-        return context.is_pe()
-
     def _scan(self, context):
-        try:
-            pe = pefile.PE(data=context.data)
-        except pefile.PEFormatError as e:
-            self._error("A PEFormatError occurred: %s" % e)
-            return
-        self._get_pehash(pe)
+        # Only generate pehash for PE files. :)
+        if context.is_pe():
+            try:
+                pe = pefile.PE(data=context.data)
+            except pefile.PEFormatError as e:
+                self._error("A PEFormatError occurred: %s" % e)
+                return
+            self._get_pehash(pe)
 
         # If we have an API key, go ahead and look it up.
         key = str(self.config.get('th_api_key', ''))
