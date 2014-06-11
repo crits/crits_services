@@ -1,7 +1,10 @@
-# (c) 2014, Adam Polkosnik, Team Cymru.  All rights reserved.
+# Copyright (c) 2014, Adam Polkosnik, Team Cymru.  All rights reserved.
+# Copyright (c) 2014, The MITRE Corporation. All rights reserved.
+
 # Source code distributed pursuant to license agreement.
 # PEhash computing code is from Team Cymru.
 # Wrapping into the CRITs module done by Adam Polkosnik.
+# The Totalhash API lookup done by Wesley Shields.
 
 from __future__ import division
 
@@ -91,8 +94,8 @@ class TotalHashService(Service):
             response = urllib2.urlopen(req)
             data = response.read()
         except Exception as e:
-            logger.error("Totalhash: network connection error (%s)" % e)
-            self._error("Network connection error checking totalhash (%s)" % e)
+            logger.info("Totalhash: network connection error (%s)" % e)
+            self._info("Network connection error checking totalhash (%s)" % e)
             return
 
         from lxml import etree
