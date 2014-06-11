@@ -14,7 +14,6 @@ import string
 import bz2
 import hashlib
 import logging
-import urllib
 import urllib2
 import hmac
 
