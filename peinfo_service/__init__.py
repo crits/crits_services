@@ -14,7 +14,6 @@ import hashlib
 import logging
 import struct
 from time import localtime, strftime
-from __future__ import division
 
 from crits.services.core import Service, ServiceConfigOption
 
