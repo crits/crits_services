@@ -38,7 +38,7 @@ class TotalHashService(Service):
                             private=True),
         ServiceConfigOption('th_query_url',
                             ServiceConfigOption.STRING,
-                            default='https://api.totalhash.com/search',
+                            default='https://api.totalhash.com/',
                             required=True,
                             private=True),
     ]
