@@ -43,15 +43,13 @@ class TotalHashService(Service):
                             private=True),
     ]
 
-    def _scan(self, context):
+    def _scan(self, obj):
         # If we have an API key, go ahead and look it up.
         key = str(self.config.get('th_api_key', ''))
         user = self.config.get('th_user', '')
         url = self.config.get('th_query_url', '')
 
-        # XXX: Context doesn't provide sha1. When we move away from contexts
-        # this can just use str(obj.sha1)
-        h = hashlib.sha1(context.data).hexdigest()
+        h = obj.sha1
 
         if not key:
             self._add_result('Analysis Link', url + "/analysis/" + h)
