@@ -23,7 +23,7 @@ class MachOInfoService(Service):
         # Reset the read pointer.
         obj.filedata.seek(0)
 
-        return struct.unpack('@I', data)[0] in [MachOEntity.FAT_MAGIC, MachOEntity.FAT_CIGAM, MachOEntity.MH_MAGIC, MachOEntity.MH_CIGAM, MachOEntity.MH_MAGIC_64, MachOEntity.MH_CIGAM_64]
+        return struct.unpack('@I', data[:4])[0] in [MachOEntity.FAT_MAGIC, MachOEntity.FAT_CIGAM, MachOEntity.MH_MAGIC, MachOEntity.MH_CIGAM, MachOEntity.MH_MAGIC_64, MachOEntity.MH_CIGAM_64]
 
     def _scan(self, obj):
         data = obj.filedata.read()
