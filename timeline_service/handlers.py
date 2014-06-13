@@ -95,8 +95,7 @@ def generate_timeline(obj_type, obj_id, user):
     # comments
     cobj = class_from_type("Comment")
     comments = cobj.objects(obj_type=obj_type,
-                            obj_id=obj_id,
-                            comment_type="comment")
+                            obj_id=obj_id)
     for comment in comments:
         i = "<b>%s</b> made a comment: %s" % (comment.analyst,
                                                 comment.comment)
