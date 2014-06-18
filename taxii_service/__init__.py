@@ -5,6 +5,7 @@ import datetime
 import libtaxii as t
 import libtaxii.clients as tc
 import libtaxii.messages as tm
+import libtaxii.messages_11 as tm11
 
 
 from M2Crypto import BIO, Rand, SMIME, X509
@@ -35,28 +36,35 @@ class TAXIIClient(Service):
                             description="TAXII Server hostname.",
                             default=None,
                             required=True,
-                            private=True
+                            private=False
+                            ),
+        ServiceConfigOption('https',
+                            ServiceConfigOption.BOOL,
+                            description="Connect Using HTTPS?",
+                            default=True,
+                            required=False,
+                            private=False
                             ),
         ServiceConfigOption('keyfile',
                             ServiceConfigOption.STRING,
                             description="Location of your keyfile on the server.",
                             default=None,
                             required=True,
-                            private=True
+                            private=False
                             ),
         ServiceConfigOption('certfile',
                             ServiceConfigOption.STRING,
                             description="Location of your certfile on the server.",
                             default=None,
                             required=True,
-                            private=True
+                            private=False
                             ),
         ServiceConfigOption('data_feed',
                             ServiceConfigOption.STRING,
                             description="Your TAXII Data Feed Name.",
                             default=None,
                             required=True,
-                            private=True
+                            private=False
                             ),
         ServiceConfigOption('certfiles',
                             ServiceConfigOption.LIST,
@@ -66,7 +74,7 @@ class TAXIIClient(Service):
                                          " file on disk for that source."),
                             default=None,
                             required=True,
-                            private=True
+                            private=False
                             ),
     ]
 
@@ -113,6 +121,7 @@ class TAXIIClient(Service):
         self.keyfile = self.config['keyfile'].strip()
         self.certfile = self.config['certfile'].strip()
         self.certfiles = self.config['certfiles']
+        self.https = self.config['https']
 
     def _scan(self, context):
         #TODO: not sure if this should come after we make the TAXII message
@@ -124,10 +133,11 @@ class TAXIIClient(Service):
             self._info("TAXII Server Online: %s" % self.hostname)
             self._notify()
             client = tc.HttpClient()
-            client.setUseHttps(True)
-            client.setAuthType(tc.HttpClient.AUTH_CERT)
-            client.setAuthCredentials({'key_file': self.keyfile,
-                                'cert_file': self.certfile})
+            if self.https:
+                client.setUseHttps(True)
+                client.setAuthType(tc.HttpClient.AUTH_CERT)
+                client.setAuthCredentials({'key_file': self.keyfile,
+                                           'cert_file': self.certfile})
 
             if settings.HTTP_PROXY:
                 proxy = settings.HTTP_PROXY
@@ -136,6 +146,7 @@ class TAXIIClient(Service):
                 client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
 
             event_list = Event.objects(id=context._id)
+
             if len(event_list) < 1:
                 self._info("Could not locate event in the database")
                 self._notify()
@@ -156,7 +167,7 @@ class TAXIIClient(Service):
 
                 self._info("Generating STIX document(s).")
                 self._notify()
-                inbox_messages = []
+                enc_blocks = []
 
                 # generate inbox messages
                 # for now we will send one message per feed to isolate failures to one
@@ -169,31 +180,66 @@ class TAXIIClient(Service):
                             content = stix_doc.to_xml()).to_xml(),
                         feed[2]
                     )
-                    # Wrap encrypted block in content block
-                    content_block = tm.ContentBlock(
-                        content_binding = "SMIME",
-                        content = encrypted_block
-                    )
-                    # Create inbox message
-                    inbox_message = tm.InboxMessage(
-                        message_id = tm.generate_message_id(),
-                        content_blocks = [content_block],
-                        extended_headers = {'TargetFeed': feed[1]}
-                    )
 
-                    inbox_messages.append((feed[0], inbox_message))
+                    enc_blocks.append((feed[0], encrypted_block))
 
                 self._info("Sending TAXII message(s)")
                 self._notify()
 
                 # send messages
-                for (src, inbox_msg) in inbox_messages:
+                for (src, block) in enc_blocks:
+                    # Try messaging in TAXII 1.0
+                    # Wrap encrypted block in content block
+                    content_block = tm.ContentBlock(
+                            content_binding = "SMIME",
+                            content = block)
+
+                    # Create inbox message
+                    inbox_message = tm.InboxMessage(
+                                message_id = tm.generate_message_id(),
+                                content_blocks = [content_block],
+                                extended_headers = {'TargetFeed': feed[1]})
+
+                    # send inbox message via TAXII service
                     response = client.callTaxiiService2(self.hostname,
                                                         "/inbox/",
                                                         t.VID_TAXII_XML_10,
                                                         inbox_message.to_xml())
+
+                    if response.getcode() != 200:
+                        # if unsuccessful, try messaging in TAXII 1.1
+                        content_block = tm11.ContentBlock(
+                            content_binding = "SMIME",
+                            content = block)
+
+                        # Create inbox message
+                        inbox_message = tm11.InboxMessage(
+                                message_id = tm11.generate_message_id(),
+                                destination_collection_names = [feed[1]],
+                                content_blocks = [content_block])
+
+                        # send inbox message via TAXII service
+                        response = client.callTaxiiService2(self.hostname,
+                                                   "/services/inbox/",
+                                                   t.VID_TAXII_XML_11,
+                                                   inbox_message.to_xml())
+
+                    if response.getcode() != 200:
+                        # Create inbox message
+                        inbox_message = tm11.InboxMessage(
+                                message_id = tm11.generate_message_id(),
+                                content_blocks = [content_block])
+
+                        # send inbox message via TAXII service
+                        response = client.callTaxiiService2(self.hostname,
+                                    "/services/inbox/"+str(feed[1])+"/",
+                                    t.VID_TAXII_XML_11,
+                                    inbox_message.to_xml())
+                        
                     taxii_message = t.get_message_from_http_response(response, inbox_message.message_id)
-                    if taxii_message.status_type == tm.ST_SUCCESS:
+
+                    if (taxii_message.status_type == tm.ST_SUCCESS or
+                        taxii_message.status_type == tm11.ST_SUCCES):
                         # update releasability for objects
                         date = datetime.datetime.now()
                         instance = Releasability.ReleaseInstance(analyst=context.username, date=date)
