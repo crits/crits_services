@@ -36,35 +36,35 @@ class TAXIIClient(Service):
                             description="TAXII Server hostname.",
                             default=None,
                             required=True,
-                            private=False
+                            private=True
                             ),
         ServiceConfigOption('https',
                             ServiceConfigOption.BOOL,
                             description="Connect Using HTTPS?",
                             default=True,
                             required=False,
-                            private=False
+                            private=True
                             ),
         ServiceConfigOption('keyfile',
                             ServiceConfigOption.STRING,
                             description="Location of your keyfile on the server.",
                             default=None,
-                            required=True,
-                            private=False
+                            required=False,
+                            private=True
                             ),
         ServiceConfigOption('certfile',
                             ServiceConfigOption.STRING,
                             description="Location of your certfile on the server.",
                             default=None,
-                            required=True,
-                            private=False
+                            required=False,
+                            private=True
                             ),
         ServiceConfigOption('data_feed',
                             ServiceConfigOption.STRING,
                             description="Your TAXII Data Feed Name.",
                             default=None,
                             required=True,
-                            private=False
+                            private=True
                             ),
         ServiceConfigOption('certfiles',
                             ServiceConfigOption.LIST,
@@ -74,7 +74,7 @@ class TAXIIClient(Service):
                                          " file on disk for that source."),
                             default=None,
                             required=True,
-                            private=False
+                            private=True
                             ),
     ]
 
@@ -87,14 +87,6 @@ class TAXIIClient(Service):
         certfiles = config.get("certfiles", "")
         if not hostname:
             raise ServiceConfigError("You must specify a TAXII Server.")
-        if not keyfile:
-            raise ServiceConfigError("You must specify a keyfile location.")
-        if  not os.path.isfile(keyfile):
-            raise ServiceConfigError("keyfile does not exist.")
-        if not certfile:
-            raise ServiceConfigError("You must specify a certfile location.")
-        if  not os.path.isfile(certfile):
-            raise ServiceConfigError("certfile does not exist.")
         if not data_feed:
             raise ServiceConfigError("You must specify a TAXII Data Feed.")
         if not certfiles:
