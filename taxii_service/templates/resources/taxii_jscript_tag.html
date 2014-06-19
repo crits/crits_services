@@ -1,0 +1,124 @@
+<script>
+	$(document).ready(function() {
+
+		// cache jQuery references to containers
+		var current_state = $("#current_state");
+		var form_ctr = $("#taxii_config_container");
+		var result_ctr = $("#results_container");
+		var confirm_ctr = $("#confirm_container");
+		var error_ctr = $("#error_container");
+		var confirm_box = $("#auth_checkbox");
+		var continue_btn = $("#confirm_releasability");
+	    $.ajax({ // request the TAXII configuration form
+			type: "GET",
+			url: "{% url 'taxii_service.views.get_taxii_config_form' type item.id %}",
+			dataType: "json",
+			success: function(data) {
+				if (data) {
+				    $("#taxii_form_table").html(data.form);
+				}
+			}
+	    });
+	    $("#taxii_submit").click(function() {
+			$("#taxii-loader").show();
+			if ($("#taxii_config_container").is(":visible")) {
+				$("#taxii_config_container").slideToggle();
+			}
+			$("#taxii_configure").text("Show");
+	    	execute_taxii_service(false);
+		});
+		$("#taxii_preview").click(function() {
+			open_preview();
+		});
+		$(".back_to_cfg ").click(function() {
+			confirm_box.prop("checked", false);
+			show_container("Build TAXII Message", form_ctr);
+		});
+		continue_btn.click(function() {
+			if (confirm_box.is(":checked")) {
+				execute_taxii_service(true);
+			}
+		});
+
+		/*
+		* Get the URL that downloads STIX content for current configuration options.
+		*/
+		function get_preview_url() {
+			return "{% url 'taxii_service.views.preview_taxii_service' type item.id %}?" 
+				+ $('#taxii_config_form').serialize();
+		}
+
+		/*
+		* Open STIX content preview for current form selections in new window.
+		*/
+		function open_preview() {
+			window.open(get_preview_url(), "_blank");
+		}
+
+		/*
+		* Show only the specified container.
+		* Update the page header to the given title.
+		*/
+		function show_container(title, ctr) {
+			current_state.text(title);
+			form_ctr[ctr == form_ctr ? "show" : "hide"]();
+			result_ctr[ctr == result_ctr ? "show" : "hide"]();
+			confirm_ctr[ctr == confirm_ctr ? "show" : "hide"]();
+			error_ctr[ctr == error_ctr ? "show" : "hide"]();
+			$(".content").scrollTop(0);
+		}
+
+	    /*
+	     * Send configuration data to server in attempt to send a TAXII message.
+	     */
+	    function execute_taxii_service(confirmed) {
+			current_state.text("Processing...");
+			$("#taxii-loader").show();
+			var form_data = $('#taxii_config_form').serialize();
+			if (confirmed) {
+				form_data += "&updates_confirmed=1";
+			}
+			$.ajax({
+				type: "POST",
+				url: "{% url 'taxii_service.views.execute_taxii_service' type item.id %}",
+				data: form_data,
+				dataType: "json"
+			}).done(function(data) { // run on successful request
+				if (data.success) { // server attempted to send TAXII messages
+					var results = "";
+					$.each(data.rcpts, function(index, val) {
+						results += "<tr class=\"taxii-success\"><td>" + val + "</td><td>Success</td></tr>";
+					});
+					$.each(data.failed_rcpts, function(index, val) {
+						results += "<tr class=\"taxii-failed\"><td>" 
+							+ val[0] 
+							+ "</td><td><strong>Failed</strong> - "
+							+ val[1]
+							+ "</td></tr>"
+					});
+					$("#result_status_table").html(results);
+					show_container("TAXII Results", result_ctr);
+				} else if (data.release_changes) { // releasability prevented send
+					var new_content = "";
+					$.each(data.release_changes, function(key, val) {
+						new_content += "<tr><td><strong>" 
+									+ val[0] + "</strong>: " + val[2] 
+									+ "</td><td>" 
+									+ val[3] 
+									+ "</td></tr>";
+					});
+					$("#unreleasable_list tbody").html(new_content);
+					show_container("Confirmation Needed", confirm_ctr);
+				} else { // some anticipated issue occurred
+					error_ctr.children(".taxii_notice").text(data.reason);
+					show_container("Problems", error_ctr);
+				}
+			}).fail(function(data) { // server error
+				error_ctr.children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+				show_container("Problems", error_ctr);
+			}).always(function() {
+				$("#taxii-loader").hide();
+			});
+	    }
+	});
+</script>

@@ -1,0 +1,64 @@
+<tr>
+	<td colspan="2">
+		<strong class="taxii_ctype_label required">
+			{{ form.rcpts.label }} 
+		</strong>
+		<em>({{ form.rcpts.field.choices|length }})</em>
+		<br/>
+		{{ form.rcpts }}
+	</td>
+</tr>
+<tr>
+	<td>
+		<strong class="taxii_ctype_label">
+			{{ form.domains.label }}
+		</strong>
+		<em>({{ form.domains.field.choices|length }})</em>
+		<br/>
+		{{ form.domains }}
+	</td>
+	<td>
+		<strong class="taxii_ctype_label">
+			{{ form.emails.label }}
+		</strong>
+		<em>({{ form.emails.field.choices|length }})</em>
+		<br/>
+		{{ form.emails }}
+	</td>
+</tr>
+<tr>
+	<td>
+		<strong class="taxii_ctype_label">
+			{{ form.indicators.label }}
+		</strong>
+		<em>({{ form.indicators.field.choices|length }})</em>
+		<br/>
+		{{ form.indicators }}<br/>
+	</td>
+	<td>
+		<strong class="taxii_ctype_label">
+			{{ form.ips.label }}
+		</strong>
+		<em>({{ form.ips.field.choices|length }})</em>
+		<br/>
+		{{ form.ips }}
+	</td>
+</tr>
+<tr>
+	<td>
+		<strong class="taxii_ctype_label">
+			{{ form.pcaps.label }}
+		</strong>
+		<em>({{ form.pcaps.field.choices|length }})</em>
+		<br/>
+		{{ form.pcaps }}
+	</td>
+	<td>
+		<strong class="taxii_ctype_label">
+			{{ form.samples.label }}
+		</strong>
+		<em>({{ form.samples.field.choices|length }})</em>
+		<br/>
+		{{ form.samples }}
+	</td>
+</tr>
