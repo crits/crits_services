@@ -109,8 +109,10 @@ def execute_taxii_agent(hostname=None, feed=None, keyfile=None, certfile=None, s
                                         '/poll/',
                                         t.VID_TAXII_XML_10,
                                         poll_msg.to_xml())
+    taxii_msg = t.get_message_from_http_response(response, poll_msg.message_id)
 
-    if response.getcode() != 200:
+    if (response.getcode() != 200 or
+        taxii_msg.message_type != tm.MSG_POLL_RESPONSE):
         # if unsuccessful, try messaging in TAXII 1.1
         params = tm11.PollRequest.PollParameters()
         poll_msg = tm11.PollRequest(message_id=tm11.generate_message_id(),
@@ -122,16 +124,13 @@ def execute_taxii_agent(hostname=None, feed=None, keyfile=None, certfile=None, s
                                             '/services/poll/',
                                             t.VID_TAXII_XML_11,
                                             poll_msg.to_xml())
+        taxii_msg = t.get_message_from_http_response(response,
+                                                     poll_msg.message_id)
 
-    if response.getcode() != 200:
-        ret['reason'] = "Response is not 200 OK"
-        return ret
-
-    taxii_msg = t.get_message_from_http_response(response, poll_msg.message_id)
-
-    if (taxii_msg.message_type != tm.MSG_POLL_RESPONSE and 
+    if (response.getcode() != 200 or
+        taxii_msg.message_type != tm.MSG_POLL_RESPONSE or
         taxii_msg.message_type != tm11.MSG_POLL_RESPONSE):
-        ret['reason'] = "No poll response"
+        ret['reason'] = "Invalid response from server"
         return ret
 
     ret['status'] = True
@@ -147,7 +146,12 @@ def execute_taxii_agent(hostname=None, feed=None, keyfile=None, certfile=None, s
             ret['failures'] += 1
             continue
 
-        objs = import_standards_doc(data, analyst, method, ref=mid, make_event=True, source=data_source)
+        objs = import_standards_doc(data, 
+                                    analyst,
+                                    method,
+                                    ref=mid,
+                                    make_event=True,
+                                    source=data_source)
 
         ret['successes'] += 1
 
@@ -159,7 +163,8 @@ def execute_taxii_agent(hostname=None, feed=None, keyfile=None, certfile=None, s
     return ret
 
 def parse_content_block(content_block, privkey=None, pubkey=None):
-    if str(content_block.content_binding) == 'SMIME':
+    if (str(content_block.content_binding) == 'SMIME' or
+        str(content_block.content_binding) == 'application/x-pks7-mime'):
         if not privkey and not pubkey:
             return None
 
@@ -174,7 +179,9 @@ def parse_content_block(content_block, privkey=None, pubkey=None):
         f = StringIO(buf)
         new_block = f.read()
         f.close()
-        return parse_content_block(tm.ContentBlock.from_xml(new_block), privkey, pubkey)
+        return parse_content_block(tm.ContentBlock.from_xml(new_block), 
+                                   privkey,
+                                   pubkey)
     elif str(content_block.content_binding) == str(t.CB_STIX_XML_10):
         f = StringIO(content_block.content)
         data = f.read()
