@@ -47,7 +47,7 @@ class YaraService(Service):
         ServiceConfigOption('distribution_exchange',
                             ServiceConfigOption.STRING,
                             description= "Exchange to use for distribution.",
-                            default='woodchipper',
+                            default='my_exchange',
                             private=True),
         ServiceConfigOption('distribution_routing_key',
                             ServiceConfigOption.STRING,
