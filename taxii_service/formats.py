@@ -17,4 +17,6 @@ def get_format(item_type):
     	fmt = "{0[filename]} - {0[md5]}"
     elif item_type == 'Sample': # good
     	fmt = "{0[filename]} - {0[md5]}"
+    elif item_type == 'Event':
+	fmt = "{0[title]} - {0[event_type]}"
     return fmt
