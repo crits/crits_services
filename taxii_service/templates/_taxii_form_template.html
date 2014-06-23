@@ -8,75 +8,23 @@
 		{{ form.rcpts }}
 	</td>
 </tr>
-<tr>
-	<td>
-		<strong class="taxii_ctype_label">
-			{{ form.certificates.label }}
-		</strong>
-		<em>({{ form.certificates.field.choices|length }})</em>
-		<br/>
-		{{ form.certificates }}
-	</td>
-	<td>
-		<strong class="taxii_ctype_label">
-			{{ form.domains.label }}
-		</strong>
-		<em>({{ form.domains.field.choices|length }})</em>
-		<br/>
-		{{ form.domains }}
-	</td>
-</tr>
-<tr>
-	<td>
-		<strong class="taxii_ctype_label">
-			{{ form.emails.label }}
-		</strong>
-		<em>({{ form.emails.field.choices|length }})</em>
-		<br/>
-		{{ form.emails }}
-	</td>
-	<td>
-		<strong class="taxii_ctype_label">
-			{{ form.indicators.label }}
-		</strong>
-		<em>({{ form.indicators.field.choices|length }})</em>
-		<br/>
-		{{ form.indicators }}<br/>
-	</td>
-</tr>
-<tr>
-	<td>
-		<strong class="taxii_ctype_label">
-			{{ form.ips.label }}
-		</strong>
-		<em>({{ form.ips.field.choices|length }})</em>
-		<br/>
-		{{ form.ips }}
-	</td>
-	<td>
-		<strong class="taxii_ctype_label">
-			{{ form.pcaps.label }}
-		</strong>
-		<em>({{ form.pcaps.field.choices|length }})</em>
-		<br/>
-		{{ form.pcaps }}
-	</td>
-</tr>
-<tr>
-	<td>
-		<strong class="taxii_ctype_label">
-			{{ form.rawdatas.label }}
-		</strong>
-		<em>({{ form.rawdatas.field.choices|length }})</em>
-		<br/>
-		{{ form.rawdatas }}
-	</td>
-	<td>
-		<strong class="taxii_ctype_label">
-			{{ form.samples.label }}
-		</strong>
-		<em>({{ form.samples.field.choices|length }})</em>
-		<br/>
-		{{ form.samples }}
-	</td>
-</tr>
+{% for item in form %}
+	{% if forloop.counter != 1 %}
+		{% if forloop.counter|divisibleby:2 %}
+			<tr>
+		{% endif %}
+
+		<td>
+			<strong class="taxii_ctype_label">
+				{{ item.label }}
+			</strong>
+			<em>({{ item.field.choices|length }})</em>
+			<br/>
+			{{ item }}
+		</td>
+
+		{% if not forloop.counter|divisibleby:2 %}
+			</tr>
+		{% endif %}
+	{% endif %}
+{% endfor %}
