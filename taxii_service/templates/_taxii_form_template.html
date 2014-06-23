@@ -11,12 +11,22 @@
 <tr>
 	<td>
 		<strong class="taxii_ctype_label">
+			{{ form.certificates.label }}
+		</strong>
+		<em>({{ form.certificates.field.choices|length }})</em>
+		<br/>
+		{{ form.certificates }}
+	</td>
+	<td>
+		<strong class="taxii_ctype_label">
 			{{ form.domains.label }}
 		</strong>
 		<em>({{ form.domains.field.choices|length }})</em>
 		<br/>
 		{{ form.domains }}
 	</td>
+</tr>
+<tr>
 	<td>
 		<strong class="taxii_ctype_label">
 			{{ form.emails.label }}
@@ -25,8 +35,6 @@
 		<br/>
 		{{ form.emails }}
 	</td>
-</tr>
-<tr>
 	<td>
 		<strong class="taxii_ctype_label">
 			{{ form.indicators.label }}
@@ -35,6 +43,8 @@
 		<br/>
 		{{ form.indicators }}<br/>
 	</td>
+</tr>
+<tr>
 	<td>
 		<strong class="taxii_ctype_label">
 			{{ form.ips.label }}
@@ -43,8 +53,6 @@
 		<br/>
 		{{ form.ips }}
 	</td>
-</tr>
-<tr>
 	<td>
 		<strong class="taxii_ctype_label">
 			{{ form.pcaps.label }}
@@ -52,6 +60,16 @@
 		<em>({{ form.pcaps.field.choices|length }})</em>
 		<br/>
 		{{ form.pcaps }}
+	</td>
+</tr>
+<tr>
+	<td>
+		<strong class="taxii_ctype_label">
+			{{ form.rawdatas.label }}
+		</strong>
+		<em>({{ form.rawdatas.field.choices|length }})</em>
+		<br/>
+		{{ form.rawdatas }}
 	</td>
 	<td>
 		<strong class="taxii_ctype_label">

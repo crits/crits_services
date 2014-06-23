@@ -19,13 +19,16 @@ from crits.samples.sample import Sample
 from . import formats
 
 class TAXIIForm(forms.Form):
-    supported_types = ['Domain', 'Email', 'Indicator', 'IP', 'PCAP', 'Sample']
+    supported_types = ['Domain', 'Email', 'Indicator', 'IP', 'PCAP', 'Sample', 'RawData', 'Certificate']
     error_css_class = 'error'
     required_css_class = 'required'
     rcpts = forms.MultipleChoiceField(required=True,
                                       label="Recipients",
                                       help_text="Recipients",
                                       widget=forms.SelectMultiple)
+    certificates = forms.MultipleChoiceField(required=False,
+                                 label="Certificates",
+                                 help_text="Certificates to include")
     domains = forms.MultipleChoiceField(required=False,
                                  label="Domains",
                                  help_text="Domains to include")
@@ -41,6 +44,9 @@ class TAXIIForm(forms.Form):
     pcaps = forms.MultipleChoiceField(required=False,
                                     label="PCAPs",
                                     help_text="PCAPs to include")
+    rawdatas = forms.MultipleChoiceField(required=False,
+                                    label="Raw Data",
+                                    help_text="Raw Data to include")
     samples = forms.MultipleChoiceField(required=False,
                                  label="Samples",
                                  help_text="Samples to include")
