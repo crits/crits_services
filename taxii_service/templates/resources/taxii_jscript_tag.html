@@ -101,7 +101,7 @@
 				} else if (data.release_changes) { // releasability prevented send
 					var new_content = "";
 					$.each(data.release_changes, function(key, val) {
-						new_content += "<tr><td><strong>" 
+						new_content += "<tr><td class='text-left'><strong>" 
 									+ val[0] + "</strong>: " + val[2] 
 									+ "</td><td>" 
 									+ val[3] 
