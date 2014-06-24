@@ -1,7 +1,4 @@
 # (c) 2014, Adam Polkosnik, <adam.polkosnik@ny.frb.org> || <apolkosnik@gmail.com>
-# Permission is granted for inclusion/distribution by The MITRE Corporation.
-# All rights reserved.
-# Source code distributed pursuant to license agreement.
 
 
 from crits.services.core import Service, ServiceConfigOption
