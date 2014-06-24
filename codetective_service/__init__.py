@@ -1,8 +1,7 @@
 # (c) 2014, Adam Polkosnik, <adam.polkosnik@ny.frb.org> || <apolkosnik@gmail.com>
 
 
-from crits.services.core import Service, ServiceConfigOption
-from crits.services.core import ServiceConfigError
+from crits.services.core import Service, ServiceConfigOption, ServiceConfigError
 from codetective import get_type_of, show
 
 
