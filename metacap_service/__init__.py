@@ -50,6 +50,7 @@ class MetaCapService(Service):
 
     def __init__(self, *args, **kwargs):
         super(MetaCapService, self).__init__(*args, **kwargs)
+        return
         logger.debug("Initializing MetaCap service.")
         self.base_dir = self.config['basedir']
         self.modules = "metacap -b"

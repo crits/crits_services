@@ -109,6 +109,7 @@ class TAXIIClient(Service):
 
     def __init__(self, *args, **kwargs):
         super(TAXIIClient, self).__init__(*args, **kwargs)
+        return
         logger.debug("Initializing TAXII Client.")
         self.hostname = self.config['hostname'].strip()
         self.keyfile = self.config['keyfile'].strip()

@@ -39,6 +39,7 @@ class ChopShopService(Service):
 
     def __init__(self, *args, **kwargs):
         super(ChopShopService, self).__init__(*args, **kwargs)
+        return # XXX
         # When running under mod_wsgi we have to make sure sys.stdout is not
         # going to the real stdout. This is because multiprocessing (used by
         # choplib internally) does sys.stdout.flush(), which mod_wsgi doesn't
