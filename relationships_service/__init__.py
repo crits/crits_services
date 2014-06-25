@@ -10,6 +10,7 @@ class RelationshipsService(Service):
     type_ = Service.TYPE_CUSTOM
     template = None
     supported_types = []
+    description = "Generate relationship graphs between objects."
     default_config = []
 
     def __init__(self, *args, **kwargs):

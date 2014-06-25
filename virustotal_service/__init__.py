@@ -26,6 +26,7 @@ class VirusTotalService(Service):
     type_ = Service.TYPE_AV
     supported_types = ['Sample', 'Domain', 'IP']
     required_fields = []
+    description = "Look up a Sample, Domain or IP in VirusTotal"
     default_config = [
         ServiceConfigOption('vt_api_key',
                             ServiceConfigOption.STRING,

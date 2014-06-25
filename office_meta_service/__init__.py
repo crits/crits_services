@@ -14,6 +14,7 @@ class OfficeMetaService(Service):
     version = '1.0.2'
     type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
+    description = "Parses metadata from Office documents."
     default_config = [
         ServiceConfigOption('overwrite',
                             ServiceConfigOption.BOOL,

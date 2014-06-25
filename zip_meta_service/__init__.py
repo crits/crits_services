@@ -9,6 +9,7 @@ class ZipMetaService(Service):
     name = "zip_meta"
     version = '1.0.0'
     type_ = Service.TYPE_CUSTOM
+    description = "Generate metadata from zip files."
     supported_types = ['Sample']
 
     @staticmethod

@@ -17,6 +17,7 @@ class UpxService(Service):
     version = '1.0.2'
     type_ = Service.TYPE_UNPACKER
     supported_types = ['Sample']
+    description = "Unpack a binary using UPX."
     default_config = [
         ServiceConfigOption('upx_path',
                             ServiceConfigOption.STRING,

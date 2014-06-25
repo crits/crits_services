@@ -10,6 +10,7 @@ class MachOInfoService(Service):
     type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
     default_config = []
+    description = "Generate metadata about Mach-O binaries."
 
     @staticmethod
     def valid_for(obj):

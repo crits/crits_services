@@ -25,6 +25,7 @@ class MetaCapService(Service):
     version = '0.0.2'
     type_ = Service.TYPE_CUSTOM
     template = "metacap_service_template.html"
+    description = "Generate layer 3 and 4 metadata from a PCAP."
     supported_types = ['PCAP']
     default_config = [
         ServiceConfigOption('basedir',

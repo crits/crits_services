@@ -15,6 +15,7 @@ class SSDeepService(Service):
     version = '1.0.2'
     type_ = Service.TYPE_CUSTOM
     purpose = "comparison"
+    description = "Compare samples using ssdeep."
     supported_types = ['Sample']
     # TODO: Figure out how to do this.
     #required_fields = ['ssdeep', 'mimetype']

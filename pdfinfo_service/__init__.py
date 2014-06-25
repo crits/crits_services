@@ -20,6 +20,7 @@ class PDFInfoService(Service):
     name = "pdfinfo"
     version = '1.1.2'
     type_ = Service.TYPE_CUSTOM
+    description = "Extract information from PDF files."
     supported_types = ['Sample']
 
     @staticmethod

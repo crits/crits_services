@@ -8,8 +8,8 @@ DEFAULT_END = 0
 class CarverService(Service):
     name = "carver"
     version = '0.0.1'
-    type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
+    description = "Carve a chunk out of a sample."
     default_config = [
         ServiceConfigOption('start_offset',
                             ServiceConfigOption.INT,

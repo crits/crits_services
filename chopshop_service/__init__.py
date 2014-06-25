@@ -20,9 +20,9 @@ class ChopShopService(Service):
 
     name = "ChopShop"
     version = '0.0.5'
-    type_ = Service.TYPE_CUSTOM
     template = None
     supported_types = ['PCAP']
+    description = "Extract HTTP and DNS data from a PCAP."
     default_config = [
         ServiceConfigOption('basedir',
                             ServiceConfigOption.STRING,

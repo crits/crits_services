@@ -25,6 +25,7 @@ class TotalHashService(Service):
     version = '0.1.0'
     type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
+    description = "Look up a sample on totalhash."
     default_config = [
         ServiceConfigOption('th_api_key',
                             ServiceConfigOption.STRING,

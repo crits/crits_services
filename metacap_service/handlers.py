@@ -11,7 +11,7 @@ from crits.pcaps.pcap import PCAP
 from crits.pcaps.handlers import handle_pcap_file
 from crits.core.mongo_tools import get_file_gridfs, put_file_gridfs
 from crits.core.user_tools import get_user_organization
-from crits.service_env import manager
+import crits.services
 
 
 def pcap_tcpdump(pcap_md5, form, analyst):
@@ -19,7 +19,7 @@ def pcap_tcpdump(pcap_md5, form, analyst):
     cleaned_data = form.cleaned_data
 
     # Make sure we can find tcpdump
-    sc = manager.get_config('MetaCap')
+    sc = crits.services.manager.get_config('MetaCap')
     tcpdump_bin = str(sc['tcpdump'])
     if not os.path.exists(tcpdump_bin):
         tcpdump_output = "Could not find tcpdump!"

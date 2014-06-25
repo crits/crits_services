@@ -3,7 +3,7 @@ from optparse import OptionParser
 
 import settings
 
-import crits.service_env
+import crits.services
 from crits.services.core import ServiceAnalysisError
 from crits.core.basescript import CRITsBaseScript
 from crits.core.class_mapper import class_from_value, class_from_type
@@ -13,7 +13,7 @@ class CRITsScript(CRITsBaseScript):
         self.username = username
 
     def run_services(self, service_list, obj_list, verbose=False, force=False):
-        env = crits.service_env.environment
+        env = crits.services.environment
         if verbose:
             print "Running services\n-------------------\n"
         for obj in obj_list:
@@ -32,15 +32,15 @@ class CRITsScript(CRITsBaseScript):
 
     def list_available_services(self):
         print "\nAvailable Services\n---------------------"
-        for service_name in crits.service_env.manager.enabled_services:
+        for service_name in crits.services.manager.enabled_services:
             print "    [+] %s" % service_name
         print "\n"
 
     def get_service_list(self, triage = False, enabled = False):
         if triage:
-            return crits.service_env.manager.triage_services
+            return crits.services.manager.triage_services
         elif enabled:
-            return crits.service_env.manager.enabled_services
+            return crits.services.manager.enabled_services
 
     def print_running_services(self, service_list):
         print "\nServices:\n---------------"

@@ -5,10 +5,15 @@ import yara
 
 from hashlib import md5
 from django.conf import settings
+from django.template.loader import render_to_string
 
-from crits.services.core import Service, ServiceConfigOption
+from crits.services.core import Service
 from crits.services.core import ServiceConfigError
 from crits.core.class_mapper import class_from_value
+from crits.core.user import CRITsUser
+from crits.core.crits_mongoengine import AnalysisConfig
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -21,77 +26,114 @@ class YaraService(Service):
     name = "yara"
     version = '2.0.1'
     distributed = True
-    type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
     required_fields = ['md5']
-    default_config = [
-        ServiceConfigOption('sigdir',
-                            ServiceConfigOption.STRING,
-                            description=
-    "A base directory where all the signature files exist. It is prepended to "
-    "each sigfile to determine the complete path to the signature file.",
-                            private=True),
-        ServiceConfigOption('sigfiles',
-                            ServiceConfigOption.LIST,
-                            description=
-    "A list of signature files. If `sigdir` is defined, each "
-    "sigfile should relative to this directory; otherwise it should be an "
-    "absolute path. Do not put quotes around file names.",
-                            required=True),
-        ServiceConfigOption('distribution_url',
-                            ServiceConfigOption.STRING,
-                            description=
-    "URL to use if distributing to multiple workers. "
-    "Leave empty to run locally.",
-                            private=True),
-        ServiceConfigOption('distribution_exchange',
-                            ServiceConfigOption.STRING,
-                            description= "Exchange to use for distribution.",
-                            default='my_exchange',
-                            private=True),
-        ServiceConfigOption('distribution_routing_key',
-                            ServiceConfigOption.STRING,
-                            description= "Routing key to use for distribution.",
-                            default='file.crits',
-                            private=True),
-    ]
+    description = "Scan a file using Yara signatures."
 
     @staticmethod
-    def validate(config):
-        #Try to compile the rules files.
-        YaraService._compile_rules(config['sigdir'], config['sigfiles'])
+    def parse_config(config):
+        sigfiles = config.get('sigfiles', [])
+        if sigfiles:
+            sigs = [sigfile for sigfile in sigfiles.split('\r\n')]
+        config['sigfiles'] = sigs
+        YaraService._compile_rules(config['sigfiles'])
+        return config
 
     @staticmethod
-    def _compile_rules(sigdir, sigfiles):
+    def get_config(existing_config):
+        if existing_config:
+            return existing_config
+
+        config = { 'sigfiles': [],
+                   'distribution_url': '',
+                   'exchange': '',
+                   'routing_key': '' }
+        return config
+
+    @staticmethod
+    def get_config_details(config):
+        # Convert sigfiles to newline separated strings
+        config['sigfiles'] = '\r\n'.join(config['sigfiles'])
+
+        # Rename keys so they render nice.
+        config['Signature Files'] = config['sigfiles']
+        config['Distribution URL'] = config['distribution_url']
+        config['Exchange'] = config['exchange']
+        config['Routing Key'] = config['routing_key']
+        del config['sigfiles']
+        del config['distribution_url']
+        del config['exchange']
+        del config['routing_key']
+        return config
+
+    @staticmethod
+    def generate_config_form(service):
+        # Convert sigfiles to newline separated strings
+        config = service.config.to_dict()
+        config['sigfiles'] = '\r\n'.join(config['sigfiles'])
+        html = render_to_string('services_config_form.html',
+                                {'service': service,
+                                 'form': forms.YaraConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.YaraConfigForm
+        return form, html
+
+    @staticmethod
+    def generate_runtime_form(analyst, name, config, crits_type,
+                              identifier):
+        user = CRITsUser.objects(username=analyst).only('api_keys').first()
+        if not user:
+            return None, None # XXX: Raise an exception...
+        choices = [(k.api_key, k.name) for k in user.api_keys]
+        if not choices:
+            return None, None # XXX: Raise an exception
+
+        html = render_to_string('services_config_form.html',
+                                {'service': service,
+                                 'form': forms.YaraConfigForm(),
+                                 'config_error': None})
+        return None, html
+        #fields['api_key'] = forms.ChoiceField(widget=forms.Select,
+        #                                      choices=choices,
+        #                                      required=False,
+        #                                      help_text="API key to use.")
+
+        #form = type("ServiceRunConfigForm",
+        #            (forms.BaseForm,),
+        #            {'base_fields': fields})
+        #form_data = form(config)
+        #html = render_to_string("services_run_form.html",
+        #                        {'name': name,
+        #                         'form': form_data,
+        #                         'crits_type': crits_type,
+        #                         'identifier': identifier})
+        #return form, html
+        return None, None
+
+    @staticmethod
+    def _compile_rules(sigfiles):
         if not sigfiles:
             raise ServiceConfigError("No signature files specified.")
-        logger.debug("Sigdir: %s" % sigdir)
         sigsets = []
         for sigfile in sigfiles:
             sigfile = sigfile.strip()
             logger.debug("Sigfile: %s" % sigfile)
-            if sigdir:
-                abspath = os.path.abspath(os.path.join(sigdir, sigfile))
-            else:
-                abspath = sigfile
-            logger.debug("Full path to file file: %s" % abspath)
-            filename = os.path.basename(abspath)
+            logger.debug("Full path to file file: %s" % sigfile)
+            filename = os.path.basename(sigfile)
             version = sigfile.split('.')[0]
             try:
-                with open(abspath, "rt") as f:
+                with open(sigfile, "rt") as f:
                     data = f.read()
-            except:
-                logger.exception("File cannot be opened: %s" % abspath)
-                raise
-            sig_md5 = md5(data).hexdigest()
+            except Exception as e:
+                logger.exception("File cannot be opened: %s" % sigfile)
+                raise ServiceConfigError(str(e))
             try:
                 rules = yara.compile(source=data)
             except yara.SyntaxError:
-                message = "Not a valid yara rules file: %s" % abspath
+                message = "Not a valid yara rules file: %s" % sigfile
                 logger.exception(message)
                 raise ServiceConfigError(message)
             sigsets.append({'name': filename,
-                            'md5': sig_md5,
                             'rules': rules,
                             'version': version})
 
@@ -105,6 +147,10 @@ class YaraService(Service):
             return
 
         if self.config['distribution_url']:
+            print "RUNNING CONFIG!!!!"
+            print self.config
+            print "DONE WITH RUNNING CONFIG!!!!"
+            return
             msg = {
                 'type': 'fileref',
                 'source': {
@@ -141,8 +187,7 @@ class YaraService(Service):
                 return
             self._info("Submitted job to yara queue.")
         else:
-            self.sigsets = self._compile_rules(self.config['sigdir'],
-                                               self.config['sigfiles'])
+            self.sigsets = self._compile_rules(self.config['sigfiles'])
             for sigset in self.sigsets:
                 logger.debug("Signature set name: %s" % sigset['name'])
                 self._info("Scanning with %s (%s)" % (sigset['name'], sigset['md5']))

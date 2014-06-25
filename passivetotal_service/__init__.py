@@ -20,6 +20,7 @@ class PassiveTotalService(Service):
     version = '1.0.0'
     type_ = Service.TYPE_CUSTOM
     supported_types = [ 'Domain', 'IP' ]
+    description = "Lookup a Domain or IP in PassiveTotal."
     required_fields = []
     default_config = [
         ServiceConfigOption('pt_api_key',

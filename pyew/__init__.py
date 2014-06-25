@@ -15,6 +15,7 @@ class PyewService(Service):
     type_ = Service.TYPE_CUSTOM
     template = None
     supported_types = ['Sample']
+    description = "Run a binary through the Pyew disassembler."
     default_config = [
         ServiceConfigOption('pyew',
                             ServiceConfigOption.STRING,

@@ -10,6 +10,7 @@ class TimelineService(Service):
     type_ = Service.TYPE_CUSTOM
     template = None
     supported_types = []
+    description = "Generate a timeline for an object."
     default_config = []
 
     def __init__(self, *args, **kwargs):

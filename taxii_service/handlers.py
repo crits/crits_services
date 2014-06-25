@@ -15,7 +15,7 @@ from . import taxii
 from crits.indicators.indicator import Indicator
 from crits.standards.parsers import STIXParser
 from crits.standards.handlers import import_standards_doc
-from crits.service_env import manager
+import crits.services
 
 def execute_taxii_agent(hostname=None, feed=None, keyfile=None, certfile=None, start=None, end=None, analyst=None, method=None):
     ret = {
@@ -29,7 +29,7 @@ def execute_taxii_agent(hostname=None, feed=None, keyfile=None, certfile=None, s
             'reason': ''
           }
 
-    sc = manager.get_config('taxii_service')
+    sc = crits.services.manager.get_config('taxii_service')
     # XXX: Validate these!
     if not hostname:
         hostname = str(sc['hostname'])

@@ -18,6 +18,7 @@ class MetaChecker(Service):
     purpose = "comparison"
     supported_types = ['Sample']
     required_fields = ['md5']
+    description = "Compare metadata of this sample to others."
     default_config = [
         ServiceConfigOption('max_result',
                             ServiceConfigOption.INT,

@@ -18,6 +18,7 @@ class OPSWATService(Service):
     version = "1.0.0"
     type_ = Service.TYPE_AV
     supported_types = ['Sample']
+    description = "Send a sample to OPSWAT appliance."
     default_config = [
         ServiceConfigOption('OPSWAT_url',
                             ServiceConfigOption.STRING,

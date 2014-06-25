@@ -33,6 +33,7 @@ class PEInfoService(Service):
     version = '1.1.3'
     type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
+    description = "Generate metadata about Windows PE/COFF files."
     default_config = [
         ServiceConfigOption('extract_all_resource',
                             ServiceConfigOption.BOOL,

@@ -28,6 +28,7 @@ class TAXIIClient(Service):
     supported_types = ['Event']
     required_fields = ['_id']
     rerunnable = True
+    description = "Send TAXII messages to a TAXII server."
     template = "taxii_service_results.html"
     default_config = [
         ServiceConfigOption('hostname',

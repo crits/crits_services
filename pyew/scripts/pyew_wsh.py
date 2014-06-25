@@ -38,8 +38,8 @@ import tempfile
 from urlparse import urlparse, parse_qs
 
 from crits.core.user import CRITsUser
-from crits.service_env import manager
 from crits.samples.sample import Sample
+import crits.services
 
 _GOODBYE_MESSAGE = u'Goodbye'
 
@@ -100,7 +100,7 @@ def web_socket_transfer_data(request):
 def start_pyew_shell(request, id_, token):
 
     # Make sure we can find pyew
-    sc = manager.get_config('Pyew')
+    sc = crits.services.manager.get_config('Pyew')
     pyew = str(sc['pyew'])
 
     if not os.path.exists(pyew):

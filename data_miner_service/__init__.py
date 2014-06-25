@@ -22,10 +22,10 @@ class DataMinerService(Service):
 
     name = "DataMiner"
     version = '1.0.0'
-    type_ = Service.TYPE_CUSTOM
     template = "data_miner_service_template.html"
     supported_types = ['RawData', 'Sample']
     required_fields = []
+    description = "Mine a chunk of data for useful information."
     default_config = [
         ]
 
