@@ -15,7 +15,7 @@
             {% for key, value in result.items %}
             {% if key != 'subtype' and key != 'result' %}
             <th>{{ key|capfirst }}</th>
-            {% endif %} 
+            {% endif %}
             {% endfor %}
         </tr>
     </thead>
@@ -52,7 +52,7 @@
                     {{ value }}
                 {% endif %}
                 </td>
-            {% endif %} 
+            {% endif %}
             {% endfor %}
             <td>
                 {% if result.result %}
@@ -73,4 +73,4 @@
     {% else %}
         <p> This service produced no results. </p>
     {% endif %}
-{% endfor %} 
+{% endfor %}
