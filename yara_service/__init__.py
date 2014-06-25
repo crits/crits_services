@@ -31,8 +31,11 @@ class YaraService(Service):
 
     @staticmethod
     def parse_config(config):
+        # When editing a config we are given a string.
+        # When validating an existing config it will be a list.
+        # Convert it to a list of strings.
         sigfiles = config.get('sigfiles', [])
-        if sigfiles:
+        if isinstance(sigfiles, basestring):
             config['sigfiles'] = [sigfile for sigfile in sigfiles.split('\r\n')]
         # This will raise ServiceConfigError
         YaraService._compile_rules(config['sigfiles'])
@@ -66,12 +69,11 @@ class YaraService(Service):
         return config
 
     @staticmethod
-    def generate_config_form(service):
+    def generate_config_form(name, config):
         # Convert sigfiles to newline separated strings
-        config = service.config.to_dict()
         config['sigfiles'] = '\r\n'.join(config['sigfiles'])
         html = render_to_string('services_config_form.html',
-                                {'service': service,
+                                {'name': name,
                                  'form': forms.YaraConfigForm(initial=config),
                                  'config_error': None})
         form = forms.YaraConfigForm
@@ -88,7 +90,7 @@ class YaraService(Service):
             return None, None # XXX: Raise an exception
 
         html = render_to_string('services_config_form.html',
-                                {'service': service,
+                                {'name': name,
                                  'form': forms.YaraConfigForm(),
                                  'config_error': None})
         return None, html
@@ -146,9 +148,7 @@ class YaraService(Service):
             return
 
         if self.config['distribution_url']:
-            print "RUNNING CONFIG!!!!"
             print self.config
-            print "DONE WITH RUNNING CONFIG!!!!"
             return
             msg = {
                 'type': 'fileref',
