@@ -7,8 +7,7 @@ from hashlib import md5
 from django.conf import settings
 from django.template.loader import render_to_string
 
-from crits.services.core import Service
-from crits.services.core import ServiceConfigError
+from crits.services.core import Service, ServiceConfigError
 from crits.core.class_mapper import class_from_value
 from crits.core.user import CRITsUser
 from crits.core.crits_mongoengine import AnalysisConfig
@@ -34,8 +33,8 @@ class YaraService(Service):
     def parse_config(config):
         sigfiles = config.get('sigfiles', [])
         if sigfiles:
-            sigs = [sigfile for sigfile in sigfiles.split('\r\n')]
-        config['sigfiles'] = sigs
+            config['sigfiles'] = [sigfile for sigfile in sigfiles.split('\r\n')]
+        # This will raise ServiceConfigError
         YaraService._compile_rules(config['sigfiles'])
         return config
 
