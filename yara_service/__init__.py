@@ -80,36 +80,30 @@ class YaraService(Service):
         return form, html
 
     @staticmethod
-    def generate_runtime_form(analyst, name, config, crits_type,
-                              identifier):
-        user = CRITsUser.objects(username=analyst).only('api_keys').first()
-        if not user:
-            return None, None # XXX: Raise an exception...
-        choices = [(k.api_key, k.name) for k in user.api_keys]
-        if not choices:
-            return None, None # XXX: Raise an exception
+    def generate_runtime_form(analyst, name, config, crits_type, identifier):
+        if config['distribution_url']:
+            user = CRITsUser.objects(username=analyst).only('api_keys').first()
+            if not user:
+                return None, None # XXX: Raise an exception...
+            api_keys = [(k.api_key, k.name) for k in user.api_keys]
+            if not api_keys: # XXX: and distributed
+                return None, None # XXX: Raise an exception
+        else:
+            api_keys=None
 
-        html = render_to_string('services_config_form.html',
+        sig_choices = []
+        for sigfile in config['sigfiles']:
+            # We don't want to put the full path in the form.
+            filename = os.path.basename(sigfile)
+            sig_choices.append((filename, filename))
+
+        form = forms.YaraRunForm(sig_choices, api_keys=api_keys)
+        html = render_to_string("services_run_form.html",
                                 {'name': name,
-                                 'form': forms.YaraConfigForm(),
-                                 'config_error': None})
-        return None, html
-        #fields['api_key'] = forms.ChoiceField(widget=forms.Select,
-        #                                      choices=choices,
-        #                                      required=False,
-        #                                      help_text="API key to use.")
-
-        #form = type("ServiceRunConfigForm",
-        #            (forms.BaseForm,),
-        #            {'base_fields': fields})
-        #form_data = form(config)
-        #html = render_to_string("services_run_form.html",
-        #                        {'name': name,
-        #                         'form': form_data,
-        #                         'crits_type': crits_type,
-        #                         'identifier': identifier})
-        #return form, html
-        return None, None
+                                 'form': form,
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+        return form, html
 
     @staticmethod
     def _compile_rules(sigfiles):
