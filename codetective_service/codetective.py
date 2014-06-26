@@ -54,9 +54,11 @@ def get_type_of(data, filters, analyze=False):
 		result_details['lm']='LM hash: %s' % re.findall(r"(?<![a-fA-F0-9])([a-fA-F\d]{32})(?![a-fA-F0-9])", data)[0]
 		result_details['ntlm']='NTLM hash: %s' % re.findall(r"(?<![a-fA-F0-9])([a-fA-F\d]{32})(?![a-fA-F0-9])", data)[0]					
 		if(all(chr.isupper() or chr.isdigit() for chr in data)):
-			results['confident']+=['lm','ntlm']
+			results['confident'].append('lm')
+			results['confident'].append('ntlm')
 		else:
-			results['likely']+=['lm','ntlm']
+			results['likely'].append('lm')
+			results['likely'].append('ntlm')
 			
 	if re.findall(r"\*[a-fA-F\d]{40}\b", data) and 'db' in filters: # MySQL4+
 		result_details['MySQL4+']='MySQL v4 or later hash: %s' % re.findall(r"\*(\b[a-fA-F\d]{40})\b", data)
@@ -75,9 +77,9 @@ def get_type_of(data, filters, analyze=False):
 	if re.findall(r"^(\w+:\d+:)?\*:([a-fA-F\d]{32})(?![a-fA-F0-9])", data) and 'win' in filters: # SAM(*:NTLM)
 		result_details['SAM(*:ntlm)']='hashes in SAM file - LM:not defined\tNTLM:%s' % re.findall(r"\*:([a-fA-F\d]{32})\b",data)[0]
 		if(all(chr.isupper() or chr.isdigit() for chr in re.findall(r"\*:([a-fA-F\d]{32})\b",data)[0])):
-			results['confident']+=['SAM(*:ntlm)']
+			results['confident'].append('SAM(*:ntlm)')
 		else:
-			results['possible']+=['SAM(*:ntlm)']
+			results['possible'].append('SAM(*:ntlm)')
 			
 	if re.findall(r"^(\w+:\d+:)?[a-fA-F\d]{32}:\*", data) and 'win' in filters: # SAM(LM:*)
 		result_details['SAM(lm:*)']='hashes in SAM file - LM:%s\tNTLM:not defined' % re.findall(r"([a-fA-F\d]{32}):\*",data)[0]		
