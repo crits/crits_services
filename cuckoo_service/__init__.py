@@ -159,6 +159,17 @@ class CuckooService(Service):
 
         return r.content
 
+    def get_pcap(self, task_id):
+        r = requests.get(self.base_url + '/pcap/get/%s' % task_id,
+                         proxies=self.proxies)
+
+        if r.status_code != requests.codes.ok:
+            self._warning("Could not fetch PCAP for task ID %s" %
+                          task_id)
+            return None
+
+        return r.content
+        
     def _scan(self, context):
         task_id = self.config.get('existing task id')
         if task_id:
@@ -203,6 +214,8 @@ class CuckooService(Service):
                 dropped = self.get_dropped(task_id)
                 self._debug("Received %d bytes" % len(dropped))
                 self._process_dropped(dropped)
+                pcap = self.get_pcap(task_id)
+                self._process_pcap(pcap)
 
                 return
 
@@ -299,3 +312,13 @@ class CuckooService(Service):
             self._add_file(data, name)
 
         t.close()
+    
+    def _process_pcap(self,pcap):
+        self._debug("Processing PCAP.")
+        self._notify()
+        #TODO: Error handling...
+        self._add_file(pcap,collection='PCAP')
+        
+        
+        
+        
