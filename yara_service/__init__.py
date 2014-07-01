@@ -166,6 +166,11 @@ class YaraService(Service):
         logger.debug(str(sigsets))
         return sigsets
 
+    @staticmethod
+    def valid_for(obj):
+        if obj.filedata.grid_id == None:
+            raise ServiceConfigError("Missing filedata.")
+
     def scan(self, obj, config):
         logger.debug("Scanning...")
         if obj.filedata.grid_id == None:
