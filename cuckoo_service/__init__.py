@@ -169,7 +169,7 @@ class CuckooService(Service):
             return None
 
         return r.content
-        
+
     def _scan(self, context):
         task_id = self.config.get('existing task id')
         if task_id:
@@ -293,7 +293,7 @@ class CuckooService(Service):
         self._debug("Processing dropped files.")
         self._notify()
 
-        #TODO: Error handling
+        # TODO: Error handling
         t = tarfile.open(mode='r:bz2', fileobj=StringIO(dropped))
 
         ignored = self.config.get('ignored files', [])
@@ -312,13 +312,9 @@ class CuckooService(Service):
             self._add_file(data, name)
 
         t.close()
-    
-    def _process_pcap(self,pcap):
+
+    def _process_pcap(self, pcap):
         self._debug("Processing PCAP.")
         self._notify()
-        #TODO: Error handling...
-        self._add_file(pcap,collection='PCAP')
-        
-        
-        
-        
+        # TODO: Error handling...
+        self._add_file(pcap, collection='PCAP')
