@@ -24,19 +24,18 @@ class DataMinerService(Service):
     version = '1.0.0'
     template = "data_miner_service_template.html"
     supported_types = ['RawData', 'Sample']
-    required_fields = []
     description = "Mine a chunk of data for useful information."
-    default_config = [
-        ]
 
-    def _scan(self, obj):
+    @staticmethod
+    def valid_for(obj):
+        if isinstance(obj, Sample):
+            if obj.filedata.grid_id == None:
+                raise ServiceConfigError("Missing filedata.")
+
+    def scan(self, obj, config):
         if isinstance(obj, RawData):
             data = obj.data
         elif isinstance(obj, Sample):
-            if obj.filedata.grid_id == None:
-                self._info("No data to parse.")
-                return
-
             samp_data = obj.filedata.read()
             data = make_ascii_strings(data=samp_data)
             if not data:
@@ -45,6 +44,7 @@ class DataMinerService(Service):
         else:
             self._debug("This type is not supported by this service.")
             return
+
         ips = extract_ips(data)
         for ip in ips:
             tdict = {'Type': "IP Address"}
