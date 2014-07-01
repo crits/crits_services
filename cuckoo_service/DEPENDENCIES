@@ -1,0 +1,5 @@
+The Cuckoo service requires the `requests` library [1], along with an instance
+of Cuckoo Sandbox, in order to function.
+
+[1] http://docs.python-requests.org/
+[2] http://www.cuckoosandbox.org/
