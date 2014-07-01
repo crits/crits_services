@@ -3,7 +3,6 @@ import logging
 import os.path
 import yara
 
-from hashlib import md5
 from django.conf import settings
 from django.template.loader import render_to_string
 
@@ -38,7 +37,7 @@ class YaraService(Service):
         if isinstance(sigfiles, basestring):
             config['sigfiles'] = [sigfile for sigfile in sigfiles.split('\r\n')]
         # This will raise ServiceConfigError
-        YaraService._compile_rules(config['sigfiles'])
+        YaraService._compile_rules(config['sigdir'], config['sigfiles'])
         return config
 
     @staticmethod
@@ -46,76 +45,110 @@ class YaraService(Service):
         if existing_config:
             return existing_config
 
-        config = { 'sigfiles': [],
-                   'distribution_url': '',
-                   'exchange': '',
-                   'routing_key': '' }
+        # Generate default config from form and initial values.
+        config = {}
+        fields = forms.YaraConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
         return config
 
     @staticmethod
     def get_config_details(config):
+        display_config = {}
+
         # Convert sigfiles to newline separated strings
-        config['sigfiles'] = '\r\n'.join(config['sigfiles'])
+        display_config['Signature Files'] = '\r\n'.join(config['sigfiles'])
 
         # Rename keys so they render nice.
-        config['Signature Files'] = config['sigfiles']
-        config['Distribution URL'] = config['distribution_url']
-        config['Exchange'] = config['exchange']
-        config['Routing Key'] = config['routing_key']
-        del config['sigfiles']
-        del config['distribution_url']
-        del config['exchange']
-        del config['routing_key']
-        return config
+        display_config['Signature Directory'] = config['sigdir']
+        display_config['Distribution URL'] = config['distribution_url']
+        display_config['Exchange'] = config['exchange']
+        display_config['Routing Key'] = config['routing_key']
+        return display_config
 
-    @staticmethod
-    def generate_config_form(name, config):
+    @classmethod
+    def generate_config_form(self, config):
         # Convert sigfiles to newline separated strings
         config['sigfiles'] = '\r\n'.join(config['sigfiles'])
         html = render_to_string('services_config_form.html',
-                                {'name': name,
+                                {'name': self.name,
                                  'form': forms.YaraConfigForm(initial=config),
                                  'config_error': None})
         form = forms.YaraConfigForm
         return form, html
 
     @staticmethod
-    def generate_runtime_form(analyst, name, config, crits_type, identifier):
+    def save_runtime_config(config):
         if config['distribution_url']:
-            user = CRITsUser.objects(username=analyst).only('api_keys').first()
-            if not user:
-                return None, None # XXX: Raise an exception...
-            api_keys = [(k.api_key, k.name) for k in user.api_keys]
-            if not api_keys: # XXX: and distributed
-                return None, None # XXX: Raise an exception
-        else:
-            api_keys=None
-
-        sig_choices = []
-        for sigfile in config['sigfiles']:
-            # We don't want to put the full path in the form.
-            filename = os.path.basename(sigfile)
-            sig_choices.append((filename, filename))
-
-        form = forms.YaraRunForm(sig_choices, api_keys=api_keys)
-        html = render_to_string("services_run_form.html",
-                                {'name': name,
-                                 'form': form,
-                                 'crits_type': crits_type,
-                                 'identifier': identifier})
-        return form, html
+            del config['api_key']
+        del config['sigdir']
 
     @staticmethod
-    def _compile_rules(sigfiles):
-        if not sigfiles:
+    def _get_api_keys(config, analyst):
+        if config.get('distribution_url', ''):
+            user = CRITsUser.objects(username=analyst).only('api_keys').first()
+            if not user:
+                return [] # XXX: Raise exception?
+
+            api_keys = [(k.api_key, k.name) for k in user.api_keys]
+            if not api_keys: # XXX: and distributed
+                return [] # XXX: Raise exception?
+        else:
+            api_keys = []
+
+        return api_keys
+
+    @staticmethod
+    def validate_runtime(config, db_config):
+        # To run, this service _MUST_ have sigfiles and if distribution_url
+        # is set it must have api_key.
+        if 'sigfiles' not in config:
+            raise ServiceConfigError("Need sigfiles to run.")
+
+        if db_config['distribution_url'] and 'api_key' not in config:
+            raise ServiceConfigError("Need API key to run.")
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        api_keys = YaraService._get_api_keys(config, analyst)
+        if api_keys:
+            # The api_key is a list with only one element.
+            config['api_key'] = config['api_key'][0]
+
+        sigfiles = YaraService._tuplize_sigfiles(config['sigfiles'])
+
+        form = forms.YaraRunForm(sigfiles=sigfiles,
+                                 api_keys=api_keys,
+                                 data=config)
+        return form
+
+    @staticmethod
+    def _tuplize_sigfiles(sigfiles):
+        return [(sig, sig) for sig in sigfiles]
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        api_keys = YaraService._get_api_keys(config, analyst)
+
+        sigfiles = YaraService._tuplize_sigfiles(config['sigfiles'])
+
+        html = render_to_string("services_run_form.html",
+                                {'name': self.name,
+                                 'form': forms.YaraRunForm(sigfiles=sigfiles,
+                                                           api_keys=api_keys),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+        return html
+
+    @staticmethod
+    def _compile_rules(sigdir, sigfiles):
+        if not sigfiles or not sigdir:
             raise ServiceConfigError("No signature files specified.")
         sigsets = []
         for sigfile in sigfiles:
-            sigfile = sigfile.strip()
-            logger.debug("Sigfile: %s" % sigfile)
+            sigfile = os.path.abspath(os.path.join(sigdir, sigfile.strip()))
             logger.debug("Full path to file file: %s" % sigfile)
             filename = os.path.basename(sigfile)
-            version = sigfile.split('.')[0]
             try:
                 with open(sigfile, "rt") as f:
                     data = f.read()
@@ -128,22 +161,18 @@ class YaraService(Service):
                 message = "Not a valid yara rules file: %s" % sigfile
                 logger.exception(message)
                 raise ServiceConfigError(message)
-            sigsets.append({'name': filename,
-                            'rules': rules,
-                            'version': version})
+            sigsets.append({'name': filename, 'rules': rules})
 
         logger.debug(str(sigsets))
         return sigsets
 
-    def _scan(self, obj):
+    def scan(self, obj, config):
         logger.debug("Scanning...")
         if obj.filedata.grid_id == None:
             self._info("No data to scan, skipping")
             return
 
-        if self.config['distribution_url']:
-            print self.config
-            return
+        if config['distribution_url']:
             msg = {
                 'type': 'fileref',
                 'source': {
@@ -155,7 +184,8 @@ class YaraService(Service):
                     'data': settings.INSTANCE_URL
                 },
                 'config': {
-                    'sigfiles': self.config['sigfiles']
+                    'sigdir': config['sigdir'],
+                    'sigfiles': config['sigfiles']
                 },
                 'analysis_meta': {
                      'md5': obj.md5,
@@ -167,12 +197,12 @@ class YaraService(Service):
                 }
             }
 
-            exch = self.config['distribution_exchange']
-            routing_key = self.config['distribution_routing_key']
+            exch = config['exchange']
+            routing_key = config['routing_key']
             try:
                 from crits.services.connector import *
                 conn = Connector(connector="amqp",
-                                 uri=self.config['distribution_url'])
+                                 uri=config['distribution_url'])
                 conn.send_msg(msg, exch, routing_key)
                 conn.release()
             except Exception as e:
@@ -180,10 +210,10 @@ class YaraService(Service):
                 return
             self._info("Submitted job to yara queue.")
         else:
-            self.sigsets = self._compile_rules(self.config['sigfiles'])
-            for sigset in self.sigsets:
+            sigsets = self._compile_rules(config['sigdir'], config['sigfiles'])
+            for sigset in sigsets:
                 logger.debug("Signature set name: %s" % sigset['name'])
-                self._info("Scanning with %s (%s)" % (sigset['name'], sigset['md5']))
+                self._info("Scanning with %s" % sigset['name'])
                 matches = sigset['rules'].match(data=obj.filedata.read())
                 for match in matches:
                     strings = {}
