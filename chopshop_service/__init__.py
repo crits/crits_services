@@ -6,8 +6,11 @@ import sys
 import time
 import json
 
-from crits.services.core import Service, ServiceConfigOption
-from crits.services.core import ServiceConfigError
+from django.template.loader import render_to_string
+
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 DEFAULT_MODULES=["HTTP", "DNS"]
 
@@ -20,26 +23,57 @@ class ChopShopService(Service):
 
     name = "ChopShop"
     version = '0.0.5'
-    template = None
+    template = "chopshop_analysis.html"
     supported_types = ['PCAP']
     description = "Extract HTTP and DNS data from a PCAP."
-    default_config = [
-        ServiceConfigOption('basedir',
-                            ServiceConfigOption.STRING,
-                            description="A base directory where all the modules and libraries exist.",
-                            default=None,
-                            required=True,
-                            private=True),
-        ServiceConfigOption('modules',
-                            ServiceConfigOption.MULTI_SELECT,
-                            description="Supported modules.",
-                            choices=DEFAULT_MODULES,
-                            default=DEFAULT_MODULES)
-    ]
 
-    def __init__(self, *args, **kwargs):
-        super(ChopShopService, self).__init__(*args, **kwargs)
-        return # XXX
+    @staticmethod
+    def parse_config(config):
+        # Make sure basedir exists.
+        basedir = config.get('basedir', '')
+        if basedir:
+            shop_path = "%s/shop" % basedir
+            if not os.path.exists(basedir):
+                raise ServiceConfigError("Base directory does not exist.")
+            elif not os.path.exists(shop_path):
+                raise ServiceConfigError("'shop' does not exist in base.")
+        else:
+            raise ServiceConfigError("Base directory must be defined.")
+
+    @staticmethod
+    def get_config(existing_config):
+        if existing_config:
+            return existing_config
+
+        config = {}
+        fields = forms.ChopShopConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+        return config
+
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.ChopShopConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.ChopShopConfigForm
+        return form, html
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        html = render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                 'form': forms.ChopShopRunForm(),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+        return html
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        return forms.ChopShopRunForm(config)
+
+    def scan(self, obj, config):
         # When running under mod_wsgi we have to make sure sys.stdout is not
         # going to the real stdout. This is because multiprocessing (used by
         # choplib internally) does sys.stdout.flush(), which mod_wsgi doesn't
@@ -49,18 +83,16 @@ class ChopShopService(Service):
         sys.stdin = open(os.devnull)
 
         logger.debug("Initializing ChopShop service.")
-        self.base_dir = self.config['basedir']
-        self.modules = ""
-        if 'HTTP' in self.config['modules']:
-            self.modules += ";http | http_extractor -m"
-        if 'DNS' in self.config['modules']:
-            self.modules += ";dns | dns_extractor"
-        self.template = "chopshop_analysis.html"
+        basedir = config['basedir']
+        modules = ""
+        if 'HTTP' in config['modules']:
+            modules += ";http | http_extractor -m"
+        if 'DNS' in config['modules']:
+            modules += ";dns | dns_extractor"
 
-    def _scan(self, obj):
         logger.debug("Setting up shop...")
-        shop_path = "%s/shop" % self.base_dir
-        if not os.path.exists(self.base_dir):
+        shop_path = "%s/shop" % basedir
+        if not os.path.exists(basedir):
             self._error("ChopShop path does not exist")
         elif not os.path.exists(shop_path):
             self._error("ChopShop shop path does not exist")
@@ -83,10 +115,10 @@ class ChopShopService(Service):
             choplib = ChopLib()
             chopui = ChopUi()
 
-            choplib.base_dir = self.base_dir
+            choplib.base_dir = basedir
 
             # XXX: Convert from unicode to str...
-            choplib.modules = str(self.modules)
+            choplib.modules = str(modules)
 
             chopui.jsonout = jsonhandler
             choplib.jsonout = True

@@ -23,3 +23,27 @@ class FileCarverForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super(FileCarverForm, self).__init__(*args, **kwargs)
+
+class ChopShopConfigForm(forms.Form):
+    error_css_class = 'error'
+    required_css_class = 'required'
+    basedir = forms.CharField(required=True,
+                              initial='',
+                              label = "The base directory where all the modules and libraries exist.")
+
+    def __init__(self, *args, **kwargs):
+        super(ChopShopConfigForm, self).__init__(*args, **kwargs)
+
+class ChopShopRunForm(forms.Form):
+    error_css_class = 'error'
+    required_css_class = 'required'
+    choices = [('HTTP', 'HTTP'), ('DNS', 'DNS')]
+    modules = forms.MultipleChoiceField(required=True,
+                                        label='Protocols',
+                                        choices=choices,
+                                        initial=['HTTP', 'DNS'],
+                                        widget=forms.CheckboxSelectMultiple,
+                                        help_text="Generate metadata for these protocols")
+
+    def __init__(self, *args, **kwargs):
+        super(ChopShopRunForm, self).__init__(*args, **kwargs)

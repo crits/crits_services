@@ -13,11 +13,15 @@ from django.core.urlresolvers import reverse
 from crits.pcaps.pcap import PCAP
 from crits.samples.handlers import handle_file
 from crits.emails.handlers import handle_eml
+from crits.services.handlers import get_config
 import crits.services
 
 def chopshop_carver(pcap_md5, options, analyst):
     # Make sure we can find ChopShop
-    sc = crits.services.manager.get_config('ChopShop')
+    sc = get_config('ChopShop')
+    if not sc:
+        return {'success': False, 'message': 'Could not find ChopShop service.'}
+
     shop_path = "%s/shop" % str(sc['basedir'])
     if not os.path.exists(shop_path):
         return {'success': False, 'message': "ChopShop shop path does not exist."}
