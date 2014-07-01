@@ -38,7 +38,6 @@ class YaraService(Service):
             config['sigfiles'] = [sigfile for sigfile in sigfiles.split('\r\n')]
         # This will raise ServiceConfigError
         YaraService._compile_rules(config['sigdir'], config['sigfiles'])
-        return config
 
     @staticmethod
     def get_config(existing_config):
