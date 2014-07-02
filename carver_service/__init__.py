@@ -6,9 +6,6 @@ from crits.services.core import Service, ServiceConfigError
 
 from . import forms
 
-DEFAULT_START = 0
-DEFAULT_END = 0
-
 class CarverService(Service):
     name = "carver"
     version = '0.0.1'
