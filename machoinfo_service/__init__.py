@@ -1,32 +1,30 @@
 import struct
 
-from crits.services.core import Service
+from crits.services.core import Service, ServiceConfigError
 
 from machoinfo import MachOEntity, MachOParser, MachOParserError
 
 class MachOInfoService(Service):
     name = "machoinfo"
     version = '0.0.1'
-    type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
-    default_config = []
     description = "Generate metadata about Mach-O binaries."
 
     @staticmethod
     def valid_for(obj):
         if obj.filedata.grid_id == None:
-            return False
+            raise ServiceConfigError("Missing filedata.")
 
         data = obj.filedata.read()
         if len(data) < 4:
-            return False
+            raise ServiceConfigError("Need at least 4 bytes.")
 
         # Reset the read pointer.
         obj.filedata.seek(0)
 
         return struct.unpack('@I', data[:4])[0] in [MachOEntity.FAT_MAGIC, MachOEntity.FAT_CIGAM, MachOEntity.MH_MAGIC, MachOEntity.MH_CIGAM, MachOEntity.MH_MAGIC_64, MachOEntity.MH_CIGAM_64]
 
-    def _scan(self, obj):
+    def scan(self, obj, config):
         data = obj.filedata.read()
         mop = MachOParser(data)
         try:
