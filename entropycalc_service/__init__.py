@@ -6,10 +6,11 @@
 import array
 import math
 
-from crits.services.core import Service, ServiceConfigOption
+from django.template.loader import render_to_string
 
-DEFAULT_END = -1
-DEFAULT_START = 0
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 class EntropycalcService(Service):
     """
@@ -20,29 +21,27 @@ class EntropycalcService(Service):
     version = '0.0.1'
     supported_types = ['Sample']
     description = "Calculate entropy of a sample."
-    default_config = [
-        ServiceConfigOption('start_offset',
-                            ServiceConfigOption.INT,
-                            description="Start offset",
-                            required=False,
-                            private=False,
-                            default=DEFAULT_START),
-
-        ServiceConfigOption('end_offset',
-                            ServiceConfigOption.INT,
-                            description="End offset",
-                            required=True,
-                            private=False,
-                            default=DEFAULT_END),
-    ]
 
     @staticmethod
     def valid_for(obj):
-        # Only run if there's data
-        return not obj.filedata.grid_id == None
+        if obj.filedata.grid_id == None:
+            raise ServiceConfigError("Missing filedata.")
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        # The values are submitted as a list for some reason.
+        data = {'start': config['start'][0], 'end': config['end'][0]}
+        return forms.EntropyCalcRunForm(data)
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        return render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                 'form': forms.EntropyCalcRunForm(),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
 
     def _calculate_entropy(self, data):
-
 	entropy = 0.0
         if len(data) == 0:
             return entropy
@@ -60,8 +59,9 @@ class EntropycalcService(Service):
         return entropy
 
 
-    def _scan(self, obj):
-        start_offset = self.config.get("start_offset", DEFAULT_START)
-        end_offset = self.config.get("end_offset", DEFAULT_END)
-	output = self._calculate_entropy(obj.filedata.read()[start_offset:end_offset])
+    def scan(self, obj, config):
+        start = config['start']
+        end = config['end']
+        data = obj.filedata.read()
+	output = self._calculate_entropy(data[start:end])
         self._add_result('Entropy calculation', "%.1f" % output, {'Value': output})
