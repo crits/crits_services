@@ -94,51 +94,52 @@ class ChopShopService(Service):
         shop_path = "%s/shop" % basedir
         if not os.path.exists(basedir):
             self._error("ChopShop path does not exist")
+            return
         elif not os.path.exists(shop_path):
             self._error("ChopShop shop path does not exist")
-        else:
-            sys.path.append(shop_path)
-            import ChopLib as CL
+            return
+        sys.path.append(shop_path)
+        import ChopLib as CL
 
-            # I wanted to do this check in validate, but if it fails and
-            # then you fix the path to point to the appropriate chopshop
-            # it requires a webserver restart to take effect. So just do
-            # the check at each scan.
-            if StrictVersion(str(CL.VERSION)) < StrictVersion('4.0'):
-                self._error("Need ChopShop 4.0 or newer")
+        # I wanted to do this check in validate, but if it fails and
+        # then you fix the path to point to the appropriate chopshop
+        # it requires a webserver restart to take effect. So just do
+        # the check at each scan.
+        if StrictVersion(str(CL.VERSION)) < StrictVersion('4.0'):
+            self._error("Need ChopShop 4.0 or newer")
 
-            from ChopLib import ChopLib
-            from ChopUi import ChopUi
+        from ChopLib import ChopLib
+        from ChopUi import ChopUi
 
-            logger.debug("Scanning...")
+        logger.debug("Scanning...")
 
-            choplib = ChopLib()
-            chopui = ChopUi()
+        choplib = ChopLib()
+        chopui = ChopUi()
 
-            choplib.base_dir = basedir
+        choplib.base_dir = basedir
 
-            # XXX: Convert from unicode to str...
-            choplib.modules = str(modules)
+        # XXX: Convert from unicode to str...
+        choplib.modules = str(modules)
 
-            chopui.jsonout = jsonhandler
-            choplib.jsonout = True
+        chopui.jsonout = jsonhandler
+        choplib.jsonout = True
 
-            # ChopShop (because of pynids) needs to read a file off disk.
-            # The services framework forces you to use 'with' here. It's not
-            # possible to just get a path to a file on disk.
-            with self._write_to_file() as pcap_file:
-                choplib.filename = pcap_file
-                chopui.bind(choplib)
-                chopui.start()
-                chopui.jsonclass.set_service(self)
-                choplib.start()
+        # ChopShop (because of pynids) needs to read a file off disk.
+        # The services framework forces you to use 'with' here. It's not
+        # possible to just get a path to a file on disk.
+        with self._write_to_file() as pcap_file:
+            choplib.filename = pcap_file
+            chopui.bind(choplib)
+            chopui.start()
+            chopui.jsonclass.set_service(self)
+            choplib.start()
 
-                while chopui.is_alive():
-                    time.sleep(.1)
+            while chopui.is_alive():
+                time.sleep(.1)
 
-                chopui.join()
-                choplib.finish()
-                choplib.join()
+            chopui.join()
+            choplib.finish()
+            choplib.join()
 
 class jsonhandler:
     def __init__(self, ui_stop_fn=None, lib_stop_fn=None, format_string=None):
