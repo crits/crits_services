@@ -18,7 +18,7 @@ def get_format(item_type):
     elif item_type == 'PCAP': # good?
     	fmt = "{0[filename]} - {0[md5]}"
     elif item_type == 'RawData': # good
-	fmt = "{0[title]} ({0[data_type]}) - tool: '{0[tool].name}'"
+	fmt = "{0[title]} ({0[data_type]})" # - tool: '{0[tool].name}'"
     elif item_type == 'Sample': # good
     	fmt = "{0[filename]} - {0[md5]}"
     elif item_type == 'Event':
