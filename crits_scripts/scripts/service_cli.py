@@ -4,6 +4,7 @@ from optparse import OptionParser
 import settings
 
 import crits.services
+from crits.services.handlers import run_service
 from crits.services.core import ServiceAnalysisError
 from crits.core.basescript import CRITsBaseScript
 from crits.core.class_mapper import class_from_value, class_from_type
@@ -12,8 +13,7 @@ class CRITsScript(CRITsBaseScript):
     def __init__(self, username=None):
         self.username = username
 
-    def run_services(self, service_list, obj_list, verbose=False, force=False):
-        env = crits.services.environment
+    def run_services(self, service_list, obj_list, verbose=False, config={}):
         if verbose:
             print "Running services\n-------------------\n"
         for obj in obj_list:
@@ -21,26 +21,19 @@ class CRITsScript(CRITsBaseScript):
                 if verbose:
                     print "    [+] {0} scan obj: {1}".format(service, obj.id)
                 try:
-                    env.run_service(service,
-                                    obj,
-                                    self.username,
-                                    execute='process',
-                                    force=force)
+                    result = run_service(service,
+                                         obj._meta['crits_type'],
+                                         obj.id,
+                                         self.username,
+                                         obj=obj,
+                                         custom_config=config,
+                                         execute='process')
+                    if result['success'] != True:
+                        if verbose:
+                            print "    [+] %s" % result['html']
                 except ServiceAnalysisError as e:
                     if verbose:
                         print "    [+] %s" % e
-
-    def list_available_services(self):
-        print "\nAvailable Services\n---------------------"
-        for service_name in crits.services.manager.enabled_services:
-            print "    [+] %s" % service_name
-        print "\n"
-
-    def get_service_list(self, triage = False, enabled = False):
-        if triage:
-            return crits.services.manager.triage_services
-        elif enabled:
-            return crits.services.manager.enabled_services
 
     def print_running_services(self, service_list):
         print "\nServices:\n---------------"
@@ -58,15 +51,6 @@ class CRITsScript(CRITsBaseScript):
 
     def run(self, argv):
         parser = OptionParser()
-        parser.add_option('-l', '--list', dest='list_services', action='store_true',
-                            default=False,
-                            help='List available services')
-        parser.add_option('-t', '--triage', dest='triage', action='store_true',
-                            default=False,
-                            help='Run all triage services')
-        parser.add_option('-e', '--enabled', dest='enabled', action='store_true',
-                            default=False,
-                            help='Run all enabled services')
         parser.add_option('-s', '--services', dest='services', help='Service list')
         parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
                             default=False,
@@ -77,25 +61,17 @@ class CRITsScript(CRITsBaseScript):
                             help='CRITs type query for (default: Sample)')
         parser.add_option('-i', '--identifier', dest='identifier',
                             help='Identifier for type (NOT OBJECT ID)')
-        parser.add_option('-F', '--force', dest='force', action='store_true',
-                            default=False,
-                            help='Force run')
+        parser.add_option('-c', '--config', dest='config', default={},
+                            help='Service configuration')
         (opts, args) = parser.parse_args(argv)
 
         service_list = []
-        if opts.list_services:
-            self.list_available_services()
-
-        if (opts.triage or opts.enabled):
-            service_list = self.get_service_list(opts.triage, opts.enabled)
-            if opts.verbose:
-                self.print_running_services(service_list)
-        elif (opts.services):
+        if opts.services:
             service_list = opts.services.split(',')
             if opts.verbose:
                 self.print_running_services(service_list)
 
-        if (opts.query_filter):
+        if opts.query_filter:
             query = ast.literal_eval(opts.query_filter)
             klass = class_from_type(opts.type_)
             if not klass:
@@ -104,7 +80,7 @@ class CRITsScript(CRITsBaseScript):
             if opts.verbose:
                 self.print_object_stats(obj_list, opts.query_filter)
 
-        if (opts.identifier):
+        if opts.identifier:
             obj = class_from_value(opts.type_, opts.identifier)
             if not obj:
                 print "[-] Unable to find object."
@@ -114,5 +90,9 @@ class CRITsScript(CRITsBaseScript):
             if opts.verbose:
                 self.print_object_stats(obj_list)
 
+        config = {}
+        if opts.config:
+            config = ast.literal_eval(opts.config)
+
         if obj_list and service_list:
-            self.run_services(service_list, obj_list, opts.verbose, opts.force)
+            self.run_services(service_list, obj_list, opts.verbose, config)
