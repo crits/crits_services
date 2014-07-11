@@ -8,7 +8,7 @@ class PassiveTotalConfigForm(forms.Form):
                                    widget=forms.TextInput(),
                                  initial='')
     pt_query_url = forms.CharField(required=True,
-                                   label="End offset",
+                                   label="Query URL",
                                    widget=forms.TextInput(),
                                    initial='https://www.passivetotal.org/api/query/')
 
