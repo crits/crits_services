@@ -178,35 +178,42 @@ class YaraService(Service):
 
         if config['distribution_url']:
             msg = {
-                'type': 'fileref',
-                'source': {
-                    'type': 'crits',
-                    'data': settings.INSTANCE_URL
-                },
-                'destination': {
-                    'type': 'crits_api',
-                    'data': settings.INSTANCE_URL
-                },
-                'config': {
-                    'sigdir': config['sigdir'],
-                    'sigfiles': config['sigfiles']
-                },
-                'analysis_meta': {
-                     'md5': obj.md5,
-                     'object_type': obj._meta['crits_type'],
-                     'object_id': str(obj.id),
-                     'analysis_id': self.current_task.task_id,
-                     'start_date': self.current_task.start_date,
-                     'username': self.current_task.username
+                    'type': 'fileref',
+                    'source': {
+                         'type': 'crits',
+                         'crits': {
+                              'location': settings.INSTANCE_URL,
+                              'object_type': obj._meta['crits_type'],
+                              'object_id': str(obj.id),
+                              'analysis_id': self.current_task.task_id,
+                              'start_date': self.current_task.start_date,
+                              'username': self.current_task.username,
+                              'api_key': config['api_key']
+                             }
+                    },
+                    'destination': {
+                         'type': 'crits',
+                         'crits': {
+                              'location': settings.INSTANCE_URL,
+                              'object_type': obj._meta['crits_type'],
+                              'object_id': str(obj.id),
+                              'analysis_id': self.current_task.task_id,
+                              'start_date': self.current_task.start_date,
+                              'username': self.current_task.username,
+                              'api_key': config['api_key']
+                             }
+                    },
+                    'config': {
+                        'sigfiles': self.config['sigfiles']
+                    }
                 }
-            }
 
             exch = config['exchange']
             routing_key = config['routing_key']
             try:
                 from crits.services.connector import *
                 conn = Connector(connector="amqp",
-                                 uri=config['distribution_url'])
+                                 uri=config['distribution_url'], ssl=True)
                 conn.send_msg(msg, exch, routing_key)
                 conn.release()
             except Exception as e:
