@@ -1,9 +1,11 @@
 import binascii
 
-from crits.services.core import Service, ServiceConfigOption
+from django.template.loader import render_to_string
+
+from crits.services.core import Service, ServiceConfigError
 
 from office_meta import OfficeParser
-
+from . import forms
 
 class OfficeMetaService(Service):
     """
@@ -12,17 +14,8 @@ class OfficeMetaService(Service):
 
     name = "office_meta"
     version = '1.0.2'
-    type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
     description = "Parses metadata from Office documents."
-    default_config = [
-        ServiceConfigOption('overwrite',
-                            ServiceConfigOption.BOOL,
-                            description="Whether the previous results should be overwritten."),
-        ServiceConfigOption('save_streams',
-                            ServiceConfigOption.BOOL,
-                            description="Whether streams should be added as new samples."),
-    ]
 
     @staticmethod
     def valid_for(obj):
@@ -31,10 +24,24 @@ class OfficeMetaService(Service):
             data = obj.filedata.read()
             # Need to reset the read pointer.
             obj.filedata.seek(0)
-            return office_magic in data
-        return False
+            if data.startswith(office_magic):
+                return
+        raise ServiceConfigError("Not a valid office document.")
 
-    def _scan(self, obj):
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        html = render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                 'form': forms.OfficeMetaRunForm(),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+        return html
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        return forms.OfficeMetaRunForm(config)
+
+    def scan(self, obj, config):
         oparser = OfficeParser(obj.filedata.read())
         oparser.parse_office_doc()
         if not oparser.office_header.get('maj_ver'):
@@ -49,10 +56,11 @@ class OfficeMetaService(Service):
                 'mod_time':     oparser.timestamp_string(curr_dir['modify_time'])[1],
                 'create_time':  oparser.timestamp_string(curr_dir['create_time'])[1],
             }
-            self._add_result('directory', curr_dir['norm_name'], result)
-            if self.config.get('save_streams', 0) == 1 and 'data' in curr_dir:
+            name = curr_dir['norm_name'].decode('ascii', errors='ignore')
+            self._add_result('directory', name, result)
+            if config.get('save_streams', 0) == 1 and 'data' in curr_dir:
                 self._add_file(curr_dir['data'],
-                               curr_dir['norm_name'],
+                               name,
                                relationship="Extracted_From")
         for prop_list in oparser.properties:
             for prop in prop_list['property_list']:
