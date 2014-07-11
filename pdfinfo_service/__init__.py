@@ -1,11 +1,12 @@
 import hashlib
 import logging
 
-from crits.services.core import Service
+from crits.services.core import Service, ServiceConfigError
 
 import pdfparser
 import math
 import re
+
 logger = logging.getLogger(__name__)
 
 
@@ -19,14 +20,14 @@ class PDFInfoService(Service):
 
     name = "pdfinfo"
     version = '1.1.2'
-    type_ = Service.TYPE_CUSTOM
     description = "Extract information from PDF files."
     supported_types = ['Sample']
 
     @staticmethod
     def valid_for(obj):
         # Only run on PDF files
-        return obj.is_pdf()
+        if not obj.is_pdf():
+            raise ServiceConfigError("Not a valid PDF.")
 
     def H(self, data):
         if not data:
@@ -46,7 +47,7 @@ class PDFInfoService(Service):
         else:
             return "0.0"
 
-    def _scan(self, obj):
+    def scan(self, obj, config):
         data = obj.filedata.read()
         self.object_summary = {
             'XRef':             0,
