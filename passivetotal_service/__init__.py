@@ -2,7 +2,11 @@ import logging
 import json
 import requests
 
-from crits.services.core import Service, ServiceConfigOption
+from django.template.loader import render_to_string
+
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -18,27 +22,34 @@ class PassiveTotalService(Service):
 
     name = "passivetotal_lookup"
     version = '1.0.0'
-    type_ = Service.TYPE_CUSTOM
     supported_types = [ 'Domain', 'IP' ]
     description = "Lookup a Domain or IP in PassiveTotal."
-    required_fields = []
-    default_config = [
-        ServiceConfigOption('pt_api_key',
-                            ServiceConfigOption.STRING,
-                            description="Required. Obtain from PassiveTotal.",
-                            required=True,
-                            private=True),
-        ServiceConfigOption('pt_query_url',
-                            ServiceConfigOption.STRING,
-                            default='https://www.passivetotal.org/api/query/',
-                            required=True,
-                            private=True),
-    ]
 
-    def _scan(self, obj):
+    @staticmethod
+    def get_config(existing_config):
+        if existing_config:
+            return existing_config
+
+        config = {}
+        fields = forms.PassiveTotalConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+        return config
+
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.PassiveTotalConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.PassiveTotalConfigForm
+        return form, html
+
+
+    def scan(self, obj, config):
         headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-        apiKey = self.config.get('pt_api_key', '')
-        queryUrl = self.config.get('pt_query_url', '')
+        apiKey = config.get('pt_api_key', '')
+        queryUrl = config.get('pt_query_url', '')
 
         if not apiKey:
             self._error("PassiveTotal API key is invalid or blank")
