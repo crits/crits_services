@@ -8,8 +8,11 @@ import urllib2
 import hmac
 
 from django.conf import settings
+from django.template.loader import render_to_string
 
-from crits.services.core import Service, ServiceConfigOption
+from crits.services.core import Service
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -26,29 +29,32 @@ class TotalHashService(Service):
     type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
     description = "Look up a sample on totalhash."
-    default_config = [
-        ServiceConfigOption('th_api_key',
-                            ServiceConfigOption.STRING,
-                            description="Required. Obtain from Totalhash.",
-                            required=True,
-                            private=True),
-        ServiceConfigOption('th_user',
-                            ServiceConfigOption.STRING,
-                            description="Required. Obtain from Totalhash.",
-                            required=True,
-                            private=True),
-        ServiceConfigOption('th_query_url',
-                            ServiceConfigOption.STRING,
-                            default='https://api.totalhash.com/',
-                            required=True,
-                            private=True),
-    ]
 
-    def _scan(self, obj):
+    @staticmethod
+    def get_config(existing_config):
+        if existing_config:
+            return existing_config
+
+        config = {}
+        fields = forms.TotalHashConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+        return config
+
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.TotalHashConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.TotalHashConfigForm
+        return form, html
+
+    def scan(self, obj, config):
         # If we have an API key, go ahead and look it up.
-        key = str(self.config.get('th_api_key', ''))
-        user = self.config.get('th_user', '')
-        url = self.config.get('th_query_url', '')
+        key = str(config.get('th_api_key', ''))
+        user = config.get('th_user', '')
+        url = config.get('th_query_url', '')
 
         h = obj.sha1
 
