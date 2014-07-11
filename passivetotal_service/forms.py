@@ -5,7 +5,8 @@ class PassiveTotalConfigForm(forms.Form):
     required_css_class = 'required'
     pt_api_key = forms.CharField(required=True,
                                  label="API Key",
-                                   widget=forms.TextInput(),
+                                 widget=forms.TextInput(),
+                                 help_text="Obtain API key from PassiveTotal.",
                                  initial='')
     pt_query_url = forms.CharField(required=True,
                                    label="Query URL",
