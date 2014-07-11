@@ -4,8 +4,11 @@ import urllib
 import urllib2
 
 from django.conf import settings
+from django.template.loader import render_to_string
 
-from crits.services.core import Service, ServiceConfigOption
+from crits.services.core import Service
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -23,38 +26,41 @@ class VirusTotalService(Service):
 
     name = "virustotal_lookup"
     version = '3.0.0'
-    type_ = Service.TYPE_AV
     supported_types = ['Sample', 'Domain', 'IP']
     required_fields = []
     description = "Look up a Sample, Domain or IP in VirusTotal"
-    default_config = [
-        ServiceConfigOption('vt_api_key',
-                            ServiceConfigOption.STRING,
-                            description="Required. Obtain from VirusTotal.",
-                            required=True,
-                            private=True),
-        ServiceConfigOption('vt_query_url',
-                            ServiceConfigOption.STRING,
-                            default='https://www.virustotal.com/vtapi/v2/file/report',
-                            required=True,
-                            private=True),
-        ServiceConfigOption('vt_domain_url',
-                            ServiceConfigOption.STRING,
-                            default='https://www.virustotal.com/vtapi/v2/domain/report',
-                            required=True,
-                            private=True),
-        ServiceConfigOption('vt_ip_url',
-                            ServiceConfigOption.STRING,
-                            default='https://www.virustotal.com/vtapi/v2/ip-address/report',
-                            required=True,
-                            private=True),
-    ]
 
-    def _scan(self, obj):
-        key = self.config.get('vt_api_key', '')
-        sample_url = self.config.get('vt_query_url', '')
-        domain_url = self.config.get('vt_domain_url', '')
-        ip_url = self.config.get('vt_ip_url', '')
+    @staticmethod
+    def save_runtime_config(config):
+        del config['vt_api_key']
+
+    @staticmethod
+    def get_config(existing_config):
+        if existing_config:
+            return existing_config
+
+        # Generate default config from form and initial values.
+        config = {}
+        fields = forms.VirusTotalConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+        return config
+
+    @classmethod
+    def generate_config_form(self, config):
+        # Convert sigfiles to newline separated strings
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.VirusTotalConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.VirusTotalConfigForm
+        return form, html
+
+    def scan(self, obj, config):
+        key = config.get('vt_api_key', '')
+        sample_url = config.get('vt_query_url', '')
+        domain_url = config.get('vt_domain_url', '')
+        ip_url = config.get('vt_ip_url', '')
         if not key:
             self._error("No valid VT key found")
             return
