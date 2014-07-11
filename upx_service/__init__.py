@@ -2,8 +2,11 @@ import logging
 import os
 import subprocess
 
-from crits.services.core import Service, ServiceConfigOption
-from crits.services.core import ServiceConfigError
+from django.template.loader import render_to_string
+
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -15,20 +18,11 @@ class UpxService(Service):
 
     name = "upx"
     version = '1.0.2'
-    type_ = Service.TYPE_UNPACKER
     supported_types = ['Sample']
     description = "Unpack a binary using UPX."
-    default_config = [
-        ServiceConfigOption('upx_path',
-                            ServiceConfigOption.STRING,
-                            description="Location of the upx binary.",
-                            default='/usr/bin/upx',
-                            required=True,
-                            private=True),
-    ]
 
-    @classmethod
-    def _validate(cls, config):
+    @staticmethod
+    def parse_config(config):
         upx_path = config.get("upx_path", "")
         if not upx_path:
             raise ServiceConfigError("Must specify UPX path.")
@@ -40,11 +34,31 @@ class UpxService(Service):
             raise ServiceConfigError("UPX path is not executable.")
 
         if not 'upx' in upx_path.lower():
-            raise ServiceConfigError("Executable does not appear"
-                                         " to be UPX.")
+            raise ServiceConfigError("Executable does not appear to be UPX.")
 
-    def _scan(self, obj):
-        upx_path = self.config.get("upx_path", "")
+    @staticmethod
+    def get_config(existing_config):
+        if existing_config:
+            return existing_config
+
+        # Generate default config from form and initial values.
+        config = {}
+        fields = forms.UPXConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+        return config
+
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.UPXConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.UPXConfigForm
+        return form, html
+
+    def scan(self, obj, config):
+        upx_path = config.get("upx_path", "")
 
         # _write_to_file() will delete this file at the end of the "with" block.
         with self._write_to_file() as tmp_file:
