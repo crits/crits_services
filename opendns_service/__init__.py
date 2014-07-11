@@ -13,6 +13,7 @@ class OpenDNSService(Service):
     name = "opendns_investigate"
     version = '1.0.0'
     type_ = Service.TYPE_CUSTOM
+    template = "opendns_service_template.html"
     supported_types = [ 'Domain', 'IP' ]
     required_fields = []
     default_config = [
@@ -27,6 +28,9 @@ class OpenDNSService(Service):
                             required=True,
                             private=True),
     ]
+
+    def _replace(self, string):
+        return string.replace("_", " ")
 
     def _scan(self, context):
         token = self.config.get('Investigate_API_Token', '')
@@ -72,7 +76,7 @@ class OpenDNSService(Service):
                     self._error("Request: %s, error, %s" % (r, resp.reason))
                     resps[r] = "Request: %s, error, %s" % (r, resp.reason)
                 else:
-                    resps[r] = json.loads(resp.content)
+                    resps[r] = json.loads(self._replace(resp.content))
 
         except Exception as e:
             logger.error("Network connection or HTTP request error (%s)" % e)
