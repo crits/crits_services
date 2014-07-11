@@ -7,11 +7,7 @@ logger = logging.getLogger(__name__)
 class RelationshipsService(Service):
     name = "relationships_service"
     version = '0.0.2'
-    type_ = Service.TYPE_CUSTOM
-    template = None
-    supported_types = []
     description = "Generate relationship graphs between objects."
-    default_config = []
 
     def __init__(self, *args, **kwargs):
         pass
