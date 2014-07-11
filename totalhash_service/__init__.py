@@ -50,6 +50,11 @@ class TotalHashService(Service):
         form = forms.TotalHashConfigForm
         return form, html
 
+    @staticmethod
+    def save_runtime_config(config):
+        del config['th_api_key']
+        del config['th_user']
+
     def scan(self, obj, config):
         # If we have an API key, go ahead and look it up.
         key = str(config.get('th_api_key', ''))
