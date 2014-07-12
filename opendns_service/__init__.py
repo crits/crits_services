@@ -1,7 +1,12 @@
 import logging
 import json
 import requests
-from crits.services.core import Service, ServiceConfigOption
+
+from django.template.loader import render_to_string
+
+from crits.services.core import Service
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -12,29 +17,40 @@ class OpenDNSService(Service):
 
     name = "opendns_investigate"
     version = '1.0.0'
-    type_ = Service.TYPE_CUSTOM
     template = "opendns_service_template.html"
     supported_types = [ 'Domain', 'IP' ]
-    required_fields = []
-    default_config = [
-        ServiceConfigOption('Investigate_API_Token',
-                            ServiceConfigOption.STRING,
-                            description="Required. Obtain from OpenDNS.",
-                            required=True,
-                            private=True),
-        ServiceConfigOption('Investigate_URI',
-                            ServiceConfigOption.STRING,
-                            default='https://investigate.api.opendns.com',
-                            required=True,
-                            private=True),
-    ]
+    description = "Lookup domains and IPs in OpenDNS."
+
+    @staticmethod
+    def get_config(existing_config):
+        if existing_config:
+            return existing_config
+
+        config = {}
+        fields = forms.OpenDNSConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+        return config
+
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.OpenDNSConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.OpenDNSConfigForm
+        return form, html
+
+    @staticmethod
+    def save_runtime_config(config):
+        del config['token']
 
     def _replace(self, string):
         return string.replace("_", " ")
 
-    def _scan(self, context):
-        token = self.config.get('Investigate_API_Token', '')
-        uri = self.config.get('Investigate_URI', '')
+    def scan(self, obj, config):
+        token = config.get('token', '')
+        uri = config.get('investigate_uri', '')
         headers = {'Authorization': 'Bearer ' + token}
         reqs = {}
         resps = {}
@@ -43,21 +59,19 @@ class OpenDNSService(Service):
         if not token:
             self._error("A valid API token is required to use this service.")
 
-        if context.crits_type == 'Domain':
-            thing = context.domain_dict['domain']
-            reqs["categorization"] = "/domains/categorization/" + context.domain_dict['domain'] + "?showLabels"
-            reqs["score"] = "/domains/score/" + context.domain_dict['domain']
-            reqs["recommendations"] = "/recommendations/name/" + context.domain_dict['domain'] + ".json"
-            reqs["links"] = "/links/name/" + context.domain_dict['domain'] + ".json"
-            reqs["security"] = "/security/name/" + context.domain_dict['domain'] + ".json"
-            reqs["latest_tags"] = "/domains/" + context.domain_dict['domain'] + "/latest_tags"
-            reqs["dnsdb"] = "/dnsdb/name/a/" + context.domain_dict['domain'] + ".json"
-
-        elif context.crits_type == 'IP':
-            thing = context.ip_dict['ip']
-            reqs["dnsdb"] = "/dnsdb/ip/a/" + context.ip_dict['ip'] + ".json"
-            reqs["latest_domains"] = "/ips/" + context.ip_dict['ip'] + "/latest_domains"
-
+        if obj._meta['crits_type'] == 'Domain':
+            thing = obj.domain
+            reqs["categorization"] = "/domains/categorization/" + thing + "?showLabels"
+            reqs["score"] = "/domains/score/" + thing
+            reqs["recommendations"] = "/recommendations/name/" + thing + ".json"
+            reqs["links"] = "/links/name/" + thing + ".json"
+            reqs["security"] = "/security/name/" + thing + ".json"
+            reqs["latest_tags"] = "/domains/" + thing + "/latest_tags"
+            reqs["dnsdb"] = "/dnsdb/name/a/" + thing + ".json"
+        elif obj._meta['crits_type'] == 'IP':
+            thing = obj.ip
+            reqs["dnsdb"] = "/dnsdb/ip/a/" + thing + ".json"
+            reqs["latest_domains"] = "/ips/" + thing + "/latest_domains"
         else:
             logger.error("Unsupported type.")
             self._error("Unsupported type.")
@@ -85,11 +99,11 @@ class OpenDNSService(Service):
 
         for r in resps.keys():
             if r == 'categorization':
-                self._add_result(r, thing, resps[r][thing])       
+                self._add_result(r, thing, resps[r][thing])
             elif r == 'score':
-                self._add_result(r, thing, {'Score': scores[resps[r][thing]]}) 
+                self._add_result(r, thing, {'Score': scores[resps[r][thing]]})
             elif r == 'dnsdb':
-                self._add_result(r, thing, resps[r]['features'])       
+                self._add_result(r, thing, resps[r]['features'])
             elif r == 'security':
                 self._add_result(r, thing, resps[r])
             elif r == 'latest_tags':
@@ -102,9 +116,7 @@ class OpenDNSService(Service):
             elif r == 'latest_domains':
                 for domain in resps[r]:
                     self._add_result(r, domain['name'], domain)
-
             else:
-                self._add_result(r, thing, {str(type(resps[r])): str(resps[r])})  
+                self._add_result(r, thing, {str(type(resps[r])): str(resps[r])})
                 logger.error("Unsure how to handle %s" % (str(resps[r])))
                 self._error("Unsure how to handle %s" % (str(resps[r])))
-           
