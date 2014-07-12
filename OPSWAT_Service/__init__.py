@@ -2,9 +2,13 @@ import urllib2
 import xml.parsers.expat
 
 from datetime import datetime
-from crits.core.data_tools import create_zip
 
-from crits.services.core import Service, ServiceConfigOption
+from django.template.loader import render_to_string
+
+from crits.core.data_tools import create_zip
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 class OPSWATService(Service):
     """
@@ -19,20 +23,33 @@ class OPSWATService(Service):
     type_ = Service.TYPE_AV
     supported_types = ['Sample']
     description = "Send a sample to OPSWAT appliance."
-    default_config = [
-        ServiceConfigOption('OPSWAT_url',
-                            ServiceConfigOption.STRING,
-                            description="URL for the OPSWAT REST API.",
-                            default='http://example.org:8008/metascan_rest/scanner?method=scan&archive_pwd=infected',
-                            required=True,
-                            private=True),
-    ]
 
-    def _scan(self, obj):
+    @staticmethod
+    def get_config(existing_config):
+        if existing_config:
+            return existing_config
+
+        config = {}
+        fields = forms.OPSWATConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+        return config
+
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.OPSWATConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.OPSWATConfigForm
+        return form, html
+
+    @staticmethod
+    def valid_for(obj):
         if obj.filedata.grid_id == None:
-            self._info("No binary found.")
-            return
+            raise ServiceConfigError("Missing filedata.")
 
+    def scan(self, obj, config):
         data = obj.filedata.read()
         zipdata = create_zip([("samples", data)])
         url = self.config.get('OPSWAT_url', '')
