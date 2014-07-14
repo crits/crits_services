@@ -165,12 +165,12 @@ def parse_content_block(content_block, privkey=None, pubkey=None):
 
 def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirmed=False):
     """
-	:param analyst The analyst triggering this TAXII service call
-	:param obj The context object being shared
-	:param rcpts The list of sources to which the TAXII message is being sent
-	:param preview If true, generate and return the STIX doc, rather than sending via TAXII
-	:param relation_choices The list of items related to OBJ that have been chosen for sharing
-	:param confirmed True if user has accepted & approved releasability updates
+    :param analyst The analyst triggering this TAXII service call
+    :param obj The context object being shared
+    :param rcpts The list of sources to which the TAXII message is being sent
+    :param preview If true, generate and return the STIX doc, rather than sending via TAXII
+    :param relation_choices The list of items related to OBJ that have been chosen for sharing
+    :param confirmed True if user has accepted & approved releasability updates
     """
     ret = {
             'success': False, # tells client whether any message was sent successfully
@@ -188,8 +188,8 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
 
     # If dealing with an event context, make sure at least one related item is
     # selected. Events have no real sharing value without related information.
-    if obj._meta['crits_type'] == Event._meta['crits_type']:
-        if len(relation_choices) == 0:
+    if obj._meta['crits_type'] == Event._meta['crits_type'] 
+        and len(relation_choices) == 0:
             ret['reason'] = "Need at least one related item to send."
             return ret
 
@@ -210,7 +210,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
             destination_feeds.append((src, feed.strip(), filepath.strip()))
 
     if not destination_feeds or len(destination_feeds) != len(rcpts):
-	# TAXII form ensures that this shouldn't happen, but just in case...
+        # TAXII form ensures that this shouldn't happen, but just in case...
         ret['reason'] = "Misconfigured TAXII service -- contact an administrator."
         return ret
 
@@ -228,13 +228,13 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
 
     # if doing a preview of content, return content now
     if preview:
-	ret['preview'] = stix_doc.to_xml()
-	return ret
+        ret['preview'] = stix_doc.to_xml()
+        return ret
     elif not confirmed: # if user has not accepted responsibility for releasability
-	release = verify_releasability(rcpts, stix_msg['final_objects'], analyst, False)
-	if release: # if releasability needs to change
-	    ret['release_changes'] = release
-	    return ret # make user confirm changes, instead of sending messages
+        release = verify_releasability(rcpts, stix_msg['final_objects'], analyst, False)
+        if release: # if releasability needs to change
+            ret['release_changes'] = release
+            return ret # make user confirm changes, instead of sending messages
 
     #TODO: this doesn't confirm that 'hostname' is a TAXII server...
     if not resolve_taxii_server(hostname):
@@ -256,7 +256,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
     # one message per feed, with appropriate TargetFeed header specified
     # Store each TAXII message in a list. 
     for feed in destination_feeds:
-	rcpt = feed[0]
+        rcpt = feed[0]
         # Create encrypted block
         encrypted_block = encrypt_block(
             tm.ContentBlock(
@@ -273,66 +273,66 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
             content_blocks = [content_block],
             extended_headers = {'TargetFeed': feed[1]})
 
-	# send inbox message via TAXII service
-	try:
-            response = client.callTaxiiService2(hostname,
-                                                "/inbox/",
-                                                t.VID_TAXII_XML_10,
-                                                inbox_message.to_xml())
-            taxii_message = t.get_message_from_http_response(response, inbox_message.message_id)
-            if taxii_message.status_type == tm.ST_SUCCESS: # if message sent & received without issue
-	        ret['rcpts'].append(rcpt)
-            else: # if message not sent or received with error (unsuccessful)
-                ret['failed_rcpts'].append((rcpt, taxii_message.status_type)) # note for user
-	except Exception, e: # can happen if 'hostname' is reachable, but is not a TAXII server, etc
-	    ret['failed_rcpts'].append((rcpt, "Unexpected issue"))
+    # send inbox message via TAXII service
+    try:
+        response = client.callTaxiiService2(hostname,
+                                            "/inbox/",
+                                            t.VID_TAXII_XML_10,
+                                            inbox_message.to_xml())
+        taxii_message = t.get_message_from_http_response(response, inbox_message.message_id)
+        if taxii_message.status_type == tm.ST_SUCCESS: # if message sent & received without issue
+            ret['rcpts'].append(rcpt)
+        else: # if message not sent or received with error (unsuccessful)
+            ret['failed_rcpts'].append((rcpt, taxii_message.status_type)) # note for user
+    except Exception, e: # can happen if 'hostname' is reachable, but is not a TAXII server, etc
+        ret['failed_rcpts'].append((rcpt, "Unexpected issue"))
 
     if ret['rcpts']: # update releasability for successful TAXII messages
-	verify_releasability(ret['rcpts'], stix_msg['final_objects'], analyst, True)
+        verify_releasability(ret['rcpts'], stix_msg['final_objects'], analyst, True)
 
     ret['success'] = True
     return ret
 
 def verify_releasability(rcpts, items, analyst, update=False):
     """
-	Given the list of items being sent to a list of recipients via TAXII,
-	determine what releasability changes (if any) are necessary for the
-	TAXII message to be sent.
+    Given the list of items being sent to a list of recipients via TAXII,
+    determine what releasability changes (if any) are necessary for the
+    TAXII message to be sent.
 
-	:param rcpts List of sources to which all items in ITEMS must be releasable
-	:param items List of items to ensure have proper releasability within RCPTS
-	:param analyst Name of the analyst triggering the releasability update
-	:param update If true, execute the changes
-	:return Dict mapping item to list of necessary releasability additions
+    :param rcpts List of sources to which all items in ITEMS must be releasable
+    :param items List of items to ensure have proper releasability within RCPTS
+    :param analyst Name of the analyst triggering the releasability update
+    :param update If true, execute the changes
+    :return Dict mapping item to list of necessary releasability additions
     """
     date = datetime.now() # timestamp to use for updates, if updating
     releaseable = Releasability.ReleaseInstance(analyst=analyst, date=date)
     changes = []
     for item in items: # for each item
-	updates = [] # track sources that need releasability update
-	curr_rel = [rel.name for rel in item['releasability']] # current item releasability
-	for rcpt in rcpts: # check each source
-	    if not rcpt in curr_rel: # if ITEM is not releasable to source RCPT
-		updates.append(rcpt) # note necessary releasability update
-		if update: # if processing updates, add releasability to item
-		    item.add_releasability(name=rcpt, instances=[releaseable])
-	    elif update: # if updating and already releasable, add a release instance
-	        item.add_releasability_instance(name=rcpt, instance=releaseable)
-	if update: 
-	    # if updating, the item will always be changed, so save it
-	    item.save(username=analyst)
-	if updates:
-	    item_type = item._meta['crits_type']
-	    formatted = formats.get_format(item_type).format(item)
-	    changes.append((item_type, str(item.id), formatted, updates))
+        updates = [] # track sources that need releasability update
+        curr_rel = [rel.name for rel in item['releasability']] # current item releasability
+        for rcpt in rcpts: # check each source
+            if not rcpt in curr_rel: # if ITEM is not releasable to source RCPT
+                updates.append(rcpt) # note necessary releasability update
+                if update: # if processing updates, add releasability to item
+                    item.add_releasability(name=rcpt, instances=[releaseable])
+            elif update: # if updating and already releasable, add a release instance
+                item.add_releasability_instance(name=rcpt, instance=releaseable)
+    if update: 
+        # if updating, the item will always be changed, so save it
+        item.save(username=analyst)
+    if updates:
+        item_type = item._meta['crits_type']
+        formatted = formats.get_format(item_type).format(item)
+        changes.append((item_type, str(item.id), formatted, updates))
     return changes
 
 
 def resolve_taxii_server(hostname):
     """
-	Attempt to verify availability of the server at the given hostname.
+    Attempt to verify availability of the server at the given hostname.
 
-	:return 1 if server was reachable, 0 otherwise.
+    :return 1 if server was reachable, 0 otherwise.
     """
     try:
         socket.gethostbyname(hostname)
@@ -342,9 +342,9 @@ def resolve_taxii_server(hostname):
 
 def encrypt_block(blob, pubkey):
     """
-	Encrypt the given blob of data, given the public key provided.
+    Encrypt the given blob of data, given the public key provided.
 
-	:return The encrypted blob.
+    :return The encrypted blob.
     """
     # Make a MemoryBuffer of the message.
     inbuf = BIO.MemoryBuffer(blob)

@@ -40,15 +40,15 @@ def get_taxii_config_form(request, crits_type, crits_id):
 @user_passes_test(user_can_view_data)
 def preview_taxii_service(request, crits_type, crits_id):
     """
-	Download a copy of the STIX document that will be generated
-	based on current TAXII Form UI selections.
+    Download a copy of the STIX document that will be generated
+    based on current TAXII Form UI selections.
 
-	:param request The request object
-	:param crits_type The type of the crits object that will be converted
-	:param crits_id The ID of the crits object that will be converted
+    :param request The request object
+    :param crits_type The type of the crits object that will be converted
+    :param crits_id The ID of the crits object that will be converted
     """
     if request.method == "GET":
-	return get_taxii_result(request, crits_type, crits_id, True)
+        return get_taxii_result(request, crits_type, crits_id, True)
     else:
         return render_to_response('error.html',
                                   {'error': "Must be GET request."},
@@ -57,15 +57,15 @@ def preview_taxii_service(request, crits_type, crits_id):
 @user_passes_test(user_can_view_data)
 def execute_taxii_service(request, crits_type, crits_id):
     """
-	Convert the given CRITs object to standards via STIX & CybOX,
-	then attempt to send as a TAXII message to the configured TAXII server.
+    Convert the given CRITs object to standards via STIX & CybOX,
+    then attempt to send as a TAXII message to the configured TAXII server.
 
-	:param request The request object
-	:param crits_type The type of the crits object that will be converted
-	:param crits_id The ID of the crits object that will be converted
+    :param request The request object
+    :param crits_type The type of the crits object that will be converted
+    :param crits_id The ID of the crits object that will be converted
     """
     if request.method == "POST" and request.is_ajax():
-	return get_taxii_result(request, crits_type, crits_id, False)
+        return get_taxii_result(request, crits_type, crits_id, False)
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
@@ -73,14 +73,14 @@ def execute_taxii_service(request, crits_type, crits_id):
 
 def get_taxii_result(request, crits_type, crits_id, preview):
     """
-	Create the STIX document representing the given CRITs object.
-	If preview, download the STIX file for user to peruse, else
-	wrap in a TAXII message and send to TAXII server.
+    Create the STIX document representing the given CRITs object.
+    If preview, download the STIX file for user to peruse, else
+    wrap in a TAXII message and send to TAXII server.
 
-	:param request The request object
-	:param crits_type The type of the crits object that will be converted
-	:param crits_id The ID of the crits object that will be converted
-	:param preview Boolean flag indicating if this is a preview generation or message send req
+    :param request The request object
+    :param crits_type The type of the crits object that will be converted
+    :param crits_id The ID of the crits object that will be converted
+    :param preview Boolean flag indicating if this is a preview generation or message send req
     """
     obj = class_from_id(crits_type, crits_id)
     if not obj:
@@ -96,14 +96,14 @@ def get_taxii_result(request, crits_type, crits_id, preview):
         relation_choices = form.get_chosen_relations()
 
         data = handlers.run_taxii_service(request.user.username, obj, rcpts, preview, relation_choices, confirm_rel)
-	if preview and data and 'preview' in data: # if doing preview and data available, download as file
-	    resp = HttpResponse(data['preview'], content_type="application/xml")
-	    resp['Content-Disposition'] = 'attachment; filename="STIX_preview.xml"'
-	    return resp
-	else: # else show success/error message that has been generated
-    	    return HttpResponse(json.dumps(data), mimetype="application/json")
+        if preview and data and 'preview' in data: # if doing preview and data available, download as file
+            resp = HttpResponse(data['preview'], content_type="application/xml")
+            resp['Content-Disposition'] = 'attachment; filename="STIX_preview.xml"'
+            return resp
+        else: # else show success/error message that has been generated
+            return HttpResponse(json.dumps(data), mimetype="application/json")
     else: # form doesn't validate
         data = {'success': False, 'reason': "Invalid options provided. Please fix and try again."}
-    	return HttpResponse(json.dumps(data), mimetype="application/json")
+        return HttpResponse(json.dumps(data), mimetype="application/json")
     
 
