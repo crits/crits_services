@@ -20,7 +20,6 @@ class OPSWATService(Service):
 
     name = "OPSWAT"
     version = "1.0.0"
-    type_ = Service.TYPE_AV
     supported_types = ['Sample']
     description = "Send a sample to OPSWAT appliance."
 

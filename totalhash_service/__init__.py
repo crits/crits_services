@@ -26,7 +26,6 @@ class TotalHashService(Service):
 
     name = "totalhash"
     version = '0.1.0'
-    type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
     description = "Look up a sample on totalhash."
 
