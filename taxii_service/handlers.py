@@ -188,8 +188,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
 
     # If dealing with an event context, make sure at least one related item is
     # selected. Events have no real sharing value without related information.
-    if obj._meta['crits_type'] == Event._meta['crits_type'] 
-        and len(relation_choices) == 0:
+    if obj._meta['crits_type'] == Event._meta['crits_type'] and len(relation_choices) == 0:
             ret['reason'] = "Need at least one related item to send."
             return ret
 
