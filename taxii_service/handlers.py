@@ -317,13 +317,13 @@ def verify_releasability(rcpts, items, analyst, update=False):
                     item.add_releasability(name=rcpt, instances=[releaseable])
             elif update: # if updating and already releasable, add a release instance
                 item.add_releasability_instance(name=rcpt, instance=releaseable)
-    if update: 
-        # if updating, the item will always be changed, so save it
-        item.save(username=analyst)
-    if updates:
-        item_type = item._meta['crits_type']
-        formatted = formats.get_format(item_type).format(item)
-        changes.append((item_type, str(item.id), formatted, updates))
+        if update: 
+            # if updating, the item will always be changed, so save it
+            item.save(username=analyst)
+        if updates:
+            item_type = item._meta['crits_type']
+            formatted = formats.get_format(item_type).format(item)
+            changes.append((item_type, str(item.id), formatted, updates))
     return changes
 
 
