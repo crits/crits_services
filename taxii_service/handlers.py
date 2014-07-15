@@ -10,21 +10,20 @@ from M2Crypto import BIO, SMIME, X509, Rand
 import libtaxii as t
 import libtaxii.clients as tc
 import libtaxii.messages as tm
+import libtaxii.messages_11 as tm11
 
 from django.conf import settings
 
 from . import taxii
 from . import formats
-from crits.core.class_mapper import class_from_id, class_from_value
-from crits.campaigns.campaign import Campaign
 from crits.events.event import Event
 from crits.core.crits_mongoengine import Releasability
-from crits.standards.parsers import STIXParser
 from crits.standards.handlers import import_standards_doc
 from crits.service_env import manager
-from crits.objects.object_mapper import UnsupportedCybOXObjectTypeError
 
-def execute_taxii_agent(hostname=None, feed=None, keyfile=None, certfile=None, start=None, end=None, analyst=None, method=None):
+def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
+                        certfile=None, start=None, end=None, analyst=None,
+                        method=None):
     ret = {
             'events': [],
             'samples': [],
@@ -46,6 +45,9 @@ def execute_taxii_agent(hostname=None, feed=None, keyfile=None, certfile=None, s
         certfile = str(sc['certfile'])
     if not feed:
         feed = str(sc['data_feed'])
+    if https == None:
+        https = sc['https']
+
 
     # Last document's end time is our start time.
     if not start:
@@ -78,9 +80,10 @@ def execute_taxii_agent(hostname=None, feed=None, keyfile=None, certfile=None, s
         return ret
 
     client = tc.HttpClient()
-    client.setUseHttps(True)
-    client.setAuthType(tc.HttpClient.AUTH_CERT)
-    client.setAuthCredentials({'key_file': keyfile, 'cert_file': certfile})
+    if https:
+        client.setUseHttps(True)
+        client.setAuthType(tc.HttpClient.AUTH_CERT)
+        client.setAuthCredentials({'key_file': keyfile, 'cert_file': certfile})
 
     if settings.HTTP_PROXY:
         proxy = settings.HTTP_PROXY
@@ -132,14 +135,15 @@ def execute_taxii_agent(hostname=None, feed=None, keyfile=None, certfile=None, s
         ret['successes'] += 1
 
         for k in ["events", "samples", "emails", "indicators"]:
-            for i in objs[k]:
-                ret[k].append(i)
+            if k in objs:
+                for i in objs[k]:
+                    ret[k].append(i)
 
     crits_taxii.save()
     return ret
 
 def parse_content_block(content_block, privkey=None, pubkey=None):
-    if content_block.content_binding == 'SMIME':
+    if content_block.content_binding == 'application/x-pks7-mime':
         if not privkey and not pubkey:
             return None
 
@@ -177,7 +181,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
             'rcpts': [], # list of sources the message was sent
             'failed_rcpts': [], # list of sources to which the message failed to be sent
           }
-    
+
     if not obj: # no item (shouldn't occur unless someone is really trying to break things.)
         ret['reason'] = "No object found."
         return ret
@@ -195,9 +199,9 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
     # Get config and grab some stuff we need.
     sc = manager.get_config('taxii_service')
     hostname = sc['hostname']
+    https = sc['https']
     keyfile = sc['keyfile']
     certfile = sc['certfile']
-    data_feed = sc['data_feed']
     certfiles = sc['certfiles']
 
     # collect the list of destination data feeds for the message
@@ -219,7 +223,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
     # for each selected recipient.
     #
     # NOTE: this does not guarantee that the message will send to
-    # each/any recipient feed successfully. 
+    # each/any recipient feed successfully.
 
     # Convert object and chosen related items to STIX/CybOX
     stix_msg = obj.to_stix(rcpts, analyst, relation_choices)
@@ -241,9 +245,10 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
         return ret
 
     client = tc.HttpClient()
-    client.setUseHttps(True)
-    client.setAuthType(tc.HttpClient.AUTH_CERT)
-    client.setAuthCredentials({'key_file': keyfile, 'cert_file': certfile})
+    if https:
+        client.setUseHttps(True)
+        client.setAuthType(tc.HttpClient.AUTH_CERT)
+        client.setAuthCredentials({'key_file': keyfile, 'cert_file': certfile})
 
     if settings.HTTP_PROXY:
         proxy = settings.HTTP_PROXY
@@ -253,7 +258,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
 
     # generate and send inbox messages
     # one message per feed, with appropriate TargetFeed header specified
-    # Store each TAXII message in a list. 
+    # Store each TAXII message in a list.
     for feed in destination_feeds:
         rcpt = feed[0]
         # Create encrypted block
@@ -262,35 +267,113 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
                 content_binding = t.CB_STIX_XML_10,
                 content = stix_doc.to_xml()).to_xml(),
             feed[2])
-        # Wrap encrypted block in content block
-        content_block = tm.ContentBlock(
-            content_binding = "SMIME",
-            content = encrypted_block)
-        # Create inbox message
-        inbox_message = tm.InboxMessage(
-            message_id = tm.generate_message_id(),
-            content_blocks = [content_block],
-            extended_headers = {'TargetFeed': feed[1]})
+        # Try TAXII 1.1 first:
+        try_10 = False
+        current_status_type = None
+        failed = True
+        result = gen_send(tm11, client, encrypted_block, hostname,
+                          t.VID_TAXII_XML_11,
+                          dcn = [feed[1]],
+                          url = "/services/inbox/")
+        if len(result) == 2:
+            res = result[1]
+            if res.status_type == tm11.ST_SUCCESS:
+                failed = False
+                ret['rcpts'].append(rcpt)
+            else:
+                try_10 = True
+                current_status_type = "<br>tm11: " + res.status_type
+        else:
+            try_10 = True
+            current_status_type = "<br>tm11: " + result[0]
 
-    # send inbox message via TAXII service
-    try:
-        response = client.callTaxiiService2(hostname,
-                                            "/inbox/",
-                                            t.VID_TAXII_XML_10,
-                                            inbox_message.to_xml())
-        taxii_message = t.get_message_from_http_response(response, inbox_message.message_id)
-        if taxii_message.status_type == tm.ST_SUCCESS: # if message sent & received without issue
-            ret['rcpts'].append(rcpt)
-        else: # if message not sent or received with error (unsuccessful)
-            ret['failed_rcpts'].append((rcpt, taxii_message.status_type)) # note for user
-    except Exception, e: # can happen if 'hostname' is reachable, but is not a TAXII server, etc
-        ret['failed_rcpts'].append((rcpt, "Unexpected issue"))
+        # Try TAXII 1.0 since 1.1 seems to have failed.
+        if try_10:
+            result = gen_send(tm, client, encrypted_block, hostname,
+                            t.VID_TAXII_XML_10,
+                            eh = {'TargetFeed': feed[1]},
+                            url = "/inbox/")
+            if len(result) == 2:
+                res = result[1]
+                if res.status_type == tm11.ST_SUCCESS:
+                    failed = False
+                    ret['rcpts'].append(rcpt)
+                else:
+                    err = "tm10: " + res.status_type
+                    current_status_type += "<br>%s" % err
+            else:
+                err = "tm10: " + result[0]
+                current_status_type += "<br>%s" % err
+
+        if failed:
+            ret['failed_rcpts'].append((rcpt, current_status_type))
 
     if ret['rcpts']: # update releasability for successful TAXII messages
         verify_releasability(ret['rcpts'], stix_msg['final_objects'], analyst, True)
 
     ret['success'] = True
     return ret
+
+def gen_send(tm_, client, encrypted_block, hostname, t_xml, dcn=None, eh=None,
+             url="/inbox/"):
+    """
+    Generate and send a TAXII message.
+
+    :param tm_: The TAXII version imported that we should use.
+    :type tm_: TAXII message class.
+    :param client: The TAXII client to use.
+    :type client: TAXII Client.
+    :param encrypted_block: The encrypted block to use.
+    :type encrypted_block: TAXII Encrypted Block
+    :param hostname: The TAXII server hostname to connect to.
+    :type hostname: str
+    :param t_xml: The TAXII XML Schema version we used.
+    :type t_xml: str
+    :param dcn: Destination Collection Names we are using.
+    :type dcn: list
+    :param eh: Extended Headers to use.
+    :type eh: dict
+    :param url: The URL suffix to locate the inbox service.
+    :type url: str
+    :returns: tuple (response, taxii_message) or (exception message)
+    """
+
+    # Wrap encrypted block in content block
+    content_block = tm_.ContentBlock(
+        content_binding = "application/x-pks7-mime",
+        content = encrypted_block
+    )
+    # Create inbox message
+    if dcn:
+        inbox_message = tm_.InboxMessage(
+            message_id = tm_.generate_message_id(),
+            content_blocks = [content_block],
+            destination_collection_names = dcn
+        )
+    elif eh:
+        inbox_message = tm.InboxMessage(
+            message_id = tm.generate_message_id(),
+            content_blocks = [content_block],
+            extended_headers = eh
+        )
+    else:
+        #TODO: return better
+        return None
+
+    # send inbox message via TAXII service
+    try:
+        response = client.callTaxiiService2(
+            hostname,
+            url,
+            t_xml,
+            inbox_message.to_xml()
+        )
+        taxii_message = t.get_message_from_http_response(response,
+                                                         inbox_message.message_id)
+        return (response, taxii_message)
+    # can happen if 'hostname' is reachable, but is not a TAXII server, etc
+    except Exception, e:
+        return (e)
 
 def verify_releasability(rcpts, items, analyst, update=False):
     """
@@ -314,10 +397,12 @@ def verify_releasability(rcpts, items, analyst, update=False):
             if not rcpt in curr_rel: # if ITEM is not releasable to source RCPT
                 updates.append(rcpt) # note necessary releasability update
                 if update: # if processing updates, add releasability to item
-                    item.add_releasability(name=rcpt, instances=[releaseable])
+                    item.add_releasability(name=rcpt, instances=[releaseable],
+                                           analyst=analyst)
             elif update: # if updating and already releasable, add a release instance
-                item.add_releasability_instance(name=rcpt, instance=releaseable)
-        if update: 
+                item.add_releasability_instance(name=rcpt, instance=releaseable,
+                                                analyst=analyst)
+        if update:
             # if updating, the item will always be changed, so save it
             item.save(username=analyst)
         if updates:
