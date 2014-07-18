@@ -249,4 +249,4 @@ class YaraService(Service):
                     for key in strings:
                         string_list.append(strings[key])
                     self._add_result(self.name, match.rule, {'strings': string_list})
-            self.finalize()
+            self.current_task.finish()
