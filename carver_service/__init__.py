@@ -2,6 +2,7 @@ import hashlib
 
 from django.template.loader import render_to_string
 
+from crits.samples.handlers import handle_file
 from crits.services.core import Service, ServiceConfigError
 
 from . import forms
@@ -44,5 +45,13 @@ class CarverService(Service):
         if not data:
             self._error("No data.")
         else:
-            self._add_file(data, filename=hashlib.md5(data).hexdigest(), log_msg="Carved file with MD5: {0}", relationship="Contains")
+            filename = hashlib.md5(data).hexdigest()
+            handle_file(filename, data, obj.source,
+                        parent_id=str(obj.id),
+                        campaign=obj.campaign,
+                        method=self.name,
+                        relationship='Contains',
+                        user=self.current_task.username)
+            # Filename is just the md5 of the data...
+            self._add_result("file_added", filename, {'md5': filename})
         return
