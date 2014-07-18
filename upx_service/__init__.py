@@ -1,10 +1,12 @@
 import logging
 import os
 import subprocess
+import hashlib
 
 from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
+from crits.samples.handlers import handle_file
 
 from . import forms
 
@@ -88,6 +90,13 @@ class UpxService(Service):
 
             #TODO: check to make sure file was modified (new MD5), indicating
             # it was actually unpacked
-            self._add_file(data,
-                           log_msg="UPX unpacked file with MD5: {0}",
-                           relationship="Packed_From")
+            md5 = hashlib.md5(data).hexdigest()
+            filename = md5 + ".upx"
+            handle_file(filename, data, obj.source,
+                        parent_id=str(obj.id),
+                        campaign=obj.campaign,
+                        method=self.name,
+                        relationship='Packed_From',
+                        user=self.current_task.username)
+            # Filename is just the md5 of the data...
+            self._add_result("file_added", filename, {'md5': filename})
