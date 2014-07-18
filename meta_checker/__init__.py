@@ -2,7 +2,7 @@ import logging
 
 from django.template.loader import render_to_string
 
-from crits.services.core import Service, ServiceConfigOption
+from crits.services.core import Service, ServiceConfigError
 from crits.samples.sample import Sample
 
 from . import forms
