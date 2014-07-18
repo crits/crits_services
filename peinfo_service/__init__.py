@@ -18,6 +18,7 @@ from time import localtime, strftime
 from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
+from crits.samples.handlers import handle_file
 
 from . import forms
 
@@ -150,7 +151,8 @@ class PEInfoService(Service):
             self._dump_resource_data("ROOT",
                                      pe.DIRECTORY_ENTRY_RESOURCE,
                                      pe,
-                                     config['resource'])
+                                     config['resource'],
+                                     obj)
         else:
             self._debug("No resources")
 
@@ -228,7 +230,7 @@ class PEInfoService(Service):
         imphash = pe.get_imphash()
         self._add_result('imphash', imphash, {'import_hash': imphash})
 
-    def _dump_resource_data(self, name, dir, pe, save):
+    def _dump_resource_data(self, name, dir, pe, save, obj):
         for i in dir.entries:
             try:
                 if hasattr(i, 'data'):
@@ -242,9 +244,15 @@ class PEInfoService(Service):
                     if len(data) > 0:
                         if (save or data[:2] == 'MZ' or data[:4] == "%%PDF"):
                             self._debug("Adding new file from resource len %d - %s" % (len(data), rname))
-                            self._add_file(data,
-                                           filename=rname,
-                                           relationship="Extracted_From")
+                            handle_file(rname, data, obj.source,
+                                        parent_id=str(obj.id),
+                                        campaign=obj.campaign,
+                                        method=self.name,
+                                        relationship='Extracted_From',
+                                        user=self.current_task.username)
+                            rsrc_md5 = hashlib.md5(data).hexdigest()
+                            self._add_result("file_added", rname,
+                                             {'md5': rsrc_md5})
                     results = {
                             "resource_type": x.struct.name.decode('UTF-8', errors='replace') ,
                             "resource_id": i.id,
@@ -259,7 +267,7 @@ class PEInfoService(Service):
                 if hasattr(i, "directory"):
                     self._debug("Parsing next directory entry %s" % i.name)
                     self._dump_resource_data(name + "_%s" % i.name,
-                                             i.directory, pe, save)
+                                             i.directory, pe, save, obj)
             except Exception as e:
                 self._parse_error("Resource directory entry", e)
 
