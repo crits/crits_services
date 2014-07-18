@@ -80,6 +80,7 @@ class YaraService(Service):
     def save_runtime_config(config):
         if config['distribution_url']:
             del config['api_key']
+            del config['distribution_url']
         del config['sigdir']
 
     @staticmethod
