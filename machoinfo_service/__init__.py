@@ -1,6 +1,8 @@
 import struct
+import hashlib
 
 from crits.services.core import Service, ServiceConfigError
+from crits.certificates.handlers import handle_cert_file
 
 from machoinfo import MachOEntity, MachOParser, MachOParserError
 
@@ -89,7 +91,15 @@ class MachOInfoService(Service):
                             }
                             self._add_result(e, sig['hash'], result)
                         elif sig['type'] == MachOEntity.CERT_BLOB:
-                            self._add_file(sig['pkcs7'], relationship='Extracted_From', collection='Certificate')
+                            data = sig['pkcs7']
+                            filename = hashlib.md5(data).hexdigest()
+                            handle_cert_file(filename, data, obj.source,
+                                             parent_id=str(obj.id),
+                                             parent_type=obj._meta['crits_type'],
+                                             method=self.name,
+                                             relationship='Extracted_From',
+                                             user=self.current_task.username)
+                            self._add_result("cert_added", filename, {'md5': filename})
 
             e = 'Entity %i - Version Info' % i
             result = {}
