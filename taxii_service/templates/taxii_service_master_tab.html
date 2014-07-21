@@ -1,0 +1,93 @@
+{% load url from future %}
+
+{% include "resources/taxii_style_tag.html" %}
+{% include "resources/taxii_jscript_tag.html" %}
+
+<div id="taxii_service" width="100%" style="text-align: center">
+
+	<h1 id="current_state">Build TAXII Message</h1>
+
+	<div id="taxii-loader" style="text-align: center; display: none;">
+		<img src="/images/chasingloader.gif" width="75px;"/>
+		<br />
+	</div>
+
+	<section id="taxii_config_container" class="taxii-container">
+		<form id="taxii_config_form">
+			<table id="taxii_form_table">
+			</table>
+		</form>
+		<div style="text-align: center; padding-bottom: 10px; margin-top: 15px;">
+			<div class="taxii_notice">
+				<strong>
+					<em>Note:</em>
+				</strong> 
+				the current <strong class="required">{{type}}</strong> object is automatically included in the message.
+				<br/><br/>
+				<em>
+				Form options are capped by relationship count and result set size. <br/>Not all related items may appear.</em>
+			</div><br/>
+			<button id="taxii_submit" class="taxii_btn">Send</button>
+			<button id="taxii_preview" class="taxii_btn">Preview</button>
+		</div>
+	</section>
+
+	<section id="confirm_container" class="taxii-container" style="display: none;">
+		<div>
+			<div class="taxii_notice">
+				All CRITs items sent within a TAXII message must be releasable to each recipient. 
+				<br/>
+				The following items are not currently releasable to some of the recipients you selected:
+			</div>
+
+			<div class="limited_ctr">
+				<table id="unreleasable_list" class="taxii-table">
+					<thead>
+						<tr>
+							<th>Item</th>
+							<th>Unreleasable Recipients</th>
+						<tr/>
+					</thead>
+					<tbody>
+					</tbody>
+				</table>
+			</div>
+			<div class="taxii_notice">
+				If you are certain you want to continue, click the checkbox and then click 'continue', and these items will be updated automatically. <br/><span class="high_priority taxii_ctype_label">
+					You are responsible for these releasability updates.
+					You must confirm that you wish to make these changes.
+				</span>
+			</div>
+		</div>
+		<br/>
+		<div>
+			<input id="auth_checkbox" type="checkbox"/>
+			<strong>I authorize these releasability updates</strong>
+			<br/>
+		</div>
+		<button id="confirm_releasability" class="taxii_btn">Continue</button>
+		<button class="back_to_cfg taxii_btn">Cancel</button>
+	</section>
+
+	<section id="results_container" class="taxii-container" style="display: none;">
+		<div class="limited_ctr">
+			<table class="taxii-table">
+				<thead>
+					<tr>
+						<th>Recipient</th>
+						<th>Status</th>
+					<tr/>
+				</thead>
+				<tbody id="result_status_table">
+				</tbody>
+			</table>
+		</div>
+		<button class="back_to_cfg taxii_btn">New Message</button>
+	</section>
+
+	<section id="error_container" class="taxii-container" style="display: none;">
+		<div class="taxii_notice"></div>
+		<br/>
+		<button class="back_to_cfg taxii_btn">Back</button>
+	</section>
+<div>

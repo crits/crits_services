@@ -1,0 +1,30 @@
+<tr>
+	<td colspan="2">
+		<strong class="taxii_ctype_label required">
+			{{ form.rcpts.label }} 
+		</strong>
+		<em>({{ form.rcpts.field.choices|length }})</em>
+		<br/>
+		{{ form.rcpts }}
+	</td>
+</tr>
+{% for item in form %}
+	{% if forloop.counter != 1 %}
+		{% if forloop.counter|divisibleby:2 %}
+			<tr>
+		{% endif %}
+
+		<td>
+			<strong class="taxii_ctype_label">
+				{{ item.label }}
+			</strong>
+			<em>({{ item.field.choices|length }})</em>
+			<br/>
+			{{ item }}
+		</td>
+
+		{% if not forloop.counter|divisibleby:2 %}
+			</tr>
+		{% endif %}
+	{% endif %}
+{% endfor %}

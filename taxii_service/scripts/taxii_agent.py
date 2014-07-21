@@ -1,5 +1,3 @@
-import os
-import sys
 from optparse import OptionParser
 
 from crits.core.basescript import CRITsBaseScript
@@ -19,6 +17,8 @@ class CRITsScript(CRITsBaseScript):
                           type="string", default='', help="Certificate file.")
         parser.add_option("-s", "--start", dest="start", action="store",
                           default=None, help="Start time.")
+        parser.add_option("-S", "--https", dest="https", action="store_true",
+                          default=False, help="Connect over HTTPS.")
         parser.add_option("-e", "--end", dest="end", action="store",
                           default=None, help="End time.")
         parser.add_option("-v", "--verbose", dest="verbose", action="store_true",
@@ -36,8 +36,13 @@ class CRITsScript(CRITsBaseScript):
             print "[+] Using certfile from service configuration."
         if not opts.feed:
             print "[+] Using feed from service configuration."
+        if opts.https:
+            print "[+] Connecting over HTTPS."
 
-        objs = execute_taxii_agent(opts.host, opts.feed, opts.keyfile, opts.certfile, opts.start, opts.end, analyst="Command Line", method="TAXII Agent")
+        objs = execute_taxii_agent(opts.host, opts.https, opts.feed,
+                                   opts.keyfile, opts.certfile, opts.start,
+                                   opts.end, analyst="Command Line",
+                                   method="TAXII Agent")
         if not objs['status']:
             print "Failure: %s" % objs['reason']
             return
