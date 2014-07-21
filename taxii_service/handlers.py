@@ -25,12 +25,17 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
                         certfile=None, start=None, end=None, analyst=None,
                         method=None):
     ret = {
-            'events': [],
-            'samples': [],
-            'emails': [],
-            'indicators': [],
+            'Certificate': [],
+            'Domain': [],
+            'Email': [],
+            'Event': [],
+            'Indicator': [],
+            'IP': [],
+            'PCAP': [],
+            'RawData': [],
+            'Sample': [],
             'successes': 0,
-            'failures': 0,
+            'failures': [],
             'status': False,
             'reason': ''
           }
@@ -127,17 +132,17 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
     for content_block in taxii_msg.content_blocks:
         data = parse_content_block(content_block, keyfile, certfile)
         if not data:
-            ret['failures'] += 1
+            ret['failures'].append(('No data found in content block', 'Data'))
             continue
 
         objs = import_standards_doc(data, analyst, method, ref=mid)
 
-        ret['successes'] += 1
+        for k in objs['imported']:
+            ret['successes'] += 1
+            ret[k[0]].append(k[1])
+        for k in objs['failed']:
+            ret['failures'].append(k)
 
-        for k in ["events", "samples", "emails", "indicators"]:
-            if k in objs:
-                for i in objs[k]:
-                    ret[k].append(i)
 
     crits_taxii.save()
     return ret
