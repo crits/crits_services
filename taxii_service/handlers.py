@@ -226,7 +226,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
     # each/any recipient feed successfully.
 
     # Convert object and chosen related items to STIX/CybOX
-    stix_msg = obj.to_stix(rcpts, analyst, relation_choices)
+    stix_msg = obj.to_stix(relation_choices)
     stix_doc = stix_msg['stix_obj']
 
     # if doing a preview of content, return content now
