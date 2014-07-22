@@ -10,29 +10,159 @@
     <span>Results:</span>
     </h3>
     <div class="content_body">
-    Status: {{ result.status }}<br>
-    {% if not result.status %}
-    Reason: {{ result.reason }}<br>
-    {% endif %}
-    Successes: {{ result.successes }}<br>
-    Failures: {{ result.failures }}<br>
-    Events: {{ result.events|length }}<br>
-        {% for event in result.events %}
-        <a href="{% url 'crits.events.views.view_event' event %}">{{ event }}</a>
-        {% endfor %}
-    Samples: {{ result.samples|length }}<br>
-        {% for sample in result.samples %}
-        <a href="{% url 'crits.samples.views.detail' sample %}">{{ sample }}</a>
-        {% endfor %}
-    Emails: {{ result.emails|length }}<br>
-        {% for email in result.emails %}
-        <a href="{% url 'crits.emails.views.email_detail' email %}">{{ email }}</a>
-        {% endfor %}
-    Indicators: {{ result.indicators|length }}<br>
-        {% for indicator in result.indicators %}
-        <a href="{% url 'crits.indicators.views.indicator' indicator %}">{{ indicator }}</a>
-        {% endfor %}
+        {% if result.status %}
+            Status: <b>Success</b><br>
+        {% else %}
+            Status: <b>Failure</b><br>
+            Reason: {{ result.reason }}<br>
+        {% endif %}
     </div>
+</div>
+
+<style>
+    #ta_results tbody td:nth-child(2) {
+        text-align: center;
+    }
+</style>
+
+<div class="content_box">
+    <h3 class="titleheader">
+        <span>Successes: {{ result.successes }}</span>
+    </h3>
+    <table class="chart" id="ta_results" width="100%">
+        <colgroup>
+            <col width="150px">
+            <col width="50px" class='ccount'>
+            <col>
+        </colgroup>
+        <thead>
+            <th>Type</th>
+            <th>Count</th>
+            <th>Results</th>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Failures</td><td>{{ result.failures|length }}</td>
+                <td>
+                    <ul>
+                    {% for failure in result.failures %}
+                        <li>
+                            <b>{{failure.1}}</b>: {{failure.0}}
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>Events</td><td>{{ result.Event|length }}</td>
+                <td>
+                    <ul>
+                    {% for event in result.Event %}
+                        <li>
+                            <a href="{% url 'crits.core.views.details' 'Event' event.id %}">{{ event.id }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>Certificates</td><td>{{ result.Certificate|length }}</td>
+                <td>
+                    <ul>
+                    {% for certificate in result.Certificate %}
+                        <li>
+                            <a href="{% url 'crits.core.views.details' 'Certificate' certificate.id %}">{{ certificate.id }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>Domains</td><td>{{ result.Domain|length }}</td>
+                <td>
+                    <ul>
+                    {% for domain in result.Domain %}
+                        <li>
+                            <a href="{% url 'crits.core.views.details' 'Domain' domain.id %}">{{ domain.id }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>Emails</td><td>{{ result.Email|length }}</td>
+                <td>
+                    <ul>
+                    {% for email in result.Email %}
+                        <li>
+                            <a href="{% url 'crits.core.views.details' 'Email' email.id %}">{{ email.id }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>Indicators</td><td>{{ result.Indicator|length }}</td>
+                <td>
+                    <ul>
+                    {% for indicator in result.Indicator %}
+                        <li>
+                            <a href="{% url 'crits.core.views.details' 'Indicator' indicator.id %}">{{ indicator.id }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>IPs</td><td>{{ result.IP|length }}</td>
+                <td>
+                    <ul>
+                    {% for ip in result.IP %}
+                        <li>
+                            <a href="{% url 'crits.core.views.details' 'IP' ip.id %}">{{ ip.id }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>PCAPs</td><td>{{ result.PCAP|length }}</td>
+                <td>
+                    <ul>
+                    {% for pcap in result.PCAP %}
+                        <li>
+                            <a href="{% url 'crits.core.views.details' 'PCAP' pcap.id %}">{{ pcap.id }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>Raw Data</td><td>{{ result.RawData|length }}</td>
+                <td>
+                    <ul>
+                    {% for rd in result.RawData %}
+                        <li>
+                            <a href="{% url 'crits.core.views.details' 'RawData' rd.id %}">{{ rd.id }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>Samples</td><td>{{ result.Sample|length }}</td>
+                <td>
+                    <ul>
+                    {% for sample in result.Sample %}
+                        <li>
+                            <a href="{% url 'crits.core.views.details' 'Sample' sample.id %}">{{ sample.id }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 {% endblock %}
