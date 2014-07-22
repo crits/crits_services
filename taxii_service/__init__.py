@@ -1,9 +1,5 @@
 import logging
 import os
-import datetime
-import libtaxii as t
-import libtaxii.clients as tc
-import libtaxii.messages as tm
 
 from crits.core.handlers import does_source_exist
 from crits.services.core import Service, ServiceConfigOption
@@ -17,7 +13,7 @@ class TAXIIClient(Service):
     """
 
     name = "taxii_service"
-    version = "2.0.0"
+    version = "2.0.1"
     type_ = Service.TYPE_CUSTOM
     supported_types = []
     required_fields = ['_id']
@@ -53,6 +49,12 @@ class TAXIIClient(Service):
                             description="Your TAXII Data Feed Name.",
                             default=None,
                             required=True,
+                            private=True),
+        ServiceConfigOption('create_events',
+                            ServiceConfigOption.BOOL,
+                            description="Create events for all STIX documents.",
+                            default=False,
+                            required=False,
                             private=True),
         ServiceConfigOption('certfiles',
                             ServiceConfigOption.LIST,

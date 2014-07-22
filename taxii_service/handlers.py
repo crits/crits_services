@@ -52,6 +52,7 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
         feed = str(sc['data_feed'])
     if https == None:
         https = sc['https']
+    create_events = sc['create_events']
 
 
     # Last document's end time is our start time.
@@ -135,7 +136,8 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
             ret['failures'].append(('No data found in content block', 'Data'))
             continue
 
-        objs = import_standards_doc(data, analyst, method, ref=mid)
+        objs = import_standards_doc(data, analyst, method, ref=mid,
+                                    make_event=create_events)
 
         for k in objs['imported']:
             ret['successes'] += 1
