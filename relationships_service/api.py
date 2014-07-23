@@ -12,10 +12,10 @@ from crits.core.crits_mongoengine import CritsDocument
 from . import handlers
 
 
-# The use of BucketObject was inspired by:
+# The use of GraphObject was inspired by:
 # http://michalcodes4life.wordpress.com/2013/11/26/custom-tastypie-resource-from-multiple-django-models/
 
-class BucketObject(CritsDocument, Document):
+class GraphObject(CritsDocument, Document):
     """
     Class to store the returned data. Since the data being requested is not a
     mongoengine object we use this to store the results so it can be understood
@@ -33,7 +33,7 @@ class RelationshipsServiceResource(CRITsAPIResource):
     """
 
     class Meta:
-        object_class = BucketObject
+        object_class = GraphObject
         allowed_methods = ('get',)
         resource_name = 'relationshipsservice'
         authentication = MultiAuthentication(CRITsApiKeyAuthentication(),
@@ -74,7 +74,7 @@ class RelationshipsServiceResource(CRITsAPIResource):
 
         username = request.user.username
         rels = handlers.gather_relationships(ctype, cid, username, depth, types)
-        bobj = BucketObject()
-        bobj.nodes = rels['nodes']
-        bobj.links = rels['links']
-        return [bobj]
+        gobj = GraphObject()
+        gobj.nodes = rels['nodes']
+        gobj.links = rels['links']
+        return [gobj]
