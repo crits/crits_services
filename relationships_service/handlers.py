@@ -125,18 +125,13 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             continue
 
         obj_type = obj._meta['crits_type']
-        if obj_type in field_dict:
-            value = getattr(obj, field_dict[obj_type], '')
-        else:
-            value = ""
+        value = getattr(obj, field_dict[obj_type], '')
+        href = reverse('crits.core.views.details', args=(obj_type, obj_id))
 
         if len(types) != 0 and obj_type not in types:
-            value = ""
-            href = ""
             color = "#FFFFFF"
             visible = False
         else:
-            href = reverse('crits.core.views.details', args=(obj_type, obj_id))
             color = color_dict[obj_type]
             visible = True
 

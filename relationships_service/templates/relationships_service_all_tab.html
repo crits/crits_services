@@ -20,7 +20,6 @@ $(document).ready(function() {
             depth: depth,
             types: types,
         }
-        console.log(data);
         $.ajax({
             type: "POST",
             url: "{% url 'relationships_service.views.get_relationships' subscription.type subscription.id %}",
@@ -114,10 +113,12 @@ $(document).ready(function() {
         })
         .append("svg:text")
         .text(function(d) {
-            if (d.campaign) {
-                return d.label + " (" + d.campaign + ")";
-            } else {
-                return d.label;
+            if (d.visible) {
+                if (d.campaign) {
+                    return d.label + " (" + d.campaign + ")";
+                } else {
+                    return d.label;
+                }
             }
         })
         .style("fill", "#3399ff")
