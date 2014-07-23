@@ -119,9 +119,11 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             value = ""
             href = ""
             color = "#FFFFFF"
+            visible = False
         else:
             href = reverse('crits.core.views.details', args=(obj_type, obj_id))
             color = color_dict[obj_type]
+            visible = True
 
         # For every campaign on this object, make a new node in the list.
         if hasattr(obj, 'campaign'):
@@ -155,7 +157,9 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
         n = {
               'label': '%s' % value,
               'url': href,
-              'color': color
+              'color': color,
+              'type': obj_type,
+              'visible': visible
             }
 
         nodes.append(n)
