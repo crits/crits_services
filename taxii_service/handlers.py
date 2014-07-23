@@ -101,26 +101,45 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
     crits_taxii.runtime = runtime
     crits_taxii.end = end
 
-    poll_msg = tm.PollRequest(message_id=tm.generate_message_id(),
-                              feed_name=feed,
-                              exclusive_begin_timestamp_label=start,
-                              inclusive_end_timestamp_label=end)
-    response = client.callTaxiiService2(hostname, '/poll/', t.VID_TAXII_XML_10,
+    # Poll using 1.1 then 1.0 if that fails.
+    poll_msg = tm11.PollRequest(message_id=tm11.generate_message_id(),
+                                collection_name=feed,
+                                poll_parameters=tm11.PollRequest.PollParameters(),
+                                exclusive_begin_timestamp_label=start,
+                                inclusive_end_timestamp_label=end)
+
+    response = client.callTaxiiService2(hostname, '/poll/', t.VID_TAXII_XML_11,
                                         poll_msg.to_xml())
-
-    if response.getcode() != 200:
-        ret['reason'] = "Response is not 200 OK"
-        return ret
-
     taxii_msg = t.get_message_from_http_response(response, poll_msg.message_id)
+
+    if response.getcode() != 200 or taxii_msg.message_type == tm11.MSG_STATUS_MESSAGE:
+        # Check if this is a TAXII 1.0 server and try again
+        if response.info().getheader('X-TAXII-Content-Type') == t.VID_TAXII_XML_10:
+            poll_msg = tm.PollRequest(message_id=tm.generate_message_id(),
+                                    feed_name=feed,
+                                    exclusive_begin_timestamp_label=start,
+                                    inclusive_end_timestamp_label=end)
+
+            response = client.callTaxiiService2(hostname, '/poll/', t.VID_TAXII_XML_10,
+                                            poll_msg.to_xml())
+            taxii_msg = t.get_message_from_http_response(response, poll_msg.message_id)
+            if response.getcode() != 200 or taxii_msg.message_type == tm.MSG_STATUS_MESSAGE:
+                ret['reason'] = "%s: %s" % (taxii_msg.status_type,
+                                            taxii_msg.message)
+                return ret
+        else:
+            ret['reason'] = "%s: %s" % (taxii_msg.status_type,
+                                        taxii_msg.message)
+            return ret
+
 
     valid = tm.validate_xml(taxii_msg.to_xml())
     if valid != True:
-        ret['reason'] = valid
+        ret['reason'] = "Invalid XML: %s" % valid
         return ret
 
     if taxii_msg.message_type != tm.MSG_POLL_RESPONSE:
-        ret['reason'] = "No poll response"
+        ret['reason'] = "No poll response. Unexpected message type: %s" % taxii_msg.message_type
         return ret
 
     ret['status'] = True
@@ -166,7 +185,7 @@ def parse_content_block(content_block, privkey=None, pubkey=None):
         new_block = f.read()
         f.close()
         return parse_content_block(tm.ContentBlock.from_xml(new_block), privkey, pubkey)
-    elif content_block.content_binding == t.CB_STIX_XML_10:
+    elif content_block.content_binding == t.CB_STIX_XML_111:
         f = StringIO(content_block.content)
         data = f.read()
         f.close()
@@ -271,7 +290,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
         # Create encrypted block
         encrypted_block = encrypt_block(
             tm.ContentBlock(
-                content_binding = t.CB_STIX_XML_10,
+                content_binding = t.CB_STIX_XML_111,
                 content = stix_doc.to_xml()).to_xml(),
             feed[2])
         # Try TAXII 1.1 first:
