@@ -73,6 +73,21 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
         for r in obj.relationships:
             inner_collect(r.rel_type, str(r.object_id), sources, depth)
 
+        # If we traverse into a Campaign object, walk everything tagged
+        # with that campaign along with related objects.
+        if obj_type == 'Campaign':
+            for c in field_dict.keys():
+                klass = class_from_type(c)
+                # Not every object in field_dict can be tagged with a campaign.
+                # For example, comments.
+                if not hasattr(klass, 'campaign'):
+                    continue
+                tagged_objs = klass.objects(campaign__name=obj.name)
+                for tobj in tagged_objs:
+                    inner_collect(tobj._meta['crits_type'],
+                                  str(tobj.id),
+                                  sources,
+                                  depth)
         # END OF INNER COLLECT
 
     try:
@@ -110,18 +125,15 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             continue
 
         obj_type = obj._meta['crits_type']
-        if obj_type in field_dict:
-            value = getattr(obj, field_dict[obj_type], '')
-        else:
-            value = ""
+        value = getattr(obj, field_dict[obj_type], '')
+        href = reverse('crits.core.views.details', args=(obj_type, obj_id))
 
         if len(types) != 0 and obj_type not in types:
-            value = ""
-            href = ""
             color = "#FFFFFF"
+            visible = False
         else:
-            href = reverse('crits.core.views.details', args=(obj_type, obj_id))
             color = color_dict[obj_type]
+            visible = True
 
         # For every campaign on this object, make a new node in the list.
         if hasattr(obj, 'campaign'):
@@ -146,7 +158,9 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
                     n = {
                           'label': campaign,
                           'url': campaign_href,
-                          'color': campaign_color
+                          'color': campaign_color,
+                          'type': 'Campaign',
+                          'visible': True
                         }
                     nodes.append(n)
                     obj_graph[campaign_id] = (node_position, [obj_id])
@@ -155,7 +169,9 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
         n = {
               'label': '%s' % value,
               'url': href,
-              'color': color
+              'color': color,
+              'type': obj_type,
+              'visible': visible
             }
 
         nodes.append(n)
