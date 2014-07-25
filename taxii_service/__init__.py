@@ -1,9 +1,10 @@
 import logging
 import os
 
+from django.template.loader import render_to_string
+
 from crits.core.handlers import does_source_exist
-from crits.services.core import Service, ServiceConfigOption
-from crits.services.core import ServiceConfigError
+from crits.services.core import Service, ServiceConfigError
 
 logger = logging.getLogger(__name__)
 
@@ -14,103 +15,93 @@ class TAXIIClient(Service):
 
     name = "taxii_service"
     version = "2.0.1"
-    type_ = Service.TYPE_CUSTOM
     supported_types = []
     required_fields = ['_id']
-    rerunnable = True
     description = "Send TAXII messages to a TAXII server."
     template = "taxii_service_results.html"
-    default_config = [
-        ServiceConfigOption('hostname',
-                            ServiceConfigOption.STRING,
-                            description="TAXII Server hostname.",
-                            default=None,
-                            required=True,
-                            private=True),
-        ServiceConfigOption('https',
-                            ServiceConfigOption.BOOL,
-                            description="Connect using HTTPS.",
-                            default=True,
-                            required=False,
-                            private=True),
-        ServiceConfigOption('keyfile',
-                            ServiceConfigOption.STRING,
-                            description="Location of your keyfile on the server.",
-                            default=None,
-                            required=True,
-                            private=True),
-        ServiceConfigOption('certfile',
-                            ServiceConfigOption.STRING,
-                            description="Location of your certfile on the server.",
-                            default=None,
-                            required=True,
-                            private=True),
-        ServiceConfigOption('data_feed',
-                            ServiceConfigOption.STRING,
-                            description="Your TAXII Data Feed Name.",
-                            default=None,
-                            required=True,
-                            private=True),
-        ServiceConfigOption('create_events',
-                            ServiceConfigOption.BOOL,
-                            description="Create events for all STIX documents.",
-                            default=False,
-                            required=False,
-                            private=True),
-        ServiceConfigOption('certfiles',
-                            ServiceConfigOption.LIST,
-                            description=("Comma-delimited list of CRITs Source"
-                                         " name, TAXII feed name, and"
-                                         " corresponding certificate"
-                                         " file on disk for that source."),
-                            default=None,
-                            required=True,
-                            private=True),
-    ]
 
-    @classmethod
-    def _validate(cls, config):
+    @staticmethod
+    def parse_config(config):
+        # When editing a config we are given a string.
+        # When validating an existing config it will be a list.
+        # Convert it to a list of strings.
+        certfiles = config.get('certfiles', [])
+        if isinstance(certfiles, basestring):
+            config['certfiles'] = [cf for cf in certfiles.split('\r\n')]
+
         hostname = config.get("hostname", "").strip()
         keyfile = config.get("keyfile", "").strip()
         certfile = config.get("certfile", "").strip()
         data_feed = config.get("data_feed", "").strip()
-        certfiles = config.get("certfiles", "")
+        errors = []
         if not hostname:
-            raise ServiceConfigError("You must specify a TAXII Server.")
+            errors.append("You must specify a TAXII Server.")
         if not keyfile:
-            raise ServiceConfigError("You must specify a keyfile location.")
+            errors.append("You must specify a keyfile location.")
         if  not os.path.isfile(keyfile):
-            raise ServiceConfigError("keyfile does not exist.")
+            errors.append("keyfile does not exist.")
         if not certfile:
-            raise ServiceConfigError("You must specify a certfile location.")
+            errors.append("You must specify a certfile location.")
         if  not os.path.isfile(certfile):
-            raise ServiceConfigError("certfile does not exist.")
+            errors.append("certfile does not exist.")
         if not data_feed:
-            raise ServiceConfigError("You must specify a TAXII Data Feed.")
+            errors.append("You must specify a TAXII Data Feed.")
         if not certfiles:
-            raise ServiceConfigError("You must specify at least one certfile.")
-        for crtfile in certfiles:
+            errors.append("You must specify at least one certfile.")
+        for crtfile in config['certfiles']:
             try:
                 (source, feed, filepath) = crtfile.split(',')
-            except ValueError:
-                raise ServiceConfigError("You must specify a source, feed name"
-                                         ", and certificate path for each source.")
+            except ValueError as e:
+                errors.append("You must specify a source, feed name, and "
+                              "certificate path for each source. (%s)" % str(e))
+                break
             source.strip()
             feed.strip()
             filepath.strip()
             if not does_source_exist(source):
-                raise ServiceConfigError("Invalid source: %s" % source)
+                errors.append("Invalid source: %s" % source)
             if  not os.path.isfile(filepath):
-                raise ServiceConfigError("certfile does not exist: %s" % filepath)
+                errors.append("certfile does not exist: %s" % filepath)
+        if errors:
+            raise ServiceConfigError("\n".join(errors))
 
-    def __init__(self, *args, **kwargs):
-        super(TAXIIClient, self).__init__(*args, **kwargs)
-        return
-        logger.debug("Initializing TAXII Client.")
-        self.hostname = self.config['hostname'].strip()
-        self.keyfile = self.config['keyfile'].strip()
-        self.certfile = self.config['certfile'].strip()
-        self.certfiles = self.config['certfiles']
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
 
-    def _scan(self, context):
+        # Rename keys so they render nice.
+        fields = forms.TAXIIServiceConfigForm().fields
+        for name, field in fields.iteritems():
+            # Convert sigfiles to newline separated strings
+            if name == 'certfiles':
+                display_config[field.label] = '\r\n'.join(config[name])
+            else:
+                display_config[field.label] = config[name]
+
+        return display_config
+
+    @staticmethod
+    def get_config(existing_config):
+        if existing_config:
+            return existing_config
+
+        # Generate default config from form and initial values.
+        config = {}
+        fields = forms.TAXIIServiceConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+        return config
+
+    @classmethod
+    def generate_config_form(self, config):
+        # Convert sigfiles to newline separated strings
+        config['certfiles'] = '\r\n'.join(config['certfiles'])
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.TAXIIServiceConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.TAXIIServiceConfigForm
+        return form, html
+
+    def scan(self, obj, config):
         pass # Not available via old-style services.
