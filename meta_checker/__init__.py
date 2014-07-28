@@ -1,11 +1,7 @@
 import logging
 
-from django.template.loader import render_to_string
-
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.sample import Sample
-
-from . import forms
 
 class MetaChecker(Service):
     """
@@ -21,6 +17,12 @@ class MetaChecker(Service):
     def valid_for(obj):
         if len(obj.analysis) == 0:
             raise ServiceConfigError("Object must have analysis results.")
+
+    @staticmethod
+    def get_config(existing_config):
+        # This service no longer users config options, so blow away any
+        # existing configs.
+        return {}
 
     def scan(self, obj, config):
         my_md5 = obj.md5
