@@ -57,14 +57,14 @@ class YaraService(Service):
     def get_config_details(config):
         display_config = {}
 
-        # Convert sigfiles to newline separated strings
-        display_config['Signature Files'] = '\r\n'.join(config['sigfiles'])
-
         # Rename keys so they render nice.
-        display_config['Signature Directory'] = config['sigdir']
-        display_config['Distribution URL'] = config['distribution_url']
-        display_config['Exchange'] = config['exchange']
-        display_config['Routing Key'] = config['routing_key']
+        fields = forms.YaraConfigForm().fields
+        for name, field in fields.iteritems():
+            if name == 'sigfiles':
+                display_config[field.label] = '\r\n'.join(config[name])
+            else:
+                display_config[field.label] = config[name]
+
         return display_config
 
     @classmethod
