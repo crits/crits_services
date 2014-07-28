@@ -23,6 +23,12 @@ class EntropycalcService(Service):
     description = "Calculate entropy of a sample."
 
     @staticmethod
+    def get_config(existing_config):
+        # This service no longer uses config options, so blow away any existing
+        # configs.
+        return {}
+
+    @staticmethod
     def valid_for(obj):
         if obj.filedata.grid_id == None:
             raise ServiceConfigError("Missing filedata.")
