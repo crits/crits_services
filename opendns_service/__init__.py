@@ -55,13 +55,13 @@ class OpenDNSService(Service):
 
     @staticmethod
     def save_runtime_config(config):
-        del config['token']
+        del config['Investigate_API_Token']
 
     def _replace(self, string):
         return string.replace("_", " ")
 
     def run(self, obj, config):
-        token = config.get('token', '')
+        token = config.get('Investigate_API_Token', '')
         uri = config.get('investigate_uri', '')
         headers = {'Authorization': 'Bearer ' + token}
         reqs = {}
