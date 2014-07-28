@@ -23,14 +23,26 @@ class OpenDNSService(Service):
 
     @staticmethod
     def get_config(existing_config):
-        if existing_config:
-            return existing_config
-
         config = {}
         fields = forms.OpenDNSConfigForm().fields
         for name, field in fields.iteritems():
             config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
         return config
+
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
+
+        # Rename keys so they render nice.
+        fields = forms.OpenDNSConfigForm().fields
+        for name, field in fields.iteritems():
+            display_config[field.label] = config[name]
+        return display_config
 
     @classmethod
     def generate_config_form(self, config):
