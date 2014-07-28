@@ -31,13 +31,15 @@ class TotalHashService(Service):
 
     @staticmethod
     def get_config(existing_config):
-        if existing_config:
-            return existing_config
-
         config = {}
         fields = forms.TotalHashConfigForm().fields
         for name, field in fields.iteritems():
             config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
         return config
 
     @classmethod
@@ -48,6 +50,14 @@ class TotalHashService(Service):
                                  'config_error': None})
         form = forms.TotalHashConfigForm
         return form, html
+
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
+        display_config['TH API Key'] = config['th_api_key']
+        display_config['TH User'] = config['th_user']
+        display_config['TH Query URL'] = config['th_query_url']
+        return display_config
 
     @staticmethod
     def save_runtime_config(config):
