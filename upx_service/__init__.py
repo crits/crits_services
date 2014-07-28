@@ -40,14 +40,16 @@ class UpxService(Service):
 
     @staticmethod
     def get_config(existing_config):
-        if existing_config:
-            return existing_config
-
         # Generate default config from form and initial values.
         config = {}
         fields = forms.UPXConfigForm().fields
         for name, field in fields.iteritems():
             config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
         return config
 
     @staticmethod
