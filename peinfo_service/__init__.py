@@ -60,6 +60,12 @@ class PEInfoService(Service):
                                  'crits_type': crits_type,
                                  'identifier': identifier})
 
+    @staticmethod
+    def get_config(existing_config):
+        # There are no config options for this service, blow away any existing
+        # configs.
+        return {}
+
     def _get_pehash(self, exe):
         #image characteristics
         img_chars = bitstring.BitArray(hex(exe.FILE_HEADER.Characteristics))
