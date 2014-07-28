@@ -62,7 +62,7 @@ class OpenDNSService(Service):
 
     def run(self, obj, config):
         token = config.get('Investigate_API_Token', '')
-        uri = config.get('investigate_uri', '')
+        uri = config.get('Investigate_URI', '')
         headers = {'Authorization': 'Bearer ' + token}
         reqs = {}
         resps = {}
