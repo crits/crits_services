@@ -36,14 +36,16 @@ class VirusTotalService(Service):
 
     @staticmethod
     def get_config(existing_config):
-        if existing_config:
-            return existing_config
-
         # Generate default config from form and initial values.
         config = {}
         fields = forms.VirusTotalConfigForm().fields
         for name, field in fields.iteritems():
             config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
         return config
 
     @classmethod
@@ -55,6 +57,17 @@ class VirusTotalService(Service):
                                  'config_error': None})
         form = forms.VirusTotalConfigForm
         return form, html
+
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
+
+        # Rename keys so they render nice.
+        display_config['VT API Key'] = config['vt_api_key']
+        display_config['Query URL'] = config['vt_query_url']
+        display_config['Domain URL'] = config['vt_domain_url']
+        display_config['IP URL'] = config['vt_ip_url']
+        return display_config
 
     def scan(self, obj, config):
         key = config.get('vt_api_key', '')
