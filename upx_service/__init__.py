@@ -50,6 +50,10 @@ class UpxService(Service):
             config[name] = field.initial
         return config
 
+    @staticmethod
+    def get_config_details(config):
+        return {'UPX binary': config['upx_path']}
+
     @classmethod
     def generate_config_form(self, config):
         html = render_to_string('services_config_form.html',
