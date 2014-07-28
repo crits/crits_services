@@ -29,7 +29,8 @@ class ChopShopConfigForm(forms.Form):
     required_css_class = 'required'
     basedir = forms.CharField(required=True,
                               initial='',
-                              label = "The base directory where all the modules and libraries exist.")
+                              label="ChopShop base directory",
+                              help_text="The base directory where all the modules and libraries exist.")
 
     def __init__(self, *args, **kwargs):
         super(ChopShopConfigForm, self).__init__(*args, **kwargs)
@@ -43,7 +44,7 @@ class ChopShopRunForm(forms.Form):
                                         choices=choices,
                                         initial=['HTTP', 'DNS'],
                                         widget=forms.CheckboxSelectMultiple,
-                                        help_text="Generate metadata for these protocols")
+                                        help_text="Generate metadata for these protocols.")
 
     def __init__(self, *args, **kwargs):
         super(ChopShopRunForm, self).__init__(*args, **kwargs)
