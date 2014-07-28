@@ -20,6 +20,12 @@ class OfficeMetaService(Service):
     description = "Parses metadata from Office documents."
 
     @staticmethod
+    def get_config(existing_config):
+        # This service no longer uses config options, so blow away any existing
+        # configs.
+        return {}
+
+    @staticmethod
     def valid_for(obj):
         office_magic = "\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
         if obj.filedata != None:
