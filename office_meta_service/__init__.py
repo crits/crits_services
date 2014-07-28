@@ -49,7 +49,7 @@ class OfficeMetaService(Service):
     def bind_runtime_form(analyst, config):
         return forms.OfficeMetaRunForm(config)
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         oparser = OfficeParser(obj.filedata.read())
         oparser.parse_office_doc()
         added_files = []

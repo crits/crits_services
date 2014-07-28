@@ -69,7 +69,7 @@ class VirusTotalService(Service):
         display_config['IP URL'] = config['vt_ip_url']
         return display_config
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         key = config.get('vt_api_key', '')
         sample_url = config.get('vt_query_url', '')
         domain_url = config.get('vt_domain_url', '')

@@ -38,7 +38,7 @@ class CarverService(Service):
                                  'crits_type': crits_type,
                                  'identifier': identifier})
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         start_offset = config['start']
         end_offset = config['end']
         # Start must be 0 or higher. If end is greater than zero it must

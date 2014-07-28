@@ -32,7 +32,7 @@ class DataMinerService(Service):
             if obj.filedata.grid_id == None:
                 raise ServiceConfigError("Missing filedata.")
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         if isinstance(obj, RawData):
             data = obj.data
         elif isinstance(obj, Sample):

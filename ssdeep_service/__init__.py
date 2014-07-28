@@ -39,7 +39,7 @@ class SSDeepService(Service):
                                  'crits_type': crits_type,
                                  'identifier': identifier})
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         threshold = config.get("threshold", 50)
         target_ssdeep = obj.ssdeep
         target_md5 = obj.md5

@@ -27,7 +27,7 @@ class ZipMetaService(Service):
         if data[:4] not in [ZipParser.zipLDMagic, ZipParser.zipCDMagic]:
             raise ServiceConfigError("Not a zip file.")
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         zparser = ZipParser(obj.filedata.read())
         parsedZip =  zparser.parseZipFile()
         if not parsedZip:

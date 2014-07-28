@@ -145,7 +145,7 @@ class PEInfoService(Service):
         output = m.hexdigest()
         self._add_result('PEhash value', "%s" % output, {'Value': output})
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         try:
             pe = pefile.PE(data=obj.filedata.read())
         except pefile.PEFormatError as e:

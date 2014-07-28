@@ -24,7 +24,7 @@ class MetaChecker(Service):
         # existing configs.
         return {}
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         my_md5 = obj.md5
         my_results = obj.analysis
 

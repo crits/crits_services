@@ -173,7 +173,7 @@ class YaraService(Service):
         if obj.filedata.grid_id == None:
             raise ServiceConfigError("Missing filedata.")
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         logger.debug("Scanning...")
         if obj.filedata.grid_id == None:
             self._info("No data to scan, skipping")

@@ -107,5 +107,5 @@ class TAXIIClient(Service):
         form = forms.TAXIIServiceConfigForm
         return form, html
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         pass # Not available via old-style services.

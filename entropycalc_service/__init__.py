@@ -65,7 +65,7 @@ class EntropycalcService(Service):
         return entropy
 
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         start = config['start']
         end = config['end']
         data = obj.filedata.read()

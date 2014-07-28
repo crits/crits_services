@@ -61,7 +61,7 @@ class PassiveTotalService(Service):
     def save_runtime_config(config):
         del config['pt_api_key']
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
         apiKey = config.get('pt_api_key', '')
         queryUrl = config.get('pt_query_url', '')

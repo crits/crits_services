@@ -60,7 +60,7 @@ class OpenDNSService(Service):
     def _replace(self, string):
         return string.replace("_", " ")
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         token = config.get('token', '')
         uri = config.get('investigate_uri', '')
         headers = {'Authorization': 'Bearer ' + token}

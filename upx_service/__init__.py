@@ -65,7 +65,7 @@ class UpxService(Service):
         form = forms.UPXConfigForm
         return form, html
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         upx_path = config.get("upx_path", "")
 
         # _write_to_file() will delete this file at the end of the "with" block.

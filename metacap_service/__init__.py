@@ -76,7 +76,7 @@ class MetaCapService(Service):
         form = forms.MetaCapConfigForm
         return form, html
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         logger.debug("Setting up shop...")
         base_dir = config['basedir']
         shop_path = "%s/shop" % base_dir

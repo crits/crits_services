@@ -64,7 +64,7 @@ class TotalHashService(Service):
         del config['th_api_key']
         del config['th_user']
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         # If we have an API key, go ahead and look it up.
         key = str(config.get('th_api_key', ''))
         user = config.get('th_user', '')

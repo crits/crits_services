@@ -26,7 +26,7 @@ class MachOInfoService(Service):
 
         return struct.unpack('@I', data[:4])[0] in [MachOEntity.FAT_MAGIC, MachOEntity.FAT_CIGAM, MachOEntity.MH_MAGIC, MachOEntity.MH_CIGAM, MachOEntity.MH_MAGIC_64, MachOEntity.MH_CIGAM_64]
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         data = obj.filedata.read()
         mop = MachOParser(data)
         try:

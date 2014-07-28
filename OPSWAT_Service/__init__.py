@@ -61,7 +61,7 @@ class OPSWATService(Service):
         if obj.filedata.grid_id == None:
             raise ServiceConfigError("Missing filedata.")
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         data = obj.filedata.read()
         zipdata = create_zip([("samples", data)])
         url = self.config.get('OPSWAT_url', '')

@@ -47,7 +47,7 @@ class PDFInfoService(Service):
         else:
             return "0.0"
 
-    def scan(self, obj, config):
+    def run(self, obj, config):
         data = obj.filedata.read()
         self.object_summary = {
             'XRef':             0,
