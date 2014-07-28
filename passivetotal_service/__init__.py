@@ -85,6 +85,11 @@ class PassiveTotalService(Service):
             self._error("Network connection error checking PassiveTotal (%s)" % e)
             return
 
+        if response.status_code != 200:
+            logger.error("Response status code: %s" % response.status_code)
+            self._error("Response status code: %s" % response.status_code)
+            return
+
         loaded = json.loads(response.content) # handling a valid response
 
         if loaded['resultCount'] == 0:
