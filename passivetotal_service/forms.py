@@ -11,7 +11,7 @@ class PassiveTotalConfigForm(forms.Form):
     pt_query_url = forms.CharField(required=True,
                                    label="Query URL",
                                    widget=forms.TextInput(),
-                                   initial='https://www.passivetotal.org/api/query/')
+                                   initial='https://www.passivetotal.org/api/')
 
     def __init__(self, *args, **kwargs):
         super(PassiveTotalConfigForm, self).__init__(*args, **kwargs)
