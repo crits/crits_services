@@ -287,6 +287,22 @@ class CuckooService(Service):
         # domain is a dict with keys ip and domain
         for domain in network.get('domains'):
             self._add_result('Domain', domain.get('domain'), domain)
+        
+        #Adds IPs resolved from Domains as strings
+        for domain in network.get('domains'):
+            if domain.get('ip'):
+                host = domain.get('ip')
+                self._add_result('Resolved IP',str(host),{'domain': domain.get('domain')})
+                
+        #http is a dict with keys body uri user-agent method host version path data port
+        for http in network.get('http'):
+            if http.get('uri'):
+                self._add_result('HTTP Request', http.get('uri'), http)
+                
+        #Index User-Agent
+        for http in network.get('http'):
+            if http.get('user-agent'):
+                self._add_result('User-Agent', http.get('user-agent'),{})   #Set as empty dict to avoid redundancy
 
     def _process_dropped(self, dropped):
         # Dropped is a byte string of the .tar.bz2 file
