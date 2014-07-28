@@ -24,8 +24,12 @@ class SSDeepService(Service):
     def bind_runtime_form(analyst, config):
         # The values are submitted as a list for some reason.
         data = {'threshold': config['threshold'][0]}
-        print data
         return forms.SSDeepRunForm(data)
+
+    @staticmethod
+    def get_config(existing_config):
+        # There are no longer config options for this service.
+        return {}
 
     @classmethod
     def generate_runtime_form(self, analyst, config, crits_type, identifier):
