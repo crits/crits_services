@@ -1,0 +1,4 @@
+Dependencies for clamscan (is/are):
+
+clamav
+freshclam - if you want to auto update the AV defs
