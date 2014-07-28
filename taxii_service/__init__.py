@@ -6,6 +6,8 @@ from django.template.loader import render_to_string
 from crits.core.handlers import does_source_exist
 from crits.services.core import Service, ServiceConfigError
 
+from . import forms
+
 logger = logging.getLogger(__name__)
 
 class TAXIIClient(Service):
@@ -82,14 +84,16 @@ class TAXIIClient(Service):
 
     @staticmethod
     def get_config(existing_config):
-        if existing_config:
-            return existing_config
-
         # Generate default config from form and initial values.
         config = {}
         fields = forms.TAXIIServiceConfigForm().fields
         for name, field in fields.iteritems():
             config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
         return config
 
     @classmethod
