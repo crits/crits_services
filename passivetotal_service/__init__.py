@@ -66,20 +66,20 @@ class PassiveTotalService(Service):
         apiKey = config.get('pt_api_key', '')
         queryUrl = config.get('pt_query_url', '')
 
-        if not apiKey:
+        if not apikey:
             self._error("PassiveTotal API key is invalid or blank")
 
         if obj._meta['crits_type'] == 'Domain':
-            params = json.dumps({ 'value': obj.domain, 'apiKey': apiKey })
+            params = { 'value': obj.domain, 'apiKey': apiKey }
         elif obj._meta['crits_type'] == 'IP':
-            params = json.dumps({ 'value': obj.ip, 'apiKey': apiKey })
+            params = { 'value': obj.ip, 'apiKey': apiKey }
         else:
             logger.error("PassiveTotal: Invalid type.")
             self._error("Invalid type.")
             return
 
         try:
-            response = requests.post(queryUrl, data=params, headers=headers)
+            response = requests.post(queryUrl, params=params)
         except Exception as e:
             logger.error("PassiveTotal: network connection error (%s)" % e)
             self._error("Network connection error checking PassiveTotal (%s)" % e)
@@ -92,18 +92,19 @@ class PassiveTotalService(Service):
 
         loaded = json.loads(response.content) # handling a valid response
 
-        if loaded['resultCount'] == 0:
+        if not loaded['success']:
+            logger.error("PassiveTotal: query error (%s)" % loaded['error'])
+            self._error("PassiveTotal: query error (%s)" % loaded['error'])
             return
 
-        if len(loaded['errors']) > 0:
-            logger.error("PassiveTotal: query error (%s)" % str(loaded['errors']))
-            self._error("PassiveTotal: query error (%s)" % str(loaded['errors']))
+        if loaded['result_count'] == 0:
+            return
 
         results = loaded['results']
         if obj._meta['crits_type'] == 'Domain':
             for resolve in results['resolutions']:
                 stats = {
-                    'value': results['focusPoint'],
+                    'value': results['focus'],
                     'first_seen': resolve['firstSeen'],
                     'last_seen': resolve['lastSeen'],
                     'source': ','.join(resolve['source']),
@@ -122,7 +123,7 @@ class PassiveTotalService(Service):
                 'lastSeen': results['lastSeen'],
                 'network': results['network']
             }
-            self._add_result('Metadata', results['focusPoint'], stats)
+            self._add_result('Metadata', results['focus'], stats)
             for resolve in results['resolutions']:
                 stats = {
                     'firstSeen': resolve['firstSeen'],
