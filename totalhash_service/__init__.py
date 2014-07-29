@@ -90,8 +90,8 @@ class TotalHashService(Service):
             response = urllib2.urlopen(req)
             data = response.read()
         except Exception as e:
-            logger.info("Totalhash: network connection error (%s)" % e)
-            self._info("Network connection error checking totalhash (%s)" % e)
+            logger.error("Totalhash: network connection error (%s)" % e)
+            self._error("Network connection error checking totalhash (%s)" % e)
             return
 
         from lxml import etree
