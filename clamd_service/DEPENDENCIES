@@ -1,0 +1,7 @@
+Dependencies for clamd (is/are):
+
+clamav
+clamd (ClamAv Daemon that listens on either an Unix socket or a TCP port)
+freshclam - if you want to auto update the AV defs
+pyClamd 0.3.10 - http://xael.org/norman/python/pyclamd/
+
