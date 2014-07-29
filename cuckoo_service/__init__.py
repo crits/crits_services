@@ -36,15 +36,15 @@ class CuckooService(Service):
         ServiceConfigOption('machine',
                             ServiceConfigOption.STRING,
                             default="",
-                            description="ID of the machine to use for the "
+                            description="Name of the machine to use for the "
                             "analysis. Leave blank to use the first available "
-                            "machine. -1 For ALL machines."),
+                            "machine. 'all' for ALL machines."),
         ServiceConfigOption('host',
                             ServiceConfigOption.STRING,
                             default='',
                             required=True,
                             private=True,
-                            description="Hostname or IP of the server running "
+                            description="Hostname or IP of the API server running "
                             "Cuckoo sandbox."),
         ServiceConfigOption('port',
                             ServiceConfigOption.STRING,
@@ -65,6 +65,18 @@ class CuckooService(Service):
                             private=True,
                             description="Port used for HTTP Proxy, if needed "
                             "to access the Cuckoo sandbox server."),
+        ServiceConfigOption('webui_host',
+                            ServiceConfigOption.STRING,
+                            default='',
+                            private=True,
+                            description="Hostname or IP of the Cuckoo "
+                            "web interface."),
+        ServiceConfigOption('webui_port',
+                            ServiceConfigOption.STRING,
+                            default='',
+                            private=True,
+                            description="Port on the Cuckoo sandbox server "
+                            "that manage.py is listening on."),
         ServiceConfigOption('package',
                             ServiceConfigOption.SELECT,
                             default=0,
@@ -125,12 +137,13 @@ class CuckooService(Service):
 
         machine = self.config.get('machine')
         if machine:
-            if machine == "-1":
+            machine = machine.lower()
+            if machine == "all":
                 ids = self.get_machines()
             else:
                 payload['machine'] = machine
                 
-        if machine=="-1": #If all machines have been selected by setting -1
+        if machine=="all": #If all machines have been selected by setting 'all'
             tasks = []
             for machine_id in ids:  #Submit a new task with otherwise the same info to each machine
                 payload['machine'] = machine_id
@@ -230,8 +243,13 @@ class CuckooService(Service):
 
                 report = self.get_report(task_id)
 
+                self._process_info(report.get('info'))  #Get machine/analysis info
+                self._process_signatures(report.get('signatures'))   #Get signatures that fired
+                
                 self._process_behavior(report.get('behavior'))
                 self._process_network(report.get('network'))
+                
+                
 
                 self._debug("Fetching .tar.bz2 with dropped files")
                 dropped = self.get_dropped(task_id)
@@ -260,6 +278,7 @@ class CuckooService(Service):
         task_id = self.config.get('existing task id')
         if task_id:
             self._info("Reusing existing task with ID: %s" % task_id)
+            multi_task = 0
         else:
             task_id = self.submit_task(context)
             if not task_id:
@@ -274,13 +293,47 @@ class CuckooService(Service):
 
         self._notify()
         
-        if multi_task:
+        if multi_task==1:
             for x in task_id:
                 self.run_cuckoo(x)
         else:
             self.run_cuckoo(task_id)
 
+    def _process_info(self, info):
+        if not info:
+            return
+        self._debug("Processing Analysis Info")
         
+        machine_name = info.get('machine').get('name')
+        webui_host = self.config.get('webui_host')
+        webui_port = self.config.get('webui_port')
+        if webui_host=='':
+            data = {'started': info.get('started'),
+                    'ended': info.get('ended'),
+                    'analysis id': info.get('id')}
+        else:   #If there is a webui set up and configured, give the link 
+            link = 'http://%s:%s/analysis/%s' % (webui_host,
+                                                webui_port,
+                                                info.get('id'))
+            data = {'started': info.get('started'),
+                    'ended': info.get('ended'),
+                    'analysis link': '%s' % (link)}
+        
+        self._add_result('info', str(machine_name), data)
+        
+    def _process_signatures(self, signatures):
+        if not signatures:
+            return
+            
+        self._debug("Processing Signatures")
+        
+        for signature in signatures:
+            subtype = 'signature'
+            result = signature['description']
+            data = {'severity': signature['severity'],
+                    'name': signature['name']}
+            
+            self._add_result(subtype, result, data)
 
     def _process_behavior(self, behavior):
         if not behavior:
