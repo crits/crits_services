@@ -1,0 +1,9 @@
+Version 0.1.0
+-------------
+
+This is an attempt at integrating a service for EXIFTOOL http://www.sno.phy.queensu.ca/~phil/exiftool/.
+
+Dependencies for compliling exiftool (is/are):
+
+perl and some perl libraries for building /installing perl packages.
+

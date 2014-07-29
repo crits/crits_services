@@ -1,0 +1,4 @@
+Exiftool requires perl and some perl libraries for building/installing perl packages.
+
+On Ubuntu you might be able to do:
+$ sudo apt-get install libimage-exiftool-perl
