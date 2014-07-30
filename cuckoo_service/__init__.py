@@ -278,22 +278,22 @@ class CuckooService(Service):
         task_id = self.config.get('existing task id')
         if task_id:
             self._info("Reusing existing task with ID: %s" % task_id)
-            multi_task = 0
+            multi_task = False
         else:
             task_id = self.submit_task(context)
             if not task_id:
                 return
             if type(task_id) is list:
-                multi_task = 1
+                multi_task = True
                 tasks = ', '.join(str(v) for v in task_id)
                 self._info("Successfully submitted tasks with IDs: %s" % tasks)
             else:
-                multi_task = 0
+                multi_task = False
                 self._info("Successfully submitted task with ID: %s" % task_id)
 
         self._notify()
         
-        if multi_task==1:
+        if multi_task==True:
             for x in task_id:
                 self.run_cuckoo(x)
         else:
