@@ -144,7 +144,7 @@ class CuckooService(Service):
                 payload['machine'] = machine
                 
         if machine=="all": #If all machines have been selected by setting 'all'
-            tasks = []
+            tasks = {}
             for machine_id in ids:  #Submit a new task with otherwise the same info to each machine
                 payload['machine'] = machine_id
                 r = requests.post(self.base_url + '/tasks/create/file',
@@ -158,7 +158,8 @@ class CuckooService(Service):
                     self._debug(r.text)
                     continue    #Go to next submission
                 
-                tasks.append(dict(r.json())['task_id'])
+                tasks[machine_id]=dict(r.json())['task_id']
+                self._info("Task ID: %s" % tasks[machine_id])
         
         else:   #Onlyl 1 Machine ID requested
             r = requests.post(self.base_url + '/tasks/create/file',
@@ -171,7 +172,7 @@ class CuckooService(Service):
                 self._debug(r.text)
                 return None
 
-            return dict(r.json())['task_id']
+            tasks[machine_id]=dict(r.json())['task_id']
             
         return tasks    #Return Array of Tasks
 
@@ -217,7 +218,7 @@ class CuckooService(Service):
 
         return r.content
         
-    def run_cuckoo(self, task_id):
+    def run_cuckoo(self, machine_id, task_id):
         # We start by waiting for 5 seconds, then 10, then 15, etc. up to
         # 60 seconds. The total time allowed for execution, processing, and
         # analysis is around 6 minutes.
@@ -243,7 +244,7 @@ class CuckooService(Service):
 
                 report = self.get_report(task_id)
 
-                self._process_info(report.get('info'))  #Get machine/analysis info
+                self._process_info(report.get('info'), machine_id)  #Get machine/analysis info
                 self._process_signatures(report.get('signatures'))   #Get signatures that fired
                 
                 self._process_behavior(report.get('behavior'))
@@ -278,33 +279,39 @@ class CuckooService(Service):
         task_id = self.config.get('existing task id')
         if task_id:
             self._info("Reusing existing task with ID: %s" % task_id)
-            multi_task = False
+            task_id = {'existing_task': task_id}
         else:
             task_id = self.submit_task(context)
             if not task_id:
                 return
-            if type(task_id) is list:
-                multi_task = True
-                tasks = ', '.join(str(v) for v in task_id)
+            if len(task_id) > 1:
+                tasks = ', '.join(str(v) for k, v in task_id.iteritems())
                 self._info("Successfully submitted tasks with IDs: %s" % tasks)
             else:
-                multi_task = False
                 self._info("Successfully submitted task with ID: %s" % task_id)
 
         self._notify()
         
+        '''
         if multi_task==True:
             for x in task_id:
                 self.run_cuckoo(x)
         else:
             self.run_cuckoo(task_id)
+        '''
+        for m, t in task_id.iteritems():
+            self.run_cuckoo(m, t)
 
-    def _process_info(self, info):
+    def _process_info(self, info, machine_id):
         if not info:
             return
         self._debug("Processing Analysis Info")
         
-        machine_name = info.get('machine').get('name')
+        if machine_id == 'existing_task':
+            machine_name = info.get('machine').get('name')
+            if machine_name = None:
+                self._info("Could not get machine name of existing task due to Cuckoo being <=1.1")
+        machine_name = machine_id
         webui_host = self.config.get('webui_host')
         webui_port = self.config.get('webui_port')
         if webui_host=='':
