@@ -322,7 +322,8 @@ class CuckooService(Service):
             machine_name = info.get('machine').get('name')
             if machine_name == None:
                 self._info("Could not get machine name of existing task due to Cuckoo being <=1.1")
-        machine_name = machine_id
+        else:
+            machine_name = machine_id
         webui_host = self.config.get('webui_host')
         webui_port = self.config.get('webui_port')
         if webui_host=='':
