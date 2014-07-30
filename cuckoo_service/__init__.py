@@ -173,6 +173,7 @@ class CuckooService(Service):
                 return None
 
             tasks[machine_id]=dict(r.json())['task_id']
+            self._info("Task ID: %s" % tasks[machine_id])
             
         return tasks    #Return Array of Tasks
 
