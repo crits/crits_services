@@ -142,9 +142,9 @@ class CuckooService(Service):
                 ids = self.get_machines()
             else:
                 payload['machine'] = machine
+                tasks = {}
                 
         if machine=="all": #If all machines have been selected by setting 'all'
-            tasks = {}
             for machine_id in ids:  #Submit a new task with otherwise the same info to each machine
                 payload['machine'] = machine_id
                 r = requests.post(self.base_url + '/tasks/create/file',
@@ -161,6 +161,21 @@ class CuckooService(Service):
                 tasks[machine_id]=dict(r.json())['task_id']
                 self._info("Task ID: %s" % tasks[machine_id])
         
+        elif machine=="":   #If Machine not set
+        	machine_id = 'first_available'
+        	r = requests.post(self.base_url + '/tasks/create/file',
+        					  files=files, data=payload,
+        					  proxies=self.proxies)
+        
+        	# TODO: check return status codes
+        	if r.status_code != requests.codes.ok:
+        		self._error("Failed to successfully submit file to cuckoo.")
+        		self._debug(r.text)
+        		return None
+        
+        	tasks[machine_id]=dict(r.json())['task_id']
+        	self._info("Task ID: %s" % tasks[machine_id])
+            
         else:   #Onlyl 1 Machine ID requested
             r = requests.post(self.base_url + '/tasks/create/file',
                               files=files, data=payload,
@@ -293,13 +308,6 @@ class CuckooService(Service):
 
         self._notify()
         
-        '''
-        if multi_task==True:
-            for x in task_id:
-                self.run_cuckoo(x)
-        else:
-            self.run_cuckoo(task_id)
-        '''
         for m, t in task_id.iteritems():
             self.run_cuckoo(m, t)
 
@@ -308,10 +316,10 @@ class CuckooService(Service):
             return
         self._debug("Processing Analysis Info")
         
-        if machine_id == 'existing_task':
+        if machine_id == 'existing_task' or machine_id == 'first_available':
             machine_name = info.get('machine').get('name')
             if machine_name == None:
-                self._info("Could not get machine name of existing task due to Cuckoo being <=1.1")
+                self._info("Could not get machine name of due to Cuckoo being <=1.1")
         else:
             machine_name = machine_id
         webui_host = self.config.get('webui_host')
