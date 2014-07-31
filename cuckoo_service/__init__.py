@@ -142,7 +142,8 @@ class CuckooService(Service):
                 ids = self.get_machines()
             else:
                 payload['machine'] = machine
-                tasks = {}
+        
+        tasks = {}
                 
         if machine=="all": #If all machines have been selected by setting 'all'
             for machine_id in ids:  #Submit a new task with otherwise the same info to each machine
