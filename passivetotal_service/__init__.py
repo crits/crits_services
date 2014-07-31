@@ -29,7 +29,7 @@ class PassiveTotalService(Service):
                             private=True),
         ServiceConfigOption('pt_query_url',
                             ServiceConfigOption.STRING,
-                            default='https://www.passivetotal.org/api/query/',
+                            default='https://www.passivetotal.org/api/passive',
                             required=True,
                             private=True),
     ]
