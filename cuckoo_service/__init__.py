@@ -135,64 +135,62 @@ class CuckooService(Service):
         if timeout:
             payload['timeout'] = timeout
 
-        machine = self.config.get('machine')
-        if machine:
-            machine = machine.lower()
-            if machine == "all":
-                ids = self.get_machines()
-            else:
-                payload['machine'] = machine
-
         tasks = {}
 
-        # If all machines have been selected by setting 'all'
+        machine = self.config.get('machine', "").lower()
         if machine == "all":
             # Submit a new task with otherwise the same info to each machine
-            for machine_id in ids:
-                payload['machine'] = machine_id
-                r = requests.post(self.base_url + '/tasks/create/file',
-                                  files=files, data=payload,
-                                  proxies=self.proxies)
-                self._info("Adding to task list: submit sample to cuckoo machine ID %s." % machine_id)
+            for each in self.get_machines():
+                task_id = self.post_task(files, payload, each)
+                if task_id is not None:
+                    tasks[each] = task_id
 
-                if r.status_code != requests.codes.ok:
-                    self._error("Failed to successfully submit file to cuckoo machine ID %s." % machine_id)
-                    self._debug(r.text)
-                    continue  # Go to next submission
+        elif machine:  # Only one Machine ID requested
+            task_id = self.post_task(files, payload, machine)
+            if task_id is not None:
+                tasks[machine] = task_id
 
-                tasks[machine_id] = dict(r.json())['task_id']
-                self._info("Task ID: %s" % tasks[machine_id])
+        else:  # If Machine not set
+            task_id = self.post_task(files, payload)
+            if task_id is not None:
+                tasks['any'] = task_id
 
-        elif not machine:  # If Machine not set
-            machine_id = 'first_available'
-            r = requests.post(self.base_url + '/tasks/create/file',
-                              files=files, data=payload,
-                              proxies=self.proxies)
+        # return dictionary of Tasks
+        return tasks
 
-            # TODO: check return status codes
-            if r.status_code != requests.codes.ok:
-                self._error("Failed to successfully submit file to cuckoo.")
-                self._debug(r.text)
-                return None
+    def post_task(self, files, payload, machine=None):
+        """
+        Post a new analysis task to Cuckoo.
 
-            tasks[machine_id] = dict(r.json())['task_id']
-            self._info("Task ID: %s" % tasks[machine_id])
+        Args:
+            files: file information
+            payload (dict): task options
+            machine (str): the machine label to submit to (or None if any
+                machine)
 
-        else:  # Only 1 Machine ID requested
-            r = requests.post(self.base_url + '/tasks/create/file',
-                              files=files, data=payload,
-                              proxies=self.proxies)
+        Returns:
+            Task ID or None
+        """
+        if machine:
+            payload['machine'] = machine
+        else:
+            machine = "any"
 
-            # TODO: check return status codes
-            if r.status_code != requests.codes.ok:
-                self._error("Failed to successfully submit file to cuckoo.")
-                self._debug(r.text)
-                return None
+        r = requests.post(self.base_url + '/tasks/create/file',
+                          files=files, data=payload,
+                          proxies=self.proxies)
 
-            tasks[machine_id] = dict(r.json())['task_id']
-            self._info("Task ID: %s" % tasks[machine_id])
+        # TODO: check return status codes
+        if r.status_code != requests.codes.ok:
+            msg = "Failed to submit file to machine '%s'." % machine
+            self._error(msg)
+            self._debug(r.text)
+            return None
 
-        return tasks  # Return Array of Tasks
+        task_id = dict(r.json())['task_id']
+        self._info("Submitted Task ID %s for machine %s" % (task_id, machine))
+
+        return task_id
 
     def get_task(self, task_id):
         r = requests.get(self.base_url + '/tasks/view/%s' % task_id,
@@ -318,7 +316,7 @@ class CuckooService(Service):
             return
         self._debug("Processing Analysis Info")
 
-        if machine_id == 'existing_task' or machine_id == 'first_available':
+        if machine_id in ('existing_task', 'any'):
             machine_name = info.get('machine').get('name')
             if not machine_name:
                 self._info("Could not get machine name (Cuckoo <= 1.1)")
