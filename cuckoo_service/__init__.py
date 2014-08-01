@@ -44,8 +44,8 @@ class CuckooService(Service):
                             default='',
                             required=True,
                             private=True,
-                            description="Hostname or IP of the API server running "
-                            "Cuckoo sandbox."),
+                            description="Hostname or IP of the API server "
+                            "running Cuckoo sandbox."),
         ServiceConfigOption('port',
                             ServiceConfigOption.STRING,
                             default='8090',
@@ -110,10 +110,10 @@ class CuckooService(Service):
         else:
             proxy = ''
         return {'http': proxy, 'https': proxy}
-        
+
     def get_machines(self):
         machinelist = requests.get(self.base_url + '/machines/list',
-                                proxies=self.proxies)
+                                   proxies=self.proxies)
         machinelist = dict(machinelist.json())['machines']
         ids = []
         for x in machinelist:
@@ -142,42 +142,29 @@ class CuckooService(Service):
                 ids = self.get_machines()
             else:
                 payload['machine'] = machine
-        
+
         tasks = {}
-                
-        if machine=="all": #If all machines have been selected by setting 'all'
-            for machine_id in ids:  #Submit a new task with otherwise the same info to each machine
+
+        # If all machines have been selected by setting 'all'
+        if machine == "all":
+            # Submit a new task with otherwise the same info to each machine
+            for machine_id in ids:
                 payload['machine'] = machine_id
                 r = requests.post(self.base_url + '/tasks/create/file',
                                   files=files, data=payload,
                                   proxies=self.proxies)
                 self._info("Adding to task list: submit sample to cuckoo machine ID %s." % machine_id)
 
-                
                 if r.status_code != requests.codes.ok:
                     self._error("Failed to successfully submit file to cuckoo machine ID %s." % machine_id)
                     self._debug(r.text)
-                    continue    #Go to next submission
-                
-                tasks[machine_id]=dict(r.json())['task_id']
+                    continue  # Go to next submission
+
+                tasks[machine_id] = dict(r.json())['task_id']
                 self._info("Task ID: %s" % tasks[machine_id])
-        
-        elif machine=="":   #If Machine not set
-        	machine_id = 'first_available'
-        	r = requests.post(self.base_url + '/tasks/create/file',
-        					  files=files, data=payload,
-        					  proxies=self.proxies)
-        
-        	# TODO: check return status codes
-        	if r.status_code != requests.codes.ok:
-        		self._error("Failed to successfully submit file to cuckoo.")
-        		self._debug(r.text)
-        		return None
-        
-        	tasks[machine_id]=dict(r.json())['task_id']
-        	self._info("Task ID: %s" % tasks[machine_id])
-            
-        else:   #Onlyl 1 Machine ID requested
+
+        elif not machine:  # If Machine not set
+            machine_id = 'first_available'
             r = requests.post(self.base_url + '/tasks/create/file',
                               files=files, data=payload,
                               proxies=self.proxies)
@@ -188,10 +175,24 @@ class CuckooService(Service):
                 self._debug(r.text)
                 return None
 
-            tasks[machine_id]=dict(r.json())['task_id']
+            tasks[machine_id] = dict(r.json())['task_id']
             self._info("Task ID: %s" % tasks[machine_id])
-            
-        return tasks    #Return Array of Tasks
+
+        else:  # Only 1 Machine ID requested
+            r = requests.post(self.base_url + '/tasks/create/file',
+                              files=files, data=payload,
+                              proxies=self.proxies)
+
+            # TODO: check return status codes
+            if r.status_code != requests.codes.ok:
+                self._error("Failed to successfully submit file to cuckoo.")
+                self._debug(r.text)
+                return None
+
+            tasks[machine_id] = dict(r.json())['task_id']
+            self._info("Task ID: %s" % tasks[machine_id])
+
+        return tasks  # Return Array of Tasks
 
     def get_task(self, task_id):
         r = requests.get(self.base_url + '/tasks/view/%s' % task_id,
@@ -234,7 +235,7 @@ class CuckooService(Service):
             return None
 
         return r.content
-        
+
     def run_cuckoo(self, machine_id, task_id):
         # We start by waiting for 5 seconds, then 10, then 15, etc. up to
         # 60 seconds. The total time allowed for execution, processing, and
@@ -261,13 +262,13 @@ class CuckooService(Service):
 
                 report = self.get_report(task_id)
 
-                self._process_info(report.get('info'), machine_id)  #Get machine/analysis info
-                self._process_signatures(report.get('signatures'))   #Get signatures that fired
-                
+                # Get machine/analysis info
+                self._process_info(report.get('info'), machine_id)
+                # Get signatures that fired
+                self._process_signatures(report.get('signatures'))
+
                 self._process_behavior(report.get('behavior'))
                 self._process_network(report.get('network'))
-                
-                
 
                 self._debug("Fetching .tar.bz2 with dropped files")
                 dropped = self.get_dropped(task_id)
@@ -308,7 +309,7 @@ class CuckooService(Service):
                 self._info("Successfully submitted task with ID: %s" % task_id)
 
         self._notify()
-        
+
         for m, t in task_id.iteritems():
             self.run_cuckoo(m, t)
 
@@ -316,41 +317,43 @@ class CuckooService(Service):
         if not info:
             return
         self._debug("Processing Analysis Info")
-        
+
         if machine_id == 'existing_task' or machine_id == 'first_available':
             machine_name = info.get('machine').get('name')
-            if machine_name == None:
-                self._info("Could not get machine name of due to Cuckoo being <=1.1")
+            if not machine_name:
+                self._info("Could not get machine name (Cuckoo <= 1.1)")
         else:
             machine_name = machine_id
         webui_host = self.config.get('webui_host')
         webui_port = self.config.get('webui_port')
-        if webui_host=='':
-            data = {'started': info.get('started'),
-                    'ended': info.get('ended'),
-                    'analysis id': info.get('id')}
-        else:   #If there is a webui set up and configured, give the link 
+
+        data = {}
+        data['started'] = info.get('started')
+        data['ended'] = info.get('ended')
+
+        #  If there is a webui set up and configured, give the link
+        if webui_host:
             link = 'http://%s:%s/analysis/%s' % (webui_host,
-                                                webui_port,
-                                                info.get('id'))
-            data = {'started': info.get('started'),
-                    'ended': info.get('ended'),
-                    'analysis link': '%s' % (link)}
-        
+                                                 webui_port,
+                                                 info.get('id'))
+            data['analysis link'] = link
+        else:
+            data['analysis_id'] = info.get('id')
+
         self._add_result('info', str(machine_name), data)
-        
+
     def _process_signatures(self, signatures):
         if not signatures:
             return
-            
+
         self._debug("Processing Signatures")
-        
+
         for signature in signatures:
             subtype = 'signature'
             result = signature['description']
             data = {'severity': signature['severity'],
                     'name': signature['name']}
-            
+
             self._add_result(subtype, result, data)
 
     def _process_behavior(self, behavior):
@@ -406,23 +409,27 @@ class CuckooService(Service):
 
         # domain is a dict with keys ip and domain
         for domain in network.get('domains'):
-            self._add_result('Domain', domain.get('domain'), {'ip': domain.get('ip')})
-            
-        #Adds IPs resolved from Domains as strings
+            self._add_result('Domain', domain.get('domain'),
+                             {'ip': domain.get('ip')})
+
+        # Adds IPs resolved from Domains as strings
         for domain in network.get('domains'):
             if domain.get('ip'):
                 host = domain.get('ip')
-                self._add_result('Resolved IP',str(host),{'domain': domain.get('domain')})
-            
-        # http is a dict with keys body uri user-agent method host version path data port
+                self._add_result('Resolved IP', str(host),
+                                 {'domain': domain.get('domain')})
+
+        # http is a dict with keys body uri user-agent method host version path
+        # data port
         for http in network.get('http'):
             if http.get('uri'):
                 self._add_result('HTTP Request', http.get('uri'), http)
-                
+
         # Index User-Agent
         for http in network.get('http'):
             if http.get('user-agent'):
-                self._add_result('User-Agent', http.get('user-agent'), {})  #{} set as data to avoid too much redundancy
+                # set {} as data to avoid too much redundancy
+                self._add_result('User-Agent', http.get('user-agent'), {})
 
     def _process_dropped(self, dropped):
         # Dropped is a byte string of the .tar.bz2 file
