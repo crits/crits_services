@@ -1,0 +1,2 @@
+The Cuckoo Service submits files to Cuckoo Sandbox, and retrieves the resulting
+analysis, submitting dropped files back to CRITs for further analysis.
