@@ -58,7 +58,6 @@ class CuckooService(Service):
 
     @staticmethod
     def bind_runtime_form(analyst, config):
-        print config
         # The integer values are submitted as a list for some reason.
         # The package is submitted as a list too.
         data = { 'timeout': config['timeout'][0],
