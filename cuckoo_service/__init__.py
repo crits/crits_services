@@ -22,7 +22,7 @@ class CuckooService(Service):
     """
 
     name = 'cuckoo'
-    version = '1.0.1a1'
+    version = '1.0.1'
     type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
     default_config = [
