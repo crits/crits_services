@@ -22,7 +22,7 @@ class CuckooService(Service):
     """
 
     name = 'cuckoo'
-    version = '1.0.1a1'
+    version = '1.0.1'
     type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
     default_config = [
@@ -242,6 +242,8 @@ class CuckooService(Service):
         step = 5
         max_delay = 60
 
+        self._info("Retrieving results for Task ID %s" % task_id)
+
         while delay <= max_delay:
             taskinfo = self.get_task(task_id)
             status = taskinfo.get('status', "UNKNOWN")
@@ -273,7 +275,10 @@ class CuckooService(Service):
                 self._debug("Received %d bytes" % len(dropped))
                 self._process_dropped(dropped)
                 pcap = self.get_pcap(task_id)
-                self._process_pcap(pcap)
+                # If there was any error fetching the PCAP, don't try to
+                # process it.
+                if pcap:
+                    self._process_pcap(pcap)
 
                 return
 
@@ -301,15 +306,18 @@ class CuckooService(Service):
             if not task_id:
                 return
             if len(task_id) > 1:
-                tasks = ', '.join(str(v) for k, v in task_id.iteritems())
+                tasks = ', '.join([str(v) for v in sorted(task_id.values())])
                 self._info("Successfully submitted tasks with IDs: %s" % tasks)
             else:
                 self._info("Successfully submitted task with ID: %s" % task_id)
 
         self._notify()
 
-        for m, t in task_id.iteritems():
-            self.run_cuckoo(m, t)
+        for machine, task_id in task_id.iteritems():
+            try:
+                self.run_cuckoo(machine, task_id)
+            except Exception as e:
+                self._error("Error retrieving Task ID %s: %s" % (task_id, e))
 
     def _process_info(self, info, machine_id):
         if not info:
