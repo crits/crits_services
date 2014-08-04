@@ -7,13 +7,11 @@ import time
 
 import requests
 
-from crits.services.core import Service, ServiceConfigOption
+from django.template.loader import render_to_string
 
+from crits.services.core import Service, ServiceConfigError
 
-PACKAGES = ['auto', 'exe', 'dll', 'pdf', 'doc']
-IGNORED_FILES = [
-    "SharedDataEvents*",
-]
+from . import forms
 
 
 class CuckooService(Service):
@@ -23,78 +21,66 @@ class CuckooService(Service):
 
     name = 'cuckoo'
     version = '1.0.1'
-    type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
-    default_config = [
-        ServiceConfigOption('timeout',
-                            ServiceConfigOption.INT,
-                            default=0,
-                            description="Maximum time (in seconds) to allow "
-                            "the analysis to run. Leave as '0' to use the "
-                            "timeout specified in Cuckoo's conf/cuckoo.conf "
-                            "(default is 120)."),
-        ServiceConfigOption('machine',
-                            ServiceConfigOption.STRING,
-                            default="",
-                            description="Name of the machine to use for the "
-                            "analysis. Leave blank to use the first available "
-                            "machine. 'all' for ALL machines."),
-        ServiceConfigOption('host',
-                            ServiceConfigOption.STRING,
-                            default='',
-                            required=True,
-                            private=True,
-                            description="Hostname or IP of the API server "
-                            "running Cuckoo sandbox."),
-        ServiceConfigOption('port',
-                            ServiceConfigOption.STRING,
-                            default='8090',
-                            required=True,
-                            private=True,
-                            description="Port on the Cuckoo sandbox server "
-                            "that api.py is listening on."),
-        ServiceConfigOption('proxy host',
-                            ServiceConfigOption.STRING,
-                            default='',
-                            private=True,
-                            description="Hostname or IP of web proxy, if "
-                            "needed to access the Cuckoo sandbox server."),
-        ServiceConfigOption('proxy port',
-                            ServiceConfigOption.STRING,
-                            default='',
-                            private=True,
-                            description="Port used for HTTP Proxy, if needed "
-                            "to access the Cuckoo sandbox server."),
-        ServiceConfigOption('webui_host',
-                            ServiceConfigOption.STRING,
-                            default='',
-                            private=True,
-                            description="Hostname or IP of the Cuckoo "
-                            "web interface."),
-        ServiceConfigOption('webui_port',
-                            ServiceConfigOption.STRING,
-                            default='',
-                            private=True,
-                            description="Port on the Cuckoo sandbox server "
-                            "that manage.py is listening on."),
-        ServiceConfigOption('package',
-                            ServiceConfigOption.SELECT,
-                            default=0,
-                            choices=PACKAGES,
-                            description="The Cuckoo analysis package to run",),
-        ServiceConfigOption('existing task id',
-                            ServiceConfigOption.INT,
-                            default=0,
-                            description="DEVELOPMENT ONLY: Fetch results from "
-                            "an existing analysis task rather than running "
-                            "the sample in the sandbox. Use '0' to run a new "
-                            "analysis"),
-        ServiceConfigOption('ignored files',
-                            ServiceConfigOption.LIST,
-                            default=IGNORED_FILES,
-                            description="File paths (may include wildcards) "
-                            "that are not automatically resubmitted.")
-    ]
+    description = "Analyze a sample using Cuckoo Sandbox."
+
+    @staticmethod
+    def get_config(existing_config):
+        # Generate default config from form and initial values.
+        config = {}
+        fields = forms.CuckooConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
+        return config
+
+    @classmethod
+    def generate_config_form(self, config):
+        # Convert sigfiles to newline separated strings
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.CuckooConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.CuckooConfigForm
+        return form, html
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        return render_to_string("services_run_form.html",
+                                {'name': self.name,
+                                 'form': forms.CuckooRunForm(),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        print config
+        # The integer values are submitted as a list for some reason.
+        # The package is submitted as a list too.
+        data = { 'timeout': config['timeout'][0],
+                 'existing_task_id': config['existing_task_id'][0],
+                 'package': config['package'][0] }
+        return forms.CuckooRunForm(data)
+
+    @staticmethod
+    def valid_for(obj):
+        if obj.filedata.grid_id == None:
+            raise ServiceConfigError("Missing filedata.")
+
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
+
+        # Rename keys so they render nice.
+        fields = forms.CuckooConfigForm().fields
+        for name, field in fields.iteritems():
+            display_config[field.label] = config[name]
+
+        return display_config
 
     @property
     def base_url(self):
@@ -103,8 +89,8 @@ class CuckooService(Service):
 
     @property
     def proxies(self):
-        proxy_host = self.config.get('proxy host')
-        proxy_port = self.config.get('proxy port')
+        proxy_host = self.config.get('proxy_host')
+        proxy_port = self.config.get('proxy_port')
         if proxy_host:
             proxy = proxy_host + ':' + proxy_port
         else:
@@ -122,8 +108,8 @@ class CuckooService(Service):
             self._info("Found machine ID %s" % machineid)
         return ids
 
-    def submit_task(self, context):
-        files = {'file': (context.filename, context.data)}
+    def submit_task(self, obj):
+        files = {'file': (obj.filename, obj.filedata.read())}
 
         payload = {}
 
@@ -296,13 +282,19 @@ class CuckooService(Service):
 
         self._error("Cuckoo did not complete before timeout")
 
-    def _scan(self, context):
-        task_id = self.config.get('existing task id')
+    def run(self, obj, config):
+        # Because config is referenced in a lot of different places as an
+        # attribute of the class, just assign it here.
+        self.config = config
+        print config
+        return
+
+        task_id = self.config.get('existing_task_id')
         if task_id:
             self._info("Reusing existing task with ID: %s" % task_id)
             task_id = {'existing_task': task_id}
         else:
-            task_id = self.submit_task(context)
+            task_id = self.submit_task(obj)
             if not task_id:
                 return
             if len(task_id) > 1:
@@ -445,7 +437,7 @@ class CuckooService(Service):
         # TODO: Error handling
         t = tarfile.open(mode='r:bz2', fileobj=StringIO(dropped))
 
-        ignored = self.config.get('ignored files', [])
+        ignored = self.config.get('ignored_files', [])
         for f in t.getmembers():
             if not f.isfile():
                 continue
