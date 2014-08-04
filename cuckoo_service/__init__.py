@@ -286,8 +286,6 @@ class CuckooService(Service):
         # Because config is referenced in a lot of different places as an
         # attribute of the class, just assign it here.
         self.config = config
-        print config
-        return
 
         task_id = self.config.get('existing_task_id')
         if task_id:
