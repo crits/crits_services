@@ -9,6 +9,9 @@ import requests
 
 from django.template.loader import render_to_string
 
+from crits.samples.handlers import handle_file
+from crits.pcaps.handlers import handle_pcap_file
+from crits.core.user_tools import get_user_organization
 from crits.services.core import Service, ServiceConfigError
 
 from . import forms
@@ -282,9 +285,10 @@ class CuckooService(Service):
         self._error("Cuckoo did not complete before timeout")
 
     def run(self, obj, config):
-        # Because config is referenced in a lot of different places as an
-        # attribute of the class, just assign it here.
+        # Because config and obj are referenced in a lot of different places
+        # as an attribute of the class, just assign it here.
         self.config = config
+        self.obj = obj
 
         task_id = self.config.get('existing_task_id')
         if task_id:
@@ -445,14 +449,28 @@ class CuckooService(Service):
                 self._debug("Ignoring file: %s" % name)
                 continue
 
-            self._info("New file: %s (%d bytes, %s)" % (name, len(data),
-                                                        md5(data).hexdigest()))
-            self._add_file(data, name)
+            h = md5(data).hexdigest()
+            self._info("New file: %s (%d bytes, %s)" % (name, len(data), h))
+            handle_file(name, data, self.obj.source,
+                        parent_id=str(self.obj.id),
+                        campaign=self.obj.campaign,
+                        method=self.name,
+                        relationship='Related_To',
+                        user=self.current_task.username)
+            self._add_result("file_added", name, {'md5': h})
 
         t.close()
 
     def _process_pcap(self, pcap):
         self._debug("Processing PCAP.")
         self._notify()
-        # TODO: Error handling...
-        self._add_file(pcap, collection='PCAP')
+        org = get_user_organization(self.current_task.username)
+        h = md5(pcap).hexdigest()
+        result = handle_pcap_file("%s.pcap" % h,
+                                  pcap,
+                                  org,
+                                  user=self.current_task.username,
+                                  parent_id=str(self.obj.id),
+                                  parent_type="PCAP",
+                                  method=self.name)
+        self._add_result("pcap_added", h, {'md5': h})
