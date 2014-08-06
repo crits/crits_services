@@ -28,6 +28,15 @@ class CuckooConfigForm(forms.Form):
     webui_port = forms.IntegerField(required=False,
                                     label="WebUI port.",
                                     initial=0)
+    machine = forms.CharField(required=True,
+                              label="Machine",
+                              initial='',
+                              widget=forms.Textarea(attrs={'cols': 40,
+                                                           'rows': 6}),
+                              help_text="Newline separated list of machines to "
+                                        "use for the analysis. Use 'all' for "
+                                        "ALL machines and 'any' for first "
+                                        "available.")
 
     def __init__(self, *args, **kwargs):
         super(CuckooConfigForm, self).__init__(*args, **kwargs)
@@ -43,10 +52,9 @@ class CuckooRunForm(forms.Form):
                                            "as 0 to use the timeout specified "
                                            " in the Cuckoo configuration.",
                                  initial=0)
-    machine = forms.CharField(required=False,
+    machine = forms.ChoiceField(required=False,
                               label="Machine",
-                              initial='',
-                              widget=forms.TextInput(),
+                              initial=[],
                               help_text="Name of the machine to use for the "
                                         "analysis. Leave blank to use the "
                                         "first available machine. 'all' for "
@@ -66,12 +74,18 @@ class CuckooRunForm(forms.Form):
                                  "running the sample in the sandbox. Use '0' "
                                  "to run a new analysis.",
                                  initial=0)
-    ignored_files = forms.ChoiceField(required=False,
-                                      label="Ignored files",
-                                      choices=[("", ""),
-                                               ("SharedDataEvents*", "SharedDataEvents*")],
-                                      help_text="File paths that are not "
-                                                "automatically resubmitted.")
+    ignored_files = forms.CharField(required=False,
+                                    label="Ignored files",
+                                    initial='SharedDataEvents*',
+                                    widget=forms.Textarea(attrs={'cols': 40,
+                                                                 'rows': 6}),
+                                    help_text="File paths that are not "
+                                              "automatically resubmitted.")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, machines=[], *args, **kwargs):
         super(CuckooRunForm, self).__init__(*args, **kwargs)
+
+        self.fields['machine'].choices = machines
+        initial = [choice[0] for choice in machines]
+        self.fields['machine'].initial = initial
+
