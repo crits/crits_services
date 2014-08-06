@@ -52,13 +52,11 @@ class CuckooRunForm(forms.Form):
                                            "as 0 to use the timeout specified "
                                            " in the Cuckoo configuration.",
                                  initial=0)
-    machine = forms.ChoiceField(required=False,
+    machine = forms.ChoiceField(required=True,
                               label="Machine",
                               initial=[],
                               help_text="Name of the machine to use for the "
-                                        "analysis. Leave blank to use the "
-                                        "first available machine. 'all' for "
-                                        " ALL machines.")
+                                        "analysis.")
     package = forms.ChoiceField(required=True,
                                 label="Package",
                                 choices=[("auto", "auto"),

@@ -147,23 +147,21 @@ class CuckooService(Service):
 
         tasks = {}
 
-        machine = self.config.get('machine', "").lower()
-        if machine == "all":
+        machine = self.config.get('machine', "")
+        if machine.lower() == "all":
             # Submit a new task with otherwise the same info to each machine
             for each in self.get_machines():
                 task_id = self.post_task(files, payload, each)
                 if task_id is not None:
                     tasks[each] = task_id
-
+        elif machine.lower() == "any":
+            task_id = self.post_task(files, payload)
+            if task_id is not None:
+                tasks['any'] = task_id
         elif machine:  # Only one Machine ID requested
             task_id = self.post_task(files, payload, machine)
             if task_id is not None:
                 tasks[machine] = task_id
-
-        else:  # If Machine not set
-            task_id = self.post_task(files, payload)
-            if task_id is not None:
-                tasks['any'] = task_id
 
         # return dictionary of Tasks
         return tasks
