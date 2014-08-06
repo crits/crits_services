@@ -1,4 +1,4 @@
-from crits.services.core import Service
+from crits.services.core import Service, ServiceConfigError
 from zip_meta import ZipParser
 
 class ZipMetaService(Service):
