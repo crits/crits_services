@@ -28,6 +28,15 @@ class CuckooService(Service):
     description = "Analyze a sample using Cuckoo Sandbox."
 
     @staticmethod
+    def parse_config(config):
+        # When editing a config we are given a string.
+        # When validating an existing config it will be a list.
+        # Convert it to a list of strings.
+        machines = config.get('machine', [])
+        if isinstance(machines, basestring):
+            config['machine'] = [machine for machine in machines.split('\r\n')]
+
+    @staticmethod
     def get_config(existing_config):
         # Generate default config from form and initial values.
         config = {}
@@ -43,7 +52,8 @@ class CuckooService(Service):
 
     @classmethod
     def generate_config_form(self, config):
-        # Convert sigfiles to newline separated strings
+        # Convert machines to newline separated strings
+        config['machine'] = '\r\n'.join(config['machine'])
         html = render_to_string('services_config_form.html',
                                 {'name': self.name,
                                  'form': forms.CuckooConfigForm(initial=config),
@@ -51,22 +61,31 @@ class CuckooService(Service):
         form = forms.CuckooConfigForm
         return form, html
 
+    @staticmethod
+    def _tuplize_machines(machines):
+        return [(machine, machine) for machine in machines]
+
     @classmethod
     def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        machines = CuckooService._tuplize_machines(config['machine'])
         return render_to_string("services_run_form.html",
                                 {'name': self.name,
-                                 'form': forms.CuckooRunForm(),
+                                 'form': forms.CuckooRunForm(machines=machines),
                                  'crits_type': crits_type,
                                  'identifier': identifier})
 
     @staticmethod
     def bind_runtime_form(analyst, config):
+        machines = CuckooService._tuplize_machines(config['machine'])
+
         # The integer values are submitted as a list for some reason.
-        # The package is submitted as a list too.
+        # Package and machine are submitted as a list too.
         data = { 'timeout': config['timeout'][0],
                  'existing_task_id': config['existing_task_id'][0],
-                 'package': config['package'][0] }
-        return forms.CuckooRunForm(data)
+                 'package': config['package'][0],
+                 'ignored_files': config['ignored_files'][0],
+                 'machine': config['machine'][0] }
+        return forms.CuckooRunForm(machines=machines, data=data)
 
     @staticmethod
     def valid_for(obj):
@@ -80,7 +99,10 @@ class CuckooService(Service):
         # Rename keys so they render nice.
         fields = forms.CuckooConfigForm().fields
         for name, field in fields.iteritems():
-            display_config[field.label] = config[name]
+            if name == 'machine':
+                display_config[field.label] = '\r\n'.join(config[name])
+            else:
+                display_config[field.label] = config[name]
 
         return display_config
 
@@ -438,7 +460,7 @@ class CuckooService(Service):
         # TODO: Error handling
         t = tarfile.open(mode='r:bz2', fileobj=StringIO(dropped))
 
-        ignored = self.config.get('ignored_files', [])
+        ignored = self.config.get('ignored_files', '').split('\r\n')
         for f in t.getmembers():
             if not f.isfile():
                 continue
