@@ -25,7 +25,6 @@ class clamdService(Service):
 
     name = "clamd"
     version = '0.0.3'
-    #type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
     description = "Scan files for known viruses using clamd (ClamAv)."
 
@@ -91,7 +90,7 @@ class clamdService(Service):
         clamd_sock_path = str(config['clamd_sock_path'])
         clamd_host_name = str(config['clamd_host_name'])
         clamd_host_port = int(config['clamd_host_port'])
-        clamd_force_reload = config['clamd_force_reload'])
+        clamd_force_reload = config['clamd_force_reload']
 
         try:
             self._debug('Attempting Unix socket connection to clamd')
