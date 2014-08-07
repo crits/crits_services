@@ -1,0 +1,20 @@
+clamd_service 0.0.2
+-------------
+
+Scan your samples with ClamAV.
+
+Default settings:
+
+clamd_sock_path	/var/run/clamav/clamd.ctl
+ - This is a path for the Unix socket to communicate with clamd daemon. Usually, it's at /var/run/clamav/clamd.ctl or /var/run/clamav/clamd.sock
+ If you want to use clamd through the network connection, just leave this blank and fill in clamd_host_name and clamd_host_port.
+
+clamd_host_name	127.0.0.1
+ - This is used when you want to use local or remote instance of clamd
+
+clamd_host_port	3310
+ - This is used when you want to use local or remote instance of clamd
+
+clamd_force_reload	False
+ - Force clamd daemon to reload signature database
+
