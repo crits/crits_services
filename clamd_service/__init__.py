@@ -4,59 +4,94 @@ import logging
 import os
 import pyclamd
 
-from crits.services.core import Service, ServiceConfigOption
-from crits.services.core import ServiceConfigError
+
+from django.conf import settings
+from django.template.loader import render_to_string
+
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
 
 class clamdService(Service):
     """
-    Display metadata information about the files using clamd utility.
+    Scan files for known viruses using clamd (ClamAv)..
+
+    It can scan using either the unix scoket(on local host) or the TCP port (on either local or remote host)
+
     """
 
     name = "clamd"
-    version = '0.0.2'
-    type_ = Service.TYPE_CUSTOM
+    version = '0.0.3'
+    #type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
-    default_config = [
-        ServiceConfigOption('clamd_sock_path',
-                            ServiceConfigOption.STRING,
-                            description="Location of the clamd unix socket (if using the socket)",
-                            default='/var/run/clamav/clamd.ctl',
-                            private=True),
-        ServiceConfigOption('clamd_host_name',
-                            ServiceConfigOption.STRING,
-                            description="hostname or ip address of the clamd daemon",
-                            default='127.0.0.1',
-                            private=True),
-        ServiceConfigOption('clamd_host_port',
-                            ServiceConfigOption.INT,
-                            description="TCP port number of clamd daemon",
-                            default='3310',
-                            private=True),
-        ServiceConfigOption('clamd_force_reload',
-                            ServiceConfigOption.BOOL,
-                            description="Force clamd to reload signature database",
-                            private=False,
-                            default=False),
-    ]
+    description = "Scan files for known viruses using clamd (ClamAv)."
+
+    @staticmethod
+    def get_config(existing_config):
+        config = {}
+        fields = forms.clamdServiceConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
+        return config
+
+
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
+
+        # Rename keys so they render nice.
+        fields = forms.clamdServiceConfigForm().fields
+        for name, field in fields.iteritems():
+            display_config[field.label] = config[name]
+
+        return display_config
+
+    @staticmethod
+    def valid_for(obj):
+        if obj.filedata.grid_id == None:
+            raise ServiceConfigError("Missing filedata.")
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        # The values are submitted as a list for some reason.
+        data = {'clamd_sock_path': config['clamd_sock_path'][0],
+                'clamd_host_name': config['clamd_host_name'][0],
+                'clamd_host_port': config['clamd_host_port'][0],
+                'clamd_force_reload': config['clamd_force_reload'][0]}
+        return forms.clamdServiceConfigForm(data)
 
     @classmethod
-    def _validate(cls, config):
-        clamd_sock_path = str(config.get("clamd_sock_path", ""))
-        clamd_host_name = str(config.get("clamd_host_name", ""))
-        clamd_host_port = int(config.get("clamd_host_port", ""))
-        if not clamd_sock_path and (not clamd_host_name or not clamd_host_port):
-            raise ServiceConfigError("Must specify clamd Unix socket path or IP and port.")
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.clamdServiceConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.clamdServiceConfigForm()
+        return form, html
+
+#   This will have to move into a place where validation needs to happen
+#    @classmethod
+#    def _validate(self, config):
+#        clamd_sock_path = str(config['clamd_sock_path'])
+#        clamd_host_name = str(config['clamd_host_name'])
+#        clamd_host_port = int(config['clamd_host_port'])
+#        if not clamd_sock_path and (not clamd_host_name or not clamd_host_port):
+#            raise ServiceConfigError("Must specify clamd Unix socket path or IP and port.")
 
 
-
-    def _scan(self, context):
-        clamd_sock_path = str(self.config.get("clamd_sock_path", ""))
-        clamd_host_name = str(self.config.get("clamd_host_name", ""))
-        clamd_host_port = int(self.config.get("clamd_host_port", ""))
-        clamd_force_reload = self.config.get("clamd_force_reload", "")
+    def run(self, obj, config):
+        clamd_sock_path = str(config['clamd_sock_path'])
+        clamd_host_name = str(config['clamd_host_name'])
+        clamd_host_port = int(config['clamd_host_port'])
+        clamd_force_reload = config['clamd_force_reload'])
 
         try:
             self._debug('Attempting Unix socket connection to clamd')
@@ -77,7 +112,7 @@ class clamdService(Service):
         cd_version = cd.version()
         self._debug(cd_version)
         try:
-            output = cd.scan_stream(context.data)
+            output = cd.scan_stream(obj.filedata.read())
         except pyclamd.BufferTooLongError:
                 logger.error("clamd: BufferTooLongError.")
                 self._error("clamd: BufferTooLongError.")
@@ -89,5 +124,6 @@ class clamdService(Service):
 
         if output: 
             out = output['stream']
-            self._add_result('clamd', out[1], {'Status': out[0]})
+            self._add_result('clamd',out[1], {'Status': out[0]})
+
 
