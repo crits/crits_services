@@ -63,10 +63,10 @@ class VirusTotalService(Service):
         display_config = {}
 
         # Rename keys so they render nice.
-        display_config['VT API Key'] = config['vt_api_key']
-        display_config['Query URL'] = config['vt_query_url']
-        display_config['Domain URL'] = config['vt_domain_url']
-        display_config['IP URL'] = config['vt_ip_url']
+        fields = forms.VirusTotalConfigForm().fields
+        for name, field in fields.iteritems():
+            display_config[field.label] = config[name]
+
         return display_config
 
     def run(self, obj, config):
