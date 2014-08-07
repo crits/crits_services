@@ -61,7 +61,6 @@ class ThreatreconService(Service):
             self._error("Threatrecon: query error (%s)" % loaded['Msg'])
             return
 
-        #results = loaded['Results']
         for results in loaded['Results']:
           stats = {
             'indicator': results['Indicator'],
