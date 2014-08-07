@@ -60,11 +60,10 @@ class clamdService(Service):
 
     @staticmethod
     def bind_runtime_form(analyst, config):
-        # The values are submitted as a list for some reason.
-        data = {'clamd_sock_path': config['clamd_sock_path'][0],
-                'clamd_host_name': config['clamd_host_name'][0],
-                'clamd_host_port': config['clamd_host_port'][0],
-                'clamd_force_reload': config['clamd_force_reload'][0]}
+        data = {'clamd_sock_path': config['clamd_sock_path'],
+                'clamd_host_name': config['clamd_host_name'],
+                'clamd_host_port': config['clamd_host_port'],
+                'clamd_force_reload': config['clamd_force_reload']}
         return forms.clamdServiceConfigForm(data)
 
     @classmethod
@@ -73,18 +72,8 @@ class clamdService(Service):
                                 {'name': self.name,
                                  'form': forms.clamdServiceConfigForm(initial=config),
                                  'config_error': None})
-        form = forms.clamdServiceConfigForm()
+        form = forms.clamdServiceConfigForm
         return form, html
-
-#   This will have to move into a place where validation needs to happen
-#    @classmethod
-#    def _validate(self, config):
-#        clamd_sock_path = str(config['clamd_sock_path'])
-#        clamd_host_name = str(config['clamd_host_name'])
-#        clamd_host_port = int(config['clamd_host_port'])
-#        if not clamd_sock_path and (not clamd_host_name or not clamd_host_port):
-#            raise ServiceConfigError("Must specify clamd Unix socket path or IP and port.")
-
 
     def run(self, obj, config):
         clamd_sock_path = str(config['clamd_sock_path'])
