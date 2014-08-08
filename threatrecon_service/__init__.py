@@ -61,6 +61,9 @@ class ThreatreconService(Service):
             self._error("Threatrecon: query error (%s)" % loaded['Msg'])
             return
 
+        if loaded['Results'] is None:
+            return
+
         for results in loaded['Results']:
           stats = {
             'indicator': results['Indicator'],
@@ -81,5 +84,3 @@ class ThreatreconService(Service):
             'tags': results['Tags']
           }
           self._add_result('Enrichment Data', results['Indicator'], stats)
-
-
