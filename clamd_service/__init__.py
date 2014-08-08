@@ -1,5 +1,5 @@
-# (c) 2014, Adam Polkosnik <adam.polkosnik@ny.frb.org> 
-# 
+# (c) 2014, Adam Polkosnik <adam.polkosnik@ny.frb.org>
+#
 import logging
 import os
 import pyclamd
@@ -41,6 +41,17 @@ class clamdService(Service):
                 config[key] = value
         return config
 
+    @staticmethod
+    def parse_config(config):
+        clamd_sock_path = config.get('clamd_sock_path', '')
+        clamd_host_name = config.get('clamd_host_name', '')
+        # Must have one of socket or host.
+        if not clamd_sock_path and not clamd_host_name:
+            raise ServiceConfigError("Socket path or hostname required.")
+
+        # If socket is provided check it exists.
+        if not os.path.exists(clamd_sock_path):
+            raise ServiceConfigError('Socket path not found.')
 
     @staticmethod
     def get_config_details(config):
@@ -85,12 +96,12 @@ class clamdService(Service):
             self._debug('Attempting Unix socket connection to clamd')
             cd = pyclamd.ClamdUnixSocket(clamd_sock_path)
             cd.ping()
-        except pyclamd.ConnectionError: 
+        except pyclamd.ConnectionError:
             try:
                 self._debug('Attempting Network connection to clamd')
                 cd = pyclamd.ClamdNetworkSocket(clamd_host_name, clamd_host_port)
                 cd.ping()
-            except pyclamd.ConnectionError: 
+            except pyclamd.ConnectionError:
                 logger.error("clamd: Can\'t connect to Clamd\'s network socket.")
                 self._error("clamd: Can\'t connect to Clamd\'s network socket.")
                 return
@@ -110,7 +121,7 @@ class clamdService(Service):
                 self._error("clamd: Can\'t connect to Clamd\'s  socket.")
                 return
 
-        if output: 
+        if output:
             out = output['stream']
             self._add_result('clamd',out[1], {'Status': out[0]})
 

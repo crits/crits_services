@@ -6,7 +6,7 @@ import urllib2
 from django.conf import settings
 from django.template.loader import render_to_string
 
-from crits.services.core import Service
+from crits.services.core import Service, ServiceConfigError
 
 from . import forms
 
@@ -47,6 +47,11 @@ class VirusTotalService(Service):
             for key, value in existing_config.iteritems():
                 config[key] = value
         return config
+
+    @staticmethod
+    def parse_config(config):
+        if not config['vt_api_key']:
+            raise ServiceConfigError("API key required.")
 
     @classmethod
     def generate_config_form(self, config):

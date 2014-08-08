@@ -10,7 +10,7 @@ class CuckooConfigForm(forms.Form):
                            widget=forms.TextInput(),
                            help_text="Hostname or IP of the API server.")
     port = forms.IntegerField(required=True,
-                              label="Cuckoo API server port.",
+                              label="Cuckoo API server port",
                               initial=8090)
     proxy_host = forms.CharField(required=False,
                                  label="Proxy host",
@@ -18,7 +18,7 @@ class CuckooConfigForm(forms.Form):
                                  widget=forms.TextInput(),
                                  help_text="Proxy host, if needed.")
     proxy_port = forms.IntegerField(required=False,
-                                    label="Proxy port.",
+                                    label="Proxy port",
                                     initial=0)
     webui_host = forms.CharField(required=False,
                                  label="WebUI host",
@@ -26,7 +26,7 @@ class CuckooConfigForm(forms.Form):
                                  widget=forms.TextInput(),
                                  help_text="Hostname of Cuckoo web interface.")
     webui_port = forms.IntegerField(required=False,
-                                    label="WebUI port.",
+                                    label="WebUI port",
                                     initial=0)
     machine = forms.CharField(required=True,
                               label="Machine",

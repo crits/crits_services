@@ -39,6 +39,11 @@ class PassiveTotalService(Service):
         return config
 
     @staticmethod
+    def parse_config(config):
+        if not config['pt_api_key']:
+            raise ServiceConfigError("API key required.")
+
+    @staticmethod
     def get_config_details(config):
         display_config = {}
 
