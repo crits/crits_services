@@ -4,7 +4,7 @@ import requests
 
 from django.template.loader import render_to_string
 
-from crits.services.core import Service
+from crits.services.core import Service, ServiceConfigError
 
 from . import forms
 
@@ -25,6 +25,11 @@ class ThreatreconService(Service):
     @staticmethod
     def save_runtime_config(config):
         del config['tr_api_key']
+
+    @staticmethod
+    def parse_config(config):
+        if not config['tr_api_key']:
+            raise ServiceConfigError("API key required.")
 
     @staticmethod
     def get_config(existing_config):

@@ -34,6 +34,9 @@ class YaraService(Service):
         # When validating an existing config it will be a list.
         # Convert it to a list of strings.
         sigfiles = config.get('sigfiles', [])
+        if not sigfiles:
+            raise ServiceConfigError("Must specify signature files.")
+
         if isinstance(sigfiles, basestring):
             config['sigfiles'] = [sigfile for sigfile in sigfiles.split('\r\n')]
         # This will raise ServiceConfigError

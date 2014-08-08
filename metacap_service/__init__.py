@@ -33,15 +33,24 @@ class MetaCapService(Service):
     @staticmethod
     def parse_config(config):
         # Make sure basedir exists.
+        errors = []
         basedir = config.get('basedir', '')
         if basedir:
             shop_path = "%s/shop" % basedir
             if not os.path.exists(basedir):
-                raise ServiceConfigError("Base directory does not exist.")
+                errors.append("Base directory does not exist.")
             elif not os.path.exists(shop_path):
-                raise ServiceConfigError("'shop' does not exist in base.")
+                errors.append("'shop' does not exist in base.")
         else:
-            raise ServiceConfigError("Base directory must be defined.")
+            errors.append("Base directory must be defined.")
+        tcpdump = config.get('tcpdump', '')
+        if not tcpdump:
+            errors.append('tcpdump binary not found.')
+        tshark = config.get('tshark', '')
+        if not tshark:
+            errors.append('tshark binary not found.')
+        if errors:
+            raise ServiceConfigError(errors)
 
     @staticmethod
     def get_config(existing_config):

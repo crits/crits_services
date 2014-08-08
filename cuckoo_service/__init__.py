@@ -35,6 +35,15 @@ class CuckooService(Service):
         machines = config.get('machine', [])
         if isinstance(machines, basestring):
             config['machine'] = [machine for machine in machines.split('\r\n')]
+        errors = []
+        if not config['host']:
+            errors.append("Cuckoo host required.")
+        if not config['port']:
+            errors.append("Cuckoo port required.")
+        if not config['machine']:
+            errors.append("List of machines required.")
+        if errors:
+            raise ServiceConfigError(errors)
 
     @staticmethod
     def get_config(existing_config):

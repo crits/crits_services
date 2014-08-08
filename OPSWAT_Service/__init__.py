@@ -47,6 +47,11 @@ class OPSWATService(Service):
 
         return display_config
 
+    @staticmethod
+    def parse_config(config):
+        if not config['url']:
+            raise ServiceConfigError("URL required.")
+
     @classmethod
     def generate_config_form(self, config):
         html = render_to_string('services_config_form.html',
