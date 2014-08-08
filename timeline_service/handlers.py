@@ -97,6 +97,7 @@ def generate_timeline(obj_type, obj_id, user):
     comments = cobj.objects(obj_type=obj_type,
                             obj_id=obj_id)
     for comment in comments:
+        comment.comment_to_html()
         i = "<b>%s</b> made a comment: %s" % (comment.analyst,
                                                 comment.comment)
         append_to_timeline(timeline, comment.created, i)
