@@ -1,4 +1,4 @@
-from crits.services.core import Service, ServiceConfigOption
+from crits.services.core import Service, ServiceConfigError
 from zip_meta import ZipParser
 
 class ZipMetaService(Service):
@@ -8,18 +8,27 @@ class ZipMetaService(Service):
 
     name = "zip_meta"
     version = '1.0.0'
-    type_ = Service.TYPE_CUSTOM
+    description = "Generate metadata from zip files."
     supported_types = ['Sample']
 
     @staticmethod
-    def valid_for(context):
+    def valid_for(obj):
         # Only run on zip files
-        if len(context.data) < 4:
-            return false
-        return context.data[:4] in [ZipParser.zipLDMagic, ZipParser.zipCDMagic]
+        if obj.filedata.grid_id == None:
+            raise ServiceConfigError("Missing filedata.")
 
-    def _scan(self, context):
-        zparser = ZipParser(context.data)
+        data = obj.filedata.read()
+        # Reset the read pointer.
+        obj.filedata.seek(0)
+
+        if len(data) < 4:
+            raise ServiceConfigError("Not enough filedata.")
+
+        if data[:4] not in [ZipParser.zipLDMagic, ZipParser.zipCDMagic]:
+            raise ServiceConfigError("Not a zip file.")
+
+    def run(self, obj, config):
+        zparser = ZipParser(obj.filedata.read())
         parsedZip =  zparser.parseZipFile()
         if not parsedZip:
             self._error("Could not parse document as a zip file")
@@ -52,5 +61,6 @@ class ZipMetaService(Service):
             else:
                 name = {"Name" : "ExtraField"}
                 self._add_result(cd["ZipFileName"], "None", name)
+
     def _parse_error(self, item, e):
         self._error("Error parsing %s (%s): %s" % (item, e.__class__.__name__, e))

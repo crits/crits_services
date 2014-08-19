@@ -7,8 +7,8 @@ from django.conf import settings
 from crits.core.user_tools import user_sources
 from crits.core.handlers import get_source_names, collect_objects
 from crits.core.class_mapper import class_from_type
+from crits.services.handlers import get_config
 
-from crits.service_env import manager
 
 from . import formats
 
@@ -26,7 +26,7 @@ class TAXIIForm(forms.Form):
         options are provided.
         """
         super(TAXIIForm, self).__init__(*args, **kwargs)
-        sc = manager.get_config('taxii_service')
+        sc = get_config('taxii_service')
 
         # Avoid options that cause failure: set recipients to intersection of
         # user's sources and the sources that have TAXII feeds configured
@@ -87,3 +87,53 @@ def get_supported_types():
             supported_types.append(ctype)
     return supported_types
 
+class TAXIIServiceConfigForm(forms.Form):
+    error_css_class = 'error'
+    required_css_class = 'required'
+    hostname = forms.CharField(required=True,
+                               label="Hostname",
+                               initial='',
+                               widget=forms.TextInput(),
+                               help_text="TAXII server hostname.")
+
+    https = forms.BooleanField(required=False,
+                               label="HTTPS",
+                               initial=True,
+                               help_text="Connect using HTTPS.")
+
+
+    keyfile = forms.CharField(required=True,
+                             label="Keyfile",
+                             initial='',
+                             widget=forms.TextInput(),
+                             help_text="Location of your keyfile.")
+
+    certfile = forms.CharField(required=True,
+                              label="Certfile",
+                              initial='',
+                              widget=forms.TextInput(),
+                              help_text="Location of your certificate.")
+
+    data_feed = forms.CharField(required=True,
+                                label="Data Feed",
+                                initial='',
+                                widget=forms.TextInput(),
+                                help_text="Your TAXII data feed name.")
+
+    create_events = forms.BooleanField(required=False,
+                                       label="Events",
+                                       initial=False,
+                                       help_text="Create events for all STIX documents.")
+
+    certfiles = forms.CharField(required=True,
+                                label="Configuration",
+                                initial='',
+                                widget=forms.Textarea(attrs={'cols': 80,
+                                                            'rows': 10}),
+                                help_text="Comma delimited list of CRITs"
+                                          " source name, TAXII feed name, and"
+                                          " certificate file on disk for that"
+                                          " source.")
+
+    def __init__(self, *args, **kwargs):
+        super(TAXIIServiceConfigForm, self).__init__(*args, **kwargs)

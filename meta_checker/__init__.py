@@ -1,11 +1,7 @@
 import logging
 
-from crits.services.core import ServiceConfigOption
-from crits.services.db import DatabaseService as Service
-
-logger = logging.getLogger(__name__)
-
-DEFAULT_MAX=1000
+from crits.services.core import Service, ServiceConfigError
+from crits.samples.sample import Sample
 
 class MetaChecker(Service):
     """
@@ -14,38 +10,30 @@ class MetaChecker(Service):
 
     name = "meta_checker"
     version = '1.0.2'
-    type_ = Service.TYPE_CUSTOM
-    purpose = "comparison"
     supported_types = ['Sample']
-    required_fields = ['md5']
-    default_config = [
-        ServiceConfigOption('max_result',
-                            ServiceConfigOption.INT,
-                            description="Max result threshold for showing metadata",
-                            required=True,
-                            private=False,
-                            default=DEFAULT_MAX),
-    ]
+    description = "Compare metadata of this sample to others."
 
-    def _get_meta_count(self, meta_type, meta_val):
-        query_field = "analysis.results.{0}".format(meta_type)
-        query = {query_field: meta_val}
-        total_count = self._fetch_meta(query, {'md5': 1}).count()
-        return total_count
+    @staticmethod
+    def valid_for(obj):
+        if len(obj.analysis) == 0:
+            raise ServiceConfigError("Object must have analysis results.")
 
-    def _scan(self, context):
-        max_result = self.config.get("max_result", DEFAULT_MAX)
-        my_md5 = context.md5
-        my_results = self._fetch_meta({'md5': my_md5}, {'analysis': 1})
-        if "analysis" not in my_results[0]:
-            logger.error = "Could not get analysis results for %s" % my_md5
-            self._error("Could not get analysis results for %s" % my_md5)
-            return
+    @staticmethod
+    def get_config(existing_config):
+        # This service no longer users config options, so blow away any
+        # existing configs.
+        return {}
+
+    def run(self, obj, config):
+        my_md5 = obj.md5
+        my_results = obj.analysis
+
         completed_results = []
-        for result_set in my_results[0]["analysis"]:
+        for result_set in my_results:
             # skip our own results so we don't get nasty feedback
             if result_set["service_name"] == self.name:
                 continue
+
             for result in result_set["results"]:
                 if "md5" in result:
                     res_type = "md5"
@@ -62,3 +50,9 @@ class MetaChecker(Service):
                     }
                     self._add_result("meta_count_{0}".format(res_type), result["result"], count_result)
                     completed_results.append(res_hash)
+
+    def _get_meta_count(self, meta_type, meta_val):
+        query_field = "analysis.results.{0}".format(meta_type)
+        query = {query_field: meta_val}
+        total_count = Sample.objects(__raw__=query).only('md5').count()
+        return total_count

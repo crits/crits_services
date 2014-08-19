@@ -6,20 +6,15 @@ import sys
 import time
 import json
 
-from crits.services.core import Service, ServiceConfigOption
-from crits.services.core import ServiceConfigError
+from django.template.loader import render_to_string
+
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 DEFAULT_MODULES=["HTTP", "DNS"]
 
 logger = logging.getLogger(__name__)
-
-# When running under mod_wsgi we have to make sure sys.stdout is not
-# going to the real stdout. This is because multiprocessing (used by
-# choplib internally) does sys.stdout.flush(), which mod_wsgi doesn't
-# like. Work around by pointing sys.stdout somewhere that mod_wsgi
-# doesn't care about.
-sys.stdout = sys.stderr
-sys.stdin = open(os.devnull)
 
 class ChopShopService(Service):
     """
@@ -28,84 +23,136 @@ class ChopShopService(Service):
 
     name = "ChopShop"
     version = '0.0.5'
-    type_ = Service.TYPE_CUSTOM
-    template = None
+    template = "chopshop_analysis.html"
     supported_types = ['PCAP']
-    default_config = [
-        ServiceConfigOption('basedir',
-                            ServiceConfigOption.STRING,
-                            description="A base directory where all the modules and libraries exist.",
-                            default=None,
-                            required=True,
-                            private=True),
-        ServiceConfigOption('modules',
-                            ServiceConfigOption.MULTI_SELECT,
-                            description="Supported modules.",
-                            choices=DEFAULT_MODULES,
-                            default=DEFAULT_MODULES)
-    ]
+    description = "Extract HTTP and DNS data from a PCAP."
 
-    def __init__(self, *args, **kwargs):
-        super(ChopShopService, self).__init__(*args, **kwargs)
+    @staticmethod
+    def parse_config(config):
+        # Make sure basedir exists.
+        basedir = config.get('basedir', '')
+        if basedir:
+            shop_path = "%s/shop" % basedir
+            if not os.path.exists(basedir):
+                raise ServiceConfigError("Base directory does not exist.")
+            elif not os.path.exists(shop_path):
+                raise ServiceConfigError("'shop' does not exist in base.")
+        else:
+            raise ServiceConfigError("Base directory must be defined.")
+
+    @staticmethod
+    def get_config(existing_config):
+        config = {}
+        fields = forms.ChopShopConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
+        return config
+
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
+
+        # Rename keys so they render nice.
+        fields = forms.ChopShopConfigForm().fields
+        for name, field in fields.iteritems():
+            display_config[field.label] = config[name]
+
+        return display_config
+
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.ChopShopConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.ChopShopConfigForm
+        return form, html
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        html = render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                 'form': forms.ChopShopRunForm(),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+        return html
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        return forms.ChopShopRunForm(config)
+
+    def run(self, obj, config):
+        # When running under mod_wsgi we have to make sure sys.stdout is not
+        # going to the real stdout. This is because multiprocessing (used by
+        # choplib internally) does sys.stdout.flush(), which mod_wsgi doesn't
+        # like. Work around by pointing sys.stdout somewhere that mod_wsgi
+        # doesn't care about.
+        sys.stdout = sys.stderr
+        sys.stdin = open(os.devnull)
+
         logger.debug("Initializing ChopShop service.")
-        self.base_dir = self.config['basedir']
-        self.modules = ""
-        if 'HTTP' in self.config['modules']:
-            self.modules += ";http | http_extractor -m"
-        if 'DNS' in self.config['modules']:
-            self.modules += ";dns | dns_extractor"
-        self.template = "chopshop_analysis.html"
+        basedir = config['basedir']
+        modules = ""
+        if 'HTTP' in config['modules']:
+            modules += ";http | http_extractor -m"
+        if 'DNS' in config['modules']:
+            modules += ";dns | dns_extractor"
 
-    def _scan(self, context):
         logger.debug("Setting up shop...")
-        shop_path = "%s/shop" % self.base_dir
-        if not os.path.exists(self.base_dir):
+        shop_path = "%s/shop" % basedir
+        if not os.path.exists(basedir):
             self._error("ChopShop path does not exist")
+            return
         elif not os.path.exists(shop_path):
             self._error("ChopShop shop path does not exist")
-        else:
-            sys.path.append(shop_path)
-            import ChopLib as CL
+            return
+        sys.path.append(shop_path)
+        import ChopLib as CL
 
-            # I wanted to do this check in validate, but if it fails and
-            # then you fix the path to point to the appropriate chopshop
-            # it requires a webserver restart to take effect. So just do
-            # the check at each scan.
-            if StrictVersion(str(CL.VERSION)) < StrictVersion('4.0'):
-                self._error("Need ChopShop 4.0 or newer")
+        # I wanted to do this check in validate, but if it fails and
+        # then you fix the path to point to the appropriate chopshop
+        # it requires a webserver restart to take effect. So just do
+        # the check at each scan.
+        if StrictVersion(str(CL.VERSION)) < StrictVersion('4.0'):
+            self._error("Need ChopShop 4.0 or newer")
 
-            from ChopLib import ChopLib
-            from ChopUi import ChopUi
+        from ChopLib import ChopLib
+        from ChopUi import ChopUi
 
-            logger.debug("Scanning...")
+        logger.debug("Scanning...")
 
-            choplib = ChopLib()
-            chopui = ChopUi()
+        choplib = ChopLib()
+        chopui = ChopUi()
 
-            choplib.base_dir = self.base_dir
+        choplib.base_dir = basedir
 
-            # XXX: Convert from unicode to str...
-            choplib.modules = str(self.modules)
+        # XXX: Convert from unicode to str...
+        choplib.modules = str(modules)
 
-            chopui.jsonout = jsonhandler
-            choplib.jsonout = True
+        chopui.jsonout = jsonhandler
+        choplib.jsonout = True
 
-            # ChopShop (because of pynids) needs to read a file off disk.
-            # The services framework forces you to use 'with' here. It's not
-            # possible to just get a path to a file on disk.
-            with self._write_to_file() as pcap_file:
-                choplib.filename = pcap_file
-                chopui.bind(choplib)
-                chopui.start()
-                chopui.jsonclass.set_service(self)
-                choplib.start()
+        # ChopShop (because of pynids) needs to read a file off disk.
+        # The services framework forces you to use 'with' here. It's not
+        # possible to just get a path to a file on disk.
+        with self._write_to_file() as pcap_file:
+            choplib.filename = pcap_file
+            chopui.bind(choplib)
+            chopui.start()
+            chopui.jsonclass.set_service(self)
+            choplib.start()
 
-                while chopui.is_alive():
-                    time.sleep(.1)
+            while chopui.is_alive():
+                time.sleep(.1)
 
-                chopui.join()
-                choplib.finish()
-                choplib.join()
+            chopui.join()
+            choplib.finish()
+            choplib.join()
 
 class jsonhandler:
     def __init__(self, ui_stop_fn=None, lib_stop_fn=None, format_string=None):

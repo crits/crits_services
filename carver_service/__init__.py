@@ -1,47 +1,63 @@
 import hashlib
 
-from crits.services.core import Service, ServiceConfigOption
+from django.template.loader import render_to_string
 
-DEFAULT_START = 0
-DEFAULT_END = 0
+from crits.samples.handlers import handle_file
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 class CarverService(Service):
     name = "carver"
     version = '0.0.1'
-    type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
-    default_config = [
-        ServiceConfigOption('start_offset',
-                            ServiceConfigOption.INT,
-                            description="Start offset",
-                            required=False,
-                            private=False,
-                            default=DEFAULT_START),
-
-        ServiceConfigOption('end_offset',
-                            ServiceConfigOption.INT,
-                            description="End offset",
-                            required=False,
-                            private=False,
-                            default=DEFAULT_END),
-    ]
+    description = "Carve a chunk out of a sample."
 
     @staticmethod
-    def valid_for(context):
-        return context.has_data()
+    def get_config(existing_config):
+        # This service no longer uses config options, so blow away any existing
+        # configs.
+        return {}
 
-    def _scan(self, context):
-        start_offset = self.config.get("start_offset", DEFAULT_START)
-        end_offset = self.config.get("end_offset", DEFAULT_END)
+    @staticmethod
+    def valid_for(obj):
+        if obj.filedata.grid_id == None:
+            raise ServiceConfigError("Missing filedata.")
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        # The values are submitted as a list for some reason.
+        data = {'start': config['start'][0], 'end': config['end'][0]}
+        return forms.CarverRunForm(data)
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        return render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                 'form': forms.CarverRunForm(),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+
+    def run(self, obj, config):
+        start_offset = config['start']
+        end_offset = config['end']
         # Start must be 0 or higher. If end is greater than zero it must
-        # also be greater than end_offset.
+        # also be greater than start_offset.
         if start_offset < 0 or (end_offset > 0 and start_offset > end_offset):
             self._error("Invalid offsets.")
             return
 
-        data = context.data[start_offset:end_offset]
+        data = obj.filedata.read()[start_offset:end_offset]
         if not data:
             self._error("No data.")
         else:
-            self._add_file(data, filename=hashlib.md5(data).hexdigest(), log_msg="Carved file with MD5: {0}", relationship="Contains")
+            filename = hashlib.md5(data).hexdigest()
+            handle_file(filename, data, obj.source,
+                        parent_id=str(obj.id),
+                        campaign=obj.campaign,
+                        method=self.name,
+                        relationship='Contains',
+                        user=self.current_task.username)
+            # Filename is just the md5 of the data...
+            self._add_result("file_added", filename, {'md5': filename})
         return

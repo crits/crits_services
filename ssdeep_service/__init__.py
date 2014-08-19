@@ -1,8 +1,12 @@
 import logging
 import pydeep
 
-from crits.services.core import ServiceConfigOption
-from crits.services.db import DatabaseService as Service
+from django.template.loader import render_to_string
+
+from crits.samples.sample import Sample
+from crits.services.core import Service
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -13,25 +17,33 @@ class SSDeepService(Service):
 
     name = "ssdeep_compare"
     version = '1.0.2'
-    type_ = Service.TYPE_CUSTOM
-    purpose = "comparison"
+    description = "Compare samples using ssdeep."
     supported_types = ['Sample']
-    # TODO: Figure out how to do this.
-    #required_fields = ['ssdeep', 'mimetype']
-    default_config = [
-        ServiceConfigOption('threshold',
-                            ServiceConfigOption.INT,
-                            description="Min threshold for match",
-                            required=True,
-                            private=False,
-                            default=50),
-    ]
 
-    def _scan(self, context):
-        threshold = self.config.get("threshold", 50)
-        target_ssdeep = context.sample_dict.get('ssdeep', None)
-        target_md5 = context.md5
-        target_mimetype = context.sample_dict.get('mimetype', None)
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        # The values are submitted as a list for some reason.
+        data = {'threshold': config['threshold'][0]}
+        return forms.SSDeepRunForm(data)
+
+    @staticmethod
+    def get_config(existing_config):
+        # There are no longer config options for this service.
+        return {}
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        return render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                 'form': forms.SSDeepRunForm(),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+
+    def run(self, obj, config):
+        threshold = config.get("threshold", 50)
+        target_ssdeep = obj.ssdeep
+        target_md5 = obj.md5
+        target_mimetype = obj.mimetype
         if not target_ssdeep:
             logger.error = "Could not get the target ssdeep value for sample"
             self._error("Could not get the target ssdeep value for sample")
@@ -48,7 +60,7 @@ class SSDeepService(Service):
         query_filter["$or"].append({"ssdeep": {"$regex": "^%d:" % chunk_size}})
         query_filter["$or"].append({"ssdeep": {"$regex": "^%d:" % (chunk_size / 2)}})
         result_filter = {'md5': 1, 'ssdeep': 1}
-        candidate_space = self._fetch_meta(query_filter, result_filter)
+        candidate_space = Sample.objects(__raw__=query_filter).only(*result_filter)
         match_list = []
         for candidate in candidate_space:
             if "ssdeep" in candidate:

@@ -4,8 +4,11 @@ import urllib
 import urllib2
 
 from django.conf import settings
+from django.template.loader import render_to_string
 
-from crits.services.core import Service, ServiceConfigOption
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -23,51 +26,73 @@ class VirusTotalService(Service):
 
     name = "virustotal_lookup"
     version = '3.0.0'
-    type_ = Service.TYPE_AV
     supported_types = ['Sample', 'Domain', 'IP']
     required_fields = []
-    default_config = [
-        ServiceConfigOption('vt_api_key',
-                            ServiceConfigOption.STRING,
-                            description="Required. Obtain from VirusTotal.",
-                            required=True,
-                            private=True),
-        ServiceConfigOption('vt_query_url',
-                            ServiceConfigOption.STRING,
-                            default='https://www.virustotal.com/vtapi/v2/file/report',
-                            required=True,
-                            private=True),
-        ServiceConfigOption('vt_domain_url',
-                            ServiceConfigOption.STRING,
-                            default='https://www.virustotal.com/vtapi/v2/domain/report',
-                            required=True,
-                            private=True),
-        ServiceConfigOption('vt_ip_url',
-                            ServiceConfigOption.STRING,
-                            default='https://www.virustotal.com/vtapi/v2/ip-address/report',
-                            required=True,
-                            private=True),
-    ]
+    description = "Look up a Sample, Domain or IP in VirusTotal"
 
-    def _scan(self, context):
-        key = self.config.get('vt_api_key', '')
-        sample_url = self.config.get('vt_query_url', '')
-        domain_url = self.config.get('vt_domain_url', '')
-        ip_url = self.config.get('vt_ip_url', '')
+    @staticmethod
+    def save_runtime_config(config):
+        del config['vt_api_key']
+
+    @staticmethod
+    def get_config(existing_config):
+        # Generate default config from form and initial values.
+        config = {}
+        fields = forms.VirusTotalConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
+        return config
+
+    @staticmethod
+    def parse_config(config):
+        if not config['vt_api_key']:
+            raise ServiceConfigError("API key required.")
+
+    @classmethod
+    def generate_config_form(self, config):
+        # Convert sigfiles to newline separated strings
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.VirusTotalConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.VirusTotalConfigForm
+        return form, html
+
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
+
+        # Rename keys so they render nice.
+        fields = forms.VirusTotalConfigForm().fields
+        for name, field in fields.iteritems():
+            display_config[field.label] = config[name]
+
+        return display_config
+
+    def run(self, obj, config):
+        key = config.get('vt_api_key', '')
+        sample_url = config.get('vt_query_url', '')
+        domain_url = config.get('vt_domain_url', '')
+        ip_url = config.get('vt_ip_url', '')
         if not key:
             self._error("No valid VT key found")
             return
 
-        if context.crits_type == 'Sample':
-            parameters = {"resource": context.md5, "apikey": key}
+        if obj._meta['crits_type'] == 'Sample':
+            parameters = {"resource": obj.md5, "apikey": key}
             vt_data = urllib.urlencode(parameters)
             req = urllib2.Request(sample_url, vt_data)
-        elif context.crits_type == 'Domain':
-            parameters = {'domain': context.domain_dict['domain'], 'apikey': key}
+        elif obj._meta['crits_type'] == 'Domain':
+            parameters = {'domain': obj.domain, 'apikey': key}
             vt_data = urllib.urlencode(parameters)
             req = urllib2.Request("%s?%s" % (domain_url, vt_data))
-        elif context.crits_type == 'IP':
-            parameters = {'ip': context.ip_dict['ip'], 'apikey': key}
+        elif obj._meta['crits_type'] == 'IP':
+            parameters = {'ip': obj.ip, 'apikey': key}
             vt_data = urllib.urlencode(parameters)
             req = urllib2.Request("%s?%s" % (ip_url, vt_data))
 
@@ -87,7 +112,7 @@ class VirusTotalService(Service):
         if response_dict.get('response_code', 0) != 1:
             return
 
-        if context.crits_type == 'Sample':
+        if obj._meta['crits_type'] == 'Sample':
             self._debug(response_dict.get('verbose_msg', 'No message from VT'))
             stats = {
                 'scan_date':        response_dict.get('scan_date', ''),
@@ -110,7 +135,7 @@ class VirusTotalService(Service):
                     "version":      scans[scan].get('version', ''),
                 }
                 self._add_result('av_result', result, detection)
-        elif context.crits_type == 'Domain':
+        elif obj._meta['crits_type'] == 'Domain':
             for detected_url in response_dict.get('detected_urls', []):
                 stats = {
                           'scan_date': detected_url.get('scan_date', ''),
@@ -125,7 +150,7 @@ class VirusTotalService(Service):
 
             for category in response_dict.get('categories', []):
                 self._add_result('Categories', category, {})
-        elif context.crits_type == 'IP':
+        elif obj._meta['crits_type'] == 'IP':
             for samp in response_dict.get('detected_communicating_samples', []):
                 stats = {
                           'date': samp.get('date', ''),
