@@ -137,8 +137,8 @@ class CuckooService(Service):
 
         tasks = {}
 
-        machine = self.config.get('machine', "").lower()
-        if machine == "all":
+        machine = self.config.get('machine', "")
+        if machine.lower() == "all":
             # Submit a new task with otherwise the same info to each machine
             for each in self.get_machines():
                 task_id = self.post_task(files, payload, each)
