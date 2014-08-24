@@ -7,7 +7,7 @@ from django.shortcuts import render_to_response, HttpResponse
 from django.core.servers.basehttp import FileWrapper
 from django.contrib.auth.decorators import user_passes_test
 
-from crits.core.class_mapper import class_from_id, class_from_value
+from crits.core.class_mapper import class_from_id
 from crits.core.user_tools import user_can_view_data
 
 from . import handlers
