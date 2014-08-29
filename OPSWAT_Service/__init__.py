@@ -26,13 +26,20 @@ class OPSWATService(Service):
                             default='http://example.org:8008/metascan_rest/scanner?method=scan&archive_pwd=infected',
                             required=True,
                             private=True),
+        ServiceConfigOption('OPSWAT_proxy_on',
+                            ServiceConfigOption.BOOL,
+                            description="Use proxy for connecting to OPSWAT service",
+                            private=True,
+                            default=False),
     ]
 
     def _scan(self, context):
         data = get_file(context.md5)
         zipdata = create_zip([("samples", data)])
         url = self.config.get('OPSWAT_url', '')
-
+        if not self.config.get('OPSWAT_proxy_on'):
+            proxy_handler = urllib2.ProxyHandler({})
+            opener = urllib2.build_opener(proxy_handler)
         req = urllib2.Request(url)
         req.add_header("Content-Type", "application/zip")
         req.add_data(bytearray(zipdata))
