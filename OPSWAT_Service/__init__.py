@@ -40,6 +40,7 @@ class OPSWATService(Service):
         if not self.config.get('OPSWAT_proxy_on'):
             proxy_handler = urllib2.ProxyHandler({})
             opener = urllib2.build_opener(proxy_handler)
+            urllib2.install_opener(opener)
         req = urllib2.Request(url)
         req.add_header("Content-Type", "application/zip")
         req.add_data(bytearray(zipdata))
