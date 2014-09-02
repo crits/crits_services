@@ -9,6 +9,10 @@ class OPSWATConfigForm(forms.Form):
                           initial='',
                           help_text="URL for the OPSWAT REST API, example: "
                                     "http://example.org:8008/metascan_rest/scanner?method=scan&archive_pwd=infected")
+    use_proxy = forms.BooleanField(required=False,
+                                   label="Proxy",
+                                   initial=False,
+                                   help_text="Use proxy for connecting to OPSWAT service")
 
     def __init__(self, *args, **kwargs):
         super(OPSWATConfigForm, self).__init__(*args, **kwargs)

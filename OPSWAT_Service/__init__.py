@@ -42,6 +42,8 @@ class OPSWATService(Service):
 
         # Rename keys so they render nice.
         fields = forms.OPSWATConfigForm().fields
+        print fields
+        print config
         for name, field in fields.iteritems():
             display_config[field.label] = config[name]
 
@@ -69,8 +71,11 @@ class OPSWATService(Service):
     def run(self, obj, config):
         data = obj.filedata.read()
         zipdata = create_zip([("samples", data)])
-        url = self.config.get('OPSWAT_url', '')
-
+        url = config.get('url', '')
+        if not config.get('use_proxy'):
+            proxy_handler = urllib2.ProxyHandler({})
+            opener = urllib2.build_opener(proxy_handler)
+            urllib2.install_opener(opener)
         req = urllib2.Request(url)
         req.add_header("Content-Type", "application/zip")
         req.add_data(bytearray(zipdata))
