@@ -187,6 +187,7 @@ class YaraService(Service):
                     'type': 'fileref',
                     'source': {
                          'type': 'crits',
+                         'zip_password': 'infected',
                          'crits': {
                               'location': settings.INSTANCE_URL,
                               'object_type': obj._meta['crits_type'],
