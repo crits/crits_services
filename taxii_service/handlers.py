@@ -19,7 +19,7 @@ from . import formats
 from crits.events.event import Event
 from crits.core.crits_mongoengine import Releasability
 from crits.standards.handlers import import_standards_doc
-from crits.service_env import manager
+from crits.services.handlers import get_config
 
 def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
                         certfile=None, start=None, end=None, analyst=None,
@@ -40,7 +40,7 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
             'reason': ''
           }
 
-    sc = manager.get_config('taxii_service')
+    sc = get_config('taxii_service')
     # XXX: Validate these!
     if not hostname:
         hostname = str(sc['hostname'])
@@ -223,7 +223,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
         return ret
 
     # Get config and grab some stuff we need.
-    sc = manager.get_config('taxii_service')
+    sc = get_config('taxii_service')
     hostname = sc['hostname']
     https = sc['https']
     keyfile = sc['keyfile']

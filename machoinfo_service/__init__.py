@@ -1,24 +1,40 @@
 import struct
+import hashlib
 
-from crits.services.core import Service
+from crits.services.core import Service, ServiceConfigError
+from crits.certificates.handlers import handle_cert_file
 
 from machoinfo import MachOEntity, MachOParser, MachOParserError
 
 class MachOInfoService(Service):
     name = "machoinfo"
     version = '0.0.1'
-    type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
-    default_config = []
+    description = "Generate metadata about Mach-O binaries."
 
     @staticmethod
-    def valid_for(context):
-        if len(context.data) < 4:
-            return False
-        return context.has_data() and struct.unpack('@I', context.data[:4])[0] in [MachOEntity.FAT_MAGIC, MachOEntity.FAT_CIGAM, MachOEntity.MH_MAGIC, MachOEntity.MH_CIGAM, MachOEntity.MH_MAGIC_64, MachOEntity.MH_CIGAM_64]
+    def valid_for(obj):
+        if obj.filedata.grid_id == None:
+            raise ServiceConfigError("Missing filedata.")
 
-    def _scan(self, context):
-        mop = MachOParser(context.data)
+        data = obj.filedata.read()
+        if len(data) < 4:
+            raise ServiceConfigError("Need at least 4 bytes.")
+
+        # Reset the read pointer.
+        obj.filedata.seek(0)
+
+        if not struct.unpack('@I', data[:4])[0] in [ MachOEntity.FAT_MAGIC,
+                                                     MachOEntity.FAT_CIGAM,
+                                                     MachOEntity.MH_MAGIC,
+                                                     MachOEntity.MH_CIGAM,
+                                                     MachOEntity.MH_MAGIC_64,
+                                                     MachOEntity.MH_CIGAM_64 ]:
+            raise ServiceConfigError("Bad magic.")
+
+    def run(self, obj, config):
+        data = obj.filedata.read()
+        mop = MachOParser(data)
         try:
             mop.parse()
         except MachOParserError, e:
@@ -81,7 +97,15 @@ class MachOInfoService(Service):
                             }
                             self._add_result(e, sig['hash'], result)
                         elif sig['type'] == MachOEntity.CERT_BLOB:
-                            self._add_file(sig['pkcs7'], relationship='Extracted_From', collection='Certificate')
+                            data = sig['pkcs7']
+                            filename = hashlib.md5(data).hexdigest()
+                            handle_cert_file(filename, data, obj.source,
+                                             parent_id=str(obj.id),
+                                             parent_type=obj._meta['crits_type'],
+                                             method=self.name,
+                                             relationship='Extracted_From',
+                                             user=self.current_task.username)
+                            self._add_result("cert_added", filename, {'md5': filename})
 
             e = 'Entity %i - Version Info' % i
             result = {}

@@ -4,8 +4,11 @@ import sys
 import time
 import json
 
-from crits.services.core import Service, ServiceConfigOption
-from crits.services.core import ServiceConfigError
+from django.template.loader import render_to_string
+
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -23,77 +26,108 @@ class MetaCapService(Service):
 
     name = "MetaCap"
     version = '0.0.2'
-    type_ = Service.TYPE_CUSTOM
     template = "metacap_service_template.html"
+    description = "Generate layer 3 and 4 metadata from a PCAP."
     supported_types = ['PCAP']
-    default_config = [
-        ServiceConfigOption('basedir',
-                            ServiceConfigOption.STRING,
-                            description="A base directory where all the ChopShop modules and libraries exist.",
-                            default=None,
-                            private=True,
-                            required=True),
-        ServiceConfigOption('tcpdump',
-                            ServiceConfigOption.STRING,
-                            description="Full path to tcpdump binary.",
-                            default="/usr/sbin/tcpdump",
-                            private=True,
-                            required=True),
-        ServiceConfigOption('tshark',
-                            ServiceConfigOption.STRING,
-                            description="Full path to tshark binary.",
-                            default="/usr/bin/tshark",
-                            private=True,
-                            required=True),
-    ]
 
-    def __init__(self, *args, **kwargs):
-        super(MetaCapService, self).__init__(*args, **kwargs)
-        logger.debug("Initializing MetaCap service.")
-        self.base_dir = self.config['basedir']
-        self.modules = "metacap -b"
-
-    def _scan(self, context):
-        logger.debug("Setting up shop...")
-        shop_path = "%s/shop" % self.base_dir
-        if not os.path.exists(self.base_dir):
-            raise ServiceConfigError("ChopShop path does not exist")
-        elif not os.path.exists(shop_path):
-            raise ServiceConfigError("ChopShop shop path does not exist")
+    @staticmethod
+    def parse_config(config):
+        # Make sure basedir exists.
+        errors = []
+        basedir = config.get('basedir', '')
+        if basedir:
+            shop_path = "%s/shop" % basedir
+            if not os.path.exists(basedir):
+                errors.append("Base directory does not exist.")
+            elif not os.path.exists(shop_path):
+                errors.append("'shop' does not exist in base.")
         else:
-            sys.path.append(shop_path)
-            from ChopLib import ChopLib
-            from ChopUi import ChopUi
+            errors.append("Base directory must be defined.")
+        tcpdump = config.get('tcpdump', '')
+        if not tcpdump:
+            errors.append('tcpdump binary not found.')
+        tshark = config.get('tshark', '')
+        if not tshark:
+            errors.append('tshark binary not found.')
+        if errors:
+            raise ServiceConfigError(errors)
 
-            logger.debug("Scanning...")
+    @staticmethod
+    def get_config(existing_config):
+        config = {}
+        fields = forms.MetaCapConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
 
-            choplib = ChopLib()
-            chopui = ChopUi()
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
+        return config
 
-            choplib.base_dir = self.base_dir
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
 
-            # XXX: Convert from unicode to str...
-            choplib.modules = str(self.modules)
+        # Rename keys so they render nice.
+        fields = forms.MetaCapConfigForm().fields
+        for name, field in fields.iteritems():
+            display_config[field.label] = config[name]
 
-            chopui.jsonout = jsonhandler
-            choplib.jsonout = True
+        return display_config
 
-            # ChopShop (because of pynids) needs to read a file off disk.
-            # The services framework forces you to use 'with' here. It's not
-            # possible to just get a path to a file on disk.
-            with self._write_to_file() as pcap_file:
-                choplib.filename = pcap_file
-                chopui.bind(choplib)
-                chopui.start()
-                chopui.jsonclass.set_service(self)
-                choplib.start()
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.MetaCapConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.MetaCapConfigForm
+        return form, html
 
-                while chopui.is_alive():
-                    time.sleep(.1)
+    def run(self, obj, config):
+        logger.debug("Setting up shop...")
+        base_dir = config['basedir']
+        shop_path = "%s/shop" % base_dir
+        if not os.path.exists(base_dir):
+            self._error("ChopShop path does not exist")
+            return
+        elif not os.path.exists(shop_path):
+            self._error("ChopShop shop path does not exist")
+            return
 
-                chopui.join()
-                choplib.finish()
-                choplib.join()
+        sys.path.append(shop_path)
+        from ChopLib import ChopLib
+        from ChopUi import ChopUi
+
+        logger.debug("Scanning...")
+
+        choplib = ChopLib()
+        chopui = ChopUi()
+
+        choplib.base_dir = base_dir
+
+        choplib.modules = "metacap -b"
+
+        chopui.jsonout = jsonhandler
+        choplib.jsonout = True
+
+        # ChopShop (because of pynids) needs to read a file off disk.
+        # The services framework forces you to use 'with' here. It's not
+        # possible to just get a path to a file on disk.
+        with self._write_to_file() as pcap_file:
+            choplib.filename = pcap_file
+            chopui.bind(choplib)
+            chopui.start()
+            chopui.jsonclass.set_service(self)
+            choplib.start()
+
+            while chopui.is_alive():
+                time.sleep(.1)
+
+            chopui.join()
+            choplib.finish()
+            choplib.join()
 
 class jsonhandler:
     def __init__(self, ui_stop_fn=None, lib_stop_fn=None, format_string=None):

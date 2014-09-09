@@ -15,7 +15,12 @@ import logging
 import struct
 from time import localtime, strftime
 
-from crits.services.core import Service, ServiceConfigOption
+from django.template.loader import render_to_string
+
+from crits.services.core import Service, ServiceConfigError
+from crits.samples.handlers import handle_file
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +36,35 @@ class PEInfoService(Service):
 
     name = "peinfo"
     version = '1.1.3'
-    type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
-    default_config = [
-        ServiceConfigOption('extract_all_resource',
-                            ServiceConfigOption.BOOL,
-                            description="Create new samples for all resource files"),
-        ]
+    description = "Generate metadata about Windows PE/COFF files."
+    added_files = []
 
     @staticmethod
-    def valid_for(context):
+    def valid_for(obj):
         # Only run on PE files
-        return context.is_pe()
+        if not obj.is_pe():
+            raise ServiceConfigError("Not a PE.")
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        if 'resource' not in config:
+            config['resource'] = False
+        return forms.PEInfoRunForm(config)
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        return render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                 'form': forms.PEInfoRunForm(),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+
+    @staticmethod
+    def get_config(existing_config):
+        # There are no config options for this service, blow away any existing
+        # configs.
+        return {}
 
     def _get_pehash(self, exe):
         #image characteristics
@@ -123,9 +145,9 @@ class PEInfoService(Service):
         output = m.hexdigest()
         self._add_result('PEhash value', "%s" % output, {'Value': output})
 
-    def _scan(self, context):
+    def run(self, obj, config):
         try:
-            pe = pefile.PE(data=context.data)
+            pe = pefile.PE(data=obj.filedata.read())
         except pefile.PEFormatError as e:
             self._error("A PEFormatError occurred: %s" % e)
             return
@@ -133,7 +155,19 @@ class PEInfoService(Service):
         self._get_pehash(pe)
 
         if hasattr(pe, 'DIRECTORY_ENTRY_RESOURCE'):
-            self._dump_resource_data("ROOT", pe.DIRECTORY_ENTRY_RESOURCE, pe)
+            self._dump_resource_data("ROOT",
+                                     pe.DIRECTORY_ENTRY_RESOURCE,
+                                     pe,
+                                     config['resource'])
+            for f in self.added_files:
+                handle_file(f[0], f[1], obj.source,
+                            parent_id=str(obj.id),
+                            campaign=obj.campaign,
+                            method=self.name,
+                            relationship='Extracted_From',
+                            user=self.current_task.username)
+                rsrc_md5 = hashlib.md5(f[1]).hexdigest()
+                self._add_result("file_added", f[0], {'md5': rsrc_md5})
         else:
             self._debug("No resources")
 
@@ -211,7 +245,7 @@ class PEInfoService(Service):
         imphash = pe.get_imphash()
         self._add_result('imphash', imphash, {'import_hash': imphash})
 
-    def _dump_resource_data(self, name, dir, pe):
+    def _dump_resource_data(self, name, dir, pe, save):
         for i in dir.entries:
             try:
                 if hasattr(i, 'data'):
@@ -223,13 +257,9 @@ class PEInfoService(Service):
                     if not data:
                         data = ""
                     if len(data) > 0:
-                        if (self.config['extract_all_resource']
-                                or data[:2] == 'MZ'
-                                or data[:4] == "%%PDF"):
+                        if (save or data[:2] == 'MZ' or data[:4] == "%%PDF"):
                             self._debug("Adding new file from resource len %d - %s" % (len(data), rname))
-                            self._add_file(data,
-                                           filename=rname,
-                                           relationship="Extracted_From")
+                            self.added_files.append((rname, data))
                     results = {
                             "resource_type": x.struct.name.decode('UTF-8', errors='replace') ,
                             "resource_id": i.id,
@@ -244,7 +274,7 @@ class PEInfoService(Service):
                 if hasattr(i, "directory"):
                     self._debug("Parsing next directory entry %s" % i.name)
                     self._dump_resource_data(name + "_%s" % i.name,
-                                             i.directory, pe)
+                                             i.directory, pe, save)
             except Exception as e:
                 self._parse_error("Resource directory entry", e)
 

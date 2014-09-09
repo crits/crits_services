@@ -44,3 +44,25 @@ class TCPDumpForm(forms.Form):
                                        ("-xx", "(-xx) Print hex data including link level header"),
                                        ("-X", "(-X) Print hex and ascii data"),
                                        ("-XX", "(-XX) Print hex and ascii data including link level header")]
+
+class MetaCapConfigForm(forms.Form):
+    error_css_class = 'error'
+    required_css_class = 'required'
+    basedir = forms.CharField(required=True,
+                              label='ChopShop base directory',
+                              widget=forms.TextInput(),
+                              help_text="The base directory where all the ChopShop modules and libraries exist.",
+                              initial='')
+    tcpdump = forms.CharField(required=True,
+                              label='tcpdump binary',
+                              widget=forms.TextInput(),
+                              help_text="Full path to the tcpdump binary.",
+                              initial='')
+    tshark = forms.CharField(required=True,
+                              label='tshark binary',
+                              widget=forms.TextInput(),
+                              help_text="Full path to the tshark binary.",
+                              initial='')
+
+    def __init__(self, *args, **kwargs):
+        super(MetaCapConfigForm, self).__init__(*args, **kwargs)

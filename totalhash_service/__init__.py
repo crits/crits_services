@@ -8,8 +8,11 @@ import urllib2
 import hmac
 
 from django.conf import settings
+from django.template.loader import render_to_string
 
-from crits.services.core import Service, ServiceConfigOption
+from crits.services.core import Service
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -23,35 +26,51 @@ class TotalHashService(Service):
 
     name = "totalhash"
     version = '0.1.0'
-    type_ = Service.TYPE_CUSTOM
     supported_types = ['Sample']
-    default_config = [
-        ServiceConfigOption('th_api_key',
-                            ServiceConfigOption.STRING,
-                            description="Required. Obtain from Totalhash.",
-                            required=True,
-                            private=True),
-        ServiceConfigOption('th_user',
-                            ServiceConfigOption.STRING,
-                            description="Required. Obtain from Totalhash.",
-                            required=True,
-                            private=True),
-        ServiceConfigOption('th_query_url',
-                            ServiceConfigOption.STRING,
-                            default='https://api.totalhash.com/',
-                            required=True,
-                            private=True),
-    ]
+    description = "Look up a sample on totalhash."
 
-    def _scan(self, context):
+    @staticmethod
+    def get_config(existing_config):
+        config = {}
+        fields = forms.TotalHashConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
+        return config
+
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.TotalHashConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.TotalHashConfigForm
+        return form, html
+
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
+        display_config['TH API Key'] = config['th_api_key']
+        display_config['TH User'] = config['th_user']
+        display_config['TH Query URL'] = config['th_query_url']
+        return display_config
+
+    @staticmethod
+    def save_runtime_config(config):
+        del config['th_api_key']
+        del config['th_user']
+
+    def run(self, obj, config):
         # If we have an API key, go ahead and look it up.
-        key = str(self.config.get('th_api_key', ''))
-        user = self.config.get('th_user', '')
-        url = self.config.get('th_query_url', '')
+        key = str(config.get('th_api_key', ''))
+        user = config.get('th_user', '')
+        url = config.get('th_query_url', '')
 
-        # XXX: Context doesn't provide sha1. When we move away from contexts
-        # this can just use str(obj.sha1)
-        h = hashlib.sha1(context.data).hexdigest()
+        h = obj.sha1
 
         if not key:
             self._add_result('Analysis Link', url + "/analysis/" + h)
