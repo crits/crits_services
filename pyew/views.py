@@ -6,12 +6,16 @@ from django.utils.crypto import get_random_string
 
 from crits.core.user import CRITsUser
 from crits.core.user_tools import user_can_view_data
-from crits.service_env import manager
+from crits.services.service import CRITsService
 
 @user_passes_test(user_can_view_data)
 def pyew_port(request):
 
-    sc = manager.get_config('Pyew')
+    svc = CRITsService.objects(name='Pyew').first()
+    if not svc:
+        return HttpResponse(json.dumps({}), mimetype="application/json")
+
+    sc = svc.config
     port = str(sc['port'])
     secure = str(sc['secure'])
     data = {'port': port,

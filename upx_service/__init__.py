@@ -1,9 +1,14 @@
 import logging
 import os
 import subprocess
+import hashlib
 
-from crits.services.core import Service, ServiceConfigOption
-from crits.services.core import ServiceConfigError
+from django.template.loader import render_to_string
+
+from crits.services.core import Service, ServiceConfigError
+from crits.samples.handlers import handle_file
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -15,19 +20,11 @@ class UpxService(Service):
 
     name = "upx"
     version = '1.0.2'
-    type_ = Service.TYPE_UNPACKER
     supported_types = ['Sample']
-    default_config = [
-        ServiceConfigOption('upx_path',
-                            ServiceConfigOption.STRING,
-                            description="Location of the upx binary.",
-                            default='/usr/bin/upx',
-                            required=True,
-                            private=True),
-    ]
+    description = "Unpack a binary using UPX."
 
-    @classmethod
-    def _validate(cls, config):
+    @staticmethod
+    def parse_config(config):
         upx_path = config.get("upx_path", "")
         if not upx_path:
             raise ServiceConfigError("Must specify UPX path.")
@@ -39,14 +36,39 @@ class UpxService(Service):
             raise ServiceConfigError("UPX path is not executable.")
 
         if not 'upx' in upx_path.lower():
-            raise ServiceConfigError("Executable does not appear"
-                                         " to be UPX.")
+            raise ServiceConfigError("Executable does not appear to be UPX.")
 
-    def _scan(self, context):
-        upx_path = self.config.get("upx_path", "")
+    @staticmethod
+    def get_config(existing_config):
+        # Generate default config from form and initial values.
+        config = {}
+        fields = forms.UPXConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
 
-        # The _write_to_file() context manager will delete this file at the
-        # end of the "with" block.
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
+        return config
+
+    @staticmethod
+    def get_config_details(config):
+        return {'UPX binary': config['upx_path']}
+
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.UPXConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.UPXConfigForm
+        return form, html
+
+    def run(self, obj, config):
+        upx_path = config.get("upx_path", "")
+
+        # _write_to_file() will delete this file at the end of the "with" block.
         with self._write_to_file() as tmp_file:
             (working_dir, filename) = os.path.split(tmp_file)
             args = [upx_path, "-q", "-d", filename]
@@ -74,6 +96,13 @@ class UpxService(Service):
 
             #TODO: check to make sure file was modified (new MD5), indicating
             # it was actually unpacked
-            self._add_file(data,
-                           log_msg="UPX unpacked file with MD5: {0}",
-                           relationship="Packed_From")
+            md5 = hashlib.md5(data).hexdigest()
+            filename = md5 + ".upx"
+            handle_file(filename, data, obj.source,
+                        parent_id=str(obj.id),
+                        campaign=obj.campaign,
+                        method=self.name,
+                        relationship='Packed_From',
+                        user=self.current_task.username)
+            # Filename is just the md5 of the data...
+            self._add_result("file_added", filename, {'md5': filename})

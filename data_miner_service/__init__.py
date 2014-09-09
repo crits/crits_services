@@ -3,9 +3,9 @@ import logging
 
 from crits.services.core import Service
 from crits.raw_data.raw_data import RawData
+from crits.samples.sample import Sample
 from crits.domains.domain import TLD
 from crits.indicators.indicator import Indicator
-from crits.services.contexts import RawDataContext, SampleContext
 from crits.core.data_tools import make_ascii_strings
 
 logger = logging.getLogger(__name__)
@@ -22,27 +22,29 @@ class DataMinerService(Service):
 
     name = "DataMiner"
     version = '1.0.0'
-    type_ = Service.TYPE_CUSTOM
     template = "data_miner_service_template.html"
     supported_types = ['RawData', 'Sample']
-    default_config = [
-        ]
+    description = "Mine a chunk of data for useful information."
 
-    def _scan(self, context):
-        if isinstance(context, RawDataContext):
-            raw_data = RawData.objects(id=context.identifier).first()
-            if not raw_data:
-                self._debug("Could not find raw data to parse.")
-                return
-            data = raw_data.data
-        elif isinstance(context, SampleContext):
-            data = make_ascii_strings(md5=context.identifier)
+    @staticmethod
+    def valid_for(obj):
+        if isinstance(obj, Sample):
+            if obj.filedata.grid_id == None:
+                raise ServiceConfigError("Missing filedata.")
+
+    def run(self, obj, config):
+        if isinstance(obj, RawData):
+            data = obj.data
+        elif isinstance(obj, Sample):
+            samp_data = obj.filedata.read()
+            data = make_ascii_strings(data=samp_data)
             if not data:
                 self._debug("Could not find sample data to parse.")
                 return
         else:
             self._debug("This type is not supported by this service.")
             return
+
         ips = extract_ips(data)
         for ip in ips:
             tdict = {'Type': "IP Address"}

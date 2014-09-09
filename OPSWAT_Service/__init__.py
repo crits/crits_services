@@ -2,10 +2,13 @@ import urllib2
 import xml.parsers.expat
 
 from datetime import datetime
-from crits.core.mongo_tools import get_file
-from crits.core.data_tools import create_zip
 
-from crits.services.core import Service, ServiceConfigOption
+from django.template.loader import render_to_string
+
+from crits.core.data_tools import create_zip
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 class OPSWATService(Service):
     """
@@ -17,27 +20,59 @@ class OPSWATService(Service):
 
     name = "OPSWAT"
     version = "1.0.0"
-    type_ = Service.TYPE_AV
     supported_types = ['Sample']
-    default_config = [
-        ServiceConfigOption('OPSWAT_url',
-                            ServiceConfigOption.STRING,
-                            description="URL for the OPSWAT REST API.",
-                            default='http://example.org:8008/metascan_rest/scanner?method=scan&archive_pwd=infected',
-                            required=True,
-                            private=True),
-        ServiceConfigOption('OPSWAT_proxy_on',
-                            ServiceConfigOption.BOOL,
-                            description="Use proxy for connecting to OPSWAT service",
-                            private=True,
-                            default=False),
-    ]
+    description = "Send a sample to OPSWAT appliance."
 
-    def _scan(self, context):
-        data = get_file(context.md5)
+    @staticmethod
+    def get_config(existing_config):
+        config = {}
+        fields = forms.OPSWATConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
+        return config
+
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
+
+        # Rename keys so they render nice.
+        fields = forms.OPSWATConfigForm().fields
+        print fields
+        print config
+        for name, field in fields.iteritems():
+            display_config[field.label] = config[name]
+
+        return display_config
+
+    @staticmethod
+    def parse_config(config):
+        if not config['url']:
+            raise ServiceConfigError("URL required.")
+
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.OPSWATConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.OPSWATConfigForm
+        return form, html
+
+    @staticmethod
+    def valid_for(obj):
+        if obj.filedata.grid_id == None:
+            raise ServiceConfigError("Missing filedata.")
+
+    def run(self, obj, config):
+        data = obj.filedata.read()
         zipdata = create_zip([("samples", data)])
-        url = self.config.get('OPSWAT_url', '')
-        if not self.config.get('OPSWAT_proxy_on'):
+        url = config.get('url', '')
+        if not config.get('use_proxy'):
             proxy_handler = urllib2.ProxyHandler({})
             opener = urllib2.build_opener(proxy_handler)
             urllib2.install_opener(opener)

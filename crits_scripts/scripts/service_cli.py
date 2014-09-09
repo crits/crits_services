@@ -3,46 +3,37 @@ from optparse import OptionParser
 
 import settings
 
-from crits.core.mongo_tools import mongo_find
-import crits.service_env
+import crits.services
+from crits.services.handlers import run_service
 from crits.services.core import ServiceAnalysisError
 from crits.core.basescript import CRITsBaseScript
-from crits.core.class_mapper import class_from_value
+from crits.core.class_mapper import class_from_value, class_from_type
 
 class CRITsScript(CRITsBaseScript):
     def __init__(self, username=None):
         self.username = username
 
-    def run_services(self, service_list, sample_list, verbose=False, force=False):
-        env = crits.service_env.environment
+    def run_services(self, service_list, obj_list, verbose=False, config={}):
         if verbose:
-            print "Beginning scanning of files\n-------------------\n"
-        for (sample_md5, sample_id) in sample_list:
-            try:
-                context = env.create_context("Sample", sample_id, 'command_line')
-            except Exception as e:
-                print "    [-] error fetching md5 {0}, {1}".format(sample_md5, e)
-                continue
+            print "Running services\n-------------------\n"
+        for obj in obj_list:
             for service in service_list:
                 if verbose:
-                    print "    [+] {0} scan md5: {1}".format(service, sample_md5)
+                    print "    [+] {0} scan obj: {1}".format(service, obj.id)
                 try:
-                    env.run_service(service, context, execute='process', force=force)
+                    result = run_service(service,
+                                         obj._meta['crits_type'],
+                                         obj.id,
+                                         self.username,
+                                         obj=obj,
+                                         custom_config=config,
+                                         execute='process')
+                    if result['success'] != True:
+                        if verbose:
+                            print "    [+] %s" % result['html']
                 except ServiceAnalysisError as e:
                     if verbose:
                         print "    [+] %s" % e
-
-    def list_available_services(self):
-        print "\nAvailable Services\n---------------------"
-        for service_name in crits.service_env.manager.enabled_services:
-            print "    [+] %s" % service_name
-        print "\n"
-
-    def get_service_list(self, triage = False, enabled = False):
-        if triage:
-            return crits.service_env.manager.triage_services
-        elif enabled:
-            return crits.service_env.manager.enabled_services
 
     def print_running_services(self, service_list):
         print "\nServices:\n---------------"
@@ -50,70 +41,58 @@ class CRITsScript(CRITsBaseScript):
             print "    [+] {0}".format(service_name)
         print "\n"
 
-    def print_sample_stats(self, sample_list, sample_filter=None):
-        if sample_filter:
-            print "Samples from {0}\n----------------".format(sample_filter)
+    def print_object_stats(self, obj_list, query_filter=None):
+        if query_filter:
+            print "Objects from {0}\n----------------".format(query_filter)
         else:
-            print "\nSamples\n------------"
-        print "    [+] %d samples" % (len(sample_list))
+            print "\nObjects\n------------"
+        print "    [+] %d objects" % (len(obj_list))
         print "\n"
 
     def run(self, argv):
         parser = OptionParser()
-        parser.add_option('-l', '--list', dest='list_services', action='store_true',
-                            default=False,
-                            help='List available services')
-        parser.add_option('-t', '--triage', dest='triage', action='store_true',
-                            default=False,
-                            help='Run all triage services')
-        parser.add_option('-e', '--enabled', dest='enabled', action='store_true',
-                            default=False,
-                            help='Run all enabled services')
         parser.add_option('-s', '--services', dest='services', help='Service list')
         parser.add_option('-v', '--verbose', dest='verbose', action='store_true',
                             default=False,
                             help='Verbose mode')
-        parser.add_option('-f', '--filter', dest='sample_filter',
-                            help='Sample query filter')
-        parser.add_option('-m', '--md5', dest='md5',
-                            help='md5 of sample')
-        parser.add_option('-F', '--force', dest='force', action='store_true',
-                            default=False,
-                            help='Force run')
+        parser.add_option('-f', '--filter', dest='query_filter',
+                            help='Query filter')
+        parser.add_option('-T', '--type', dest='type_', default='Sample',
+                            help='CRITs type query for (default: Sample)')
+        parser.add_option('-i', '--identifier', dest='identifier',
+                            help='Identifier for type (NOT OBJECT ID)')
+        parser.add_option('-c', '--config', dest='config', default={},
+                            help='Service configuration')
         (opts, args) = parser.parse_args(argv)
 
         service_list = []
-        sample_list = []
-        if opts.list_services:
-            self.list_available_services()
-        if (opts.triage or opts.enabled):
-            service_list = self.get_service_list(opts.triage, opts.enabled)
+        if opts.services:
+            service_list = opts.services.split(',')
             if opts.verbose:
                 self.print_running_services(service_list)
-        elif (opts.services):
-            if len(opts.services) > 0:
-                service_list = opts.services.split(',')
-                if opts.verbose:
-                    self.print_running_services(service_list)
-        if (opts.sample_filter):
-            query = ast.literal_eval(opts.sample_filter)
-            query_results = mongo_find(settings.COL_SAMPLES, query, {'md5': 1})
-            sample_list = [(sample["md5"], str(sample["_id"])) for sample in query_results]
+
+        if opts.query_filter:
+            query = ast.literal_eval(opts.query_filter)
+            klass = class_from_type(opts.type_)
+            if not klass:
+                print "[-] Invalid type."
+            obj_list = klass.objects(__raw__=query)
             if opts.verbose:
-                self.print_sample_stats(sample_list, opts.sample_filter)
-        if (opts.md5):
-            # Given an MD5 we have to get the sample ID.
-            #
-            # XXX: This should be extended so we can pass an MD5 of a PCAP.
-            # The entire script also needs to have an option for ID, so we
-            # can work with other object types that support services.
-            obj = class_from_value('Sample', opts.md5)
+                self.print_object_stats(obj_list, opts.query_filter)
+
+        if opts.identifier:
+            obj = class_from_value(opts.type_, opts.identifier)
             if not obj:
                 print "[-] Unable to find object."
                 return
 
-            sample_list = [(opts.md5, obj.id)]
+            obj_list = [obj]
             if opts.verbose:
-                self.print_sample_stats(sample_list)
-        if sample_list and service_list:
-            self.run_services(service_list, sample_list, opts.verbose, opts.force)
+                self.print_object_stats(obj_list)
+
+        config = {}
+        if opts.config:
+            config = ast.literal_eval(opts.config)
+
+        if obj_list and service_list:
+            self.run_services(service_list, obj_list, opts.verbose, config)

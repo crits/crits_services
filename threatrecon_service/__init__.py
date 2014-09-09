@@ -2,7 +2,11 @@ import logging
 import json
 import requests
 
-from crits.services.core import Service, ServiceConfigOption
+from django.template.loader import render_to_string
+
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -15,33 +19,64 @@ class ThreatreconService(Service):
 
     name = "threatrecon_lookup"
     version = '1.0.0'
-    type_ = Service.TYPE_CUSTOM
     supported_types = [ 'Domain', 'IP' ]
-    required_fields = []
-    default_config = [
-        ServiceConfigOption('tr_api_key',
-                            ServiceConfigOption.STRING,
-                            description="Required. Obtain from Threatrecon.",
-                            required=True,
-                            private=True),
-        ServiceConfigOption('tr_query_url',
-                            ServiceConfigOption.STRING,
-                            default='https://api.threatrecon.co/api/v1/search',
-                            required=True,
-                            private=True),
-    ]
+    description = 'Look up a Domain or IP in Threatrecon'
 
-    def _scan(self, context):
-        apikey = self.config.get('tr_api_key', '')
-        queryUrl = self.config.get('tr_query_url', '')
+    @staticmethod
+    def save_runtime_config(config):
+        del config['tr_api_key']
+
+    @staticmethod
+    def parse_config(config):
+        if not config['tr_api_key']:
+            raise ServiceConfigError("API key required.")
+
+    @staticmethod
+    def get_config(existing_config):
+        # Generate default config from form and initial values.
+        config = {}
+        fields = forms.ThreatreconConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
+        return config
+
+    @classmethod
+    def generate_config_form(self, config):
+        # Convert sigfiles to newline separated strings
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.ThreatreconConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.ThreatreconConfigForm
+        return form, html
+
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
+
+        # Rename keys so they render nice.
+        fields = forms.ThreatreconConfigForm().fields
+        for name, field in fields.iteritems():
+            display_config[field.label] = config[name]
+
+        return display_config
+
+    def run(self, obj, config):
+        apikey = config.get('tr_api_key', '')
+        queryUrl = config.get('tr_query_url', '')
 
         if not apikey:
             self._error("Threatrecon API key is invalid or blank")
 
-        if context.crits_type == 'Domain':
-            params = { 'indicator': context.domain_dict['domain'], 'api_key': apikey }
-        elif context.crits_type == 'IP':
-            params = { 'indicator': context.ip_dict['ip'], 'api_key': apikey }
+        if obj._meta['crits_type'] == 'Domain':
+            params = { 'indicator': obj.domain, 'api_key': apikey }
+        elif obj._meta['crits_type'] == 'IP':
+            params = { 'indicator': obj.ip, 'api_key': apikey }
         else:
             logger.error("Threatrecon: Invalid type.")
             self._error("Invalid type.")
