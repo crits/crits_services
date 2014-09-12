@@ -1,1 +1,2 @@
-The SSDeep service requires pydeep and ssdeep to run.
+The SSDeep service requires pydeep and ssdeep to run. This is a part of CRITs
+core so you should already have it installed.
