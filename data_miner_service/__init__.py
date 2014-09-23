@@ -1,7 +1,8 @@
 import re
 import logging
 
-from crits.services.core import Service
+from crits.services.core import Service, ServiceConfigError
+from crits.events.event import Event
 from crits.raw_data.raw_data import RawData
 from crits.samples.sample import Sample
 from crits.domains.domain import TLD
@@ -23,7 +24,7 @@ class DataMinerService(Service):
     name = "DataMiner"
     version = '1.0.0'
     template = "data_miner_service_template.html"
-    supported_types = ['RawData', 'Sample']
+    supported_types = ['Event', 'RawData', 'Sample']
     description = "Mine a chunk of data for useful information."
 
     @staticmethod
@@ -33,7 +34,9 @@ class DataMinerService(Service):
                 raise ServiceConfigError("Missing filedata.")
 
     def run(self, obj, config):
-        if isinstance(obj, RawData):
+        if isinstance(obj, Event):
+            data = obj.description
+        elif isinstance(obj, RawData):
             data = obj.data
         elif isinstance(obj, Sample):
             samp_data = obj.filedata.read()
