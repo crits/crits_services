@@ -7,9 +7,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
-from crits.core.class_mapper import class_from_value
 from crits.core.user import CRITsUser
-from crits.core.crits_mongoengine import AnalysisConfig
 
 from . import forms
 
@@ -218,7 +216,7 @@ class YaraService(Service):
             exch = config['exchange']
             routing_key = config['routing_key']
             try:
-                from crits.services.connector import *
+                from crits.services.connector import Connector
                 conn = Connector(connector="amqp",
                                  uri=config['distribution_url'], ssl=True)
                 conn.send_msg(msg, exch, routing_key)
