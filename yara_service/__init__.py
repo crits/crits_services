@@ -103,10 +103,15 @@ class YaraService(Service):
 
     @staticmethod
     def validate_runtime(config, db_config):
-        # To run, this service _MUST_ have sigfiles and if distribution_url
-        # is set it must have api_key.
+        # To run, this service _MUST_ have sigfiles. If no sigfiles are
+        # specified at runtime (config) use the ones in db_config. If none
+        # exist there, raise an error.
+        #
+        # If distribution_url is set it must have api_key.
         if 'sigfiles' not in config:
-            raise ServiceConfigError("Need sigfiles to run.")
+            config['sigfiles'] = db_config.get('sigfiles', [])
+            if not config['sigfiles']:
+                raise ServiceConfigError("Need sigfiles to run.")
 
         if db_config['distribution_url'] and 'api_key' not in config:
             raise ServiceConfigError("Need API key to run.")
