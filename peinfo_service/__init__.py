@@ -232,7 +232,7 @@ class PEInfoService(Service):
         checksum = data[1]
         headervalues = []
 
-        for i in xrange(len(data) / 2):
+        for i in xrange(len(data) // 2):
             if data[2 * i] == 0x68636952: # Rich
                 if data[2 * i + 1] != checksum:
                     self._parse_error('Rich Header corrupted')
