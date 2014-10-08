@@ -151,7 +151,7 @@
             <td class="ui-icon ui-icon-pencil edit_raw_indicator" data-type="{{ result.Type }}"></td>
             <td class="potential_indicator">
                 {% if result.result %}
-                <a class="potential_link" href="{% url 'crits.core.views.global_search_listing' %}?search_type=detectexact&q={{result.result|urlencode}}">{{result.result}}</a>
+                <a class="potential_link" href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&q={{result.result|urlencode}}">{{result.result}}</a>
                 {% endif %}
             </td>
             <td>
