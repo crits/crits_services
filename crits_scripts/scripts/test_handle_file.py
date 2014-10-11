@@ -1,5 +1,6 @@
 from django.conf import settings
 
+from crits.services.analysis_result import AnalysisResult
 from crits.core.mongo_tools import mongo_connector, put_file
 from crits.samples.handlers import handle_file
 from crits.samples.sample import Sample
@@ -7,9 +8,12 @@ from crits.core.basescript import CRITsBaseScript
 
 class TestFile(object):
     """
-    def handle_file(filename, data, source, reference=None, parent=None,
-                    backdoor=None, user='', method='Generic', md5_digest=None,
-                    bucket_list=None, parent_type='Sample'):
+    def handle_file(filename, data, source, method='Generic', reference=None, related_md5=None,
+                    related_id=None, related_type='Sample', backdoor=None, user='',
+                    campaign=None, confidence='low', md5_digest=None, bucket_list=None,
+                    ticket=None, relationship=None, inherited_source=None, is_validate_only=False,
+                    is_return_only_md5=True, cache={}):
+
     """
     test_filename = "test_file.txt"
     test_data = "the quick brown fox jumps the lazy dog"
@@ -70,8 +74,9 @@ class TestFile(object):
     def _check_triage(self):
         sample = Sample.objects(md5=self.test_md5).first()
         results = False
-        if sample and len(sample.analysis) > 0 and sample.filedata:
-            results = True
+        if sample and sample.filedata:
+            if len(AnalysisResult.objects(object_id=str(sample.id))) > 0:
+                results = True
         print "[?] sample analysis executed == %s" % results
         return results
 

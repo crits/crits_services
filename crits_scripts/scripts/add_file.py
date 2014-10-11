@@ -15,8 +15,10 @@ class CRITsScript(CRITsBaseScript):
                 type="string", help="scanned FILENAME")
         parser.add_option("-s", "--source", action="store",
                 dest="source", type="string", help="source")
-        parser.add_option("-p", "--parent", action="store", dest="parent",
-                type="string", help="parent md5")
+        parser.add_option("-p", "--parent", action="store", dest="parent_md5",
+                type="string", help="parent MD5")
+        parser.add_option("-i", "--parent-id", action="store", dest="parent_id",
+                type="string", help="parent ID")
         parser.add_option("-P", "--parent-type", action="store", dest="parent_type",
                 type="string", default="Sample", help="parent type (Sample, PCAP, ...)")
         parser.add_option("-t", "--trojan", action="store", dest="trojan",
@@ -32,7 +34,10 @@ class CRITsScript(CRITsBaseScript):
             source = opts.source
         else:
             print "[-] Source required, none provided"
-            exit(1)
+            return
+        if opts.parent_md5 and opts.parent_id:
+            print "[-] Specify one of -p or -i!"
+            return
         try:
             fin = open(opts.filename, 'rb')
             data = fin.read()
@@ -43,10 +48,14 @@ class CRITsScript(CRITsBaseScript):
         except:
             print "[-] Cannot open %s for reading!" % opts.filename
             return
-        if opts.parent:
-            parent = opts.parent
+        if opts.parent_md5:
+            parent_md5 = opts.parent_md5
         else:
-            parent = None
+            parent_md5 = None
+        if opts.parent_id:
+            parent_id = opts.parent_id
+        else:
+            parent_id = None
         parent_type = opts.parent_type
         if opts.trojan:
             trojan = opts.trojan
@@ -58,15 +67,15 @@ class CRITsScript(CRITsBaseScript):
             filename,
             data,
             source,
-            opts.reference,
+            reference=opts.reference,
             backdoor=trojan,
             user=self.username,
-            parent_md5=parent,
-            parent_type=parent_type,
+            related_md5=parent_md5,
+            related_id=parent_id,
+            related_type=parent_type,
             method="Command line add_file.py",
             bucket_list=opts.bucket_list)
         if sourcemd5 != sample:
             print "[-] Source MD5: %s is not the same as the returned MD5: %s" % (sourcemd5, sample)
-            exit(1)
         else:
             print "[+] Added %s (MD5: %s)" % (filename, sample)
