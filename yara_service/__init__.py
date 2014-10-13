@@ -7,9 +7,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
-from crits.core.class_mapper import class_from_value
 from crits.core.user import CRITsUser
-from crits.core.crits_mongoengine import AnalysisConfig
 
 from . import forms
 
@@ -105,10 +103,15 @@ class YaraService(Service):
 
     @staticmethod
     def validate_runtime(config, db_config):
-        # To run, this service _MUST_ have sigfiles and if distribution_url
-        # is set it must have api_key.
+        # To run, this service _MUST_ have sigfiles. If no sigfiles are
+        # specified at runtime (config) use the ones in db_config. If none
+        # exist there, raise an error.
+        #
+        # If distribution_url is set it must have api_key.
         if 'sigfiles' not in config:
-            raise ServiceConfigError("Need sigfiles to run.")
+            config['sigfiles'] = db_config.get('sigfiles', [])
+            if not config['sigfiles']:
+                raise ServiceConfigError("Need sigfiles to run.")
 
         if db_config['distribution_url'] and 'api_key' not in config:
             raise ServiceConfigError("Need API key to run.")
@@ -218,7 +221,7 @@ class YaraService(Service):
             exch = config['exchange']
             routing_key = config['routing_key']
             try:
-                from crits.services.connector import *
+                from crits.services.connector import Connector
                 conn = Connector(connector="amqp",
                                  uri=config['distribution_url'], ssl=True)
                 conn.send_msg(msg, exch, routing_key)

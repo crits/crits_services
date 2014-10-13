@@ -22,15 +22,20 @@
 </style>
 
 <script>
-    function create_raw_indicator(ind_type, value, me) {
+    function create_indicator(otype, ind_type, value, me) {
         data = {
             'value': value,
             'oid': "{{ subscription.id }}",
             'type': ind_type,
         };
+        if (otype == "Event") {
+            url = "{% url 'crits.indicators.views.indicator_from_event' %}";
+        } else if (otype == "RawData") {
+            url = "{% url 'crits.indicators.views.indicator_from_raw' %}";
+        }
         $.ajax({
             type: "POST",
-            url: "{% url 'crits.indicators.views.indicator_from_raw' %}",
+            url: url,
             data: data,
             dataType: "json",
             success: function(data) {
@@ -69,9 +74,10 @@
             height: "auto",
             buttons: {
                 'Add Indicator': function() {
+                    otype = "{{ subscription.type }}";
                     ind_type = $('#raw_indicator_type').text();
                     value = $('#raw_indicator_value').val();
-                    create_raw_indicator(ind_type, value, me);
+                    create_indicator(otype, ind_type, value, me);
                     $(this).dialog('close');
                 },
                 'Cancel': function() {
@@ -98,7 +104,8 @@
             } else if (type == "Email") {
                 ind_type = 'Address - email-addr';
             }
-            create_raw_indicator(ind_type, value, me);
+            otype = "{{ subscription.type }}";
+            create_indicator(otype, ind_type, value, me);
         });
         $(document).on('click', '.edit_raw_indicator', function(e) {
             var me = $(this);
@@ -144,7 +151,7 @@
             <td class="ui-icon ui-icon-pencil edit_raw_indicator" data-type="{{ result.Type }}"></td>
             <td class="potential_indicator">
                 {% if result.result %}
-                <a class="potential_link" href="{% url 'crits.core.views.global_search_listing' %}?search_type=detectexact&q={{result.result|urlencode}}">{{result.result}}</a>
+                <a class="potential_link" href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&q={{result.result|urlencode}}">{{result.result}}</a>
                 {% endif %}
             </td>
             <td>
