@@ -68,16 +68,16 @@ class PassiveTotalService(Service):
 
     def run(self, obj, config):
         headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-        apiKey = config.get('pt_api_key', '')
+        apikey = config.get('pt_api_key', '')
         queryUrl = config.get('pt_query_url', '')
 
-        if not apiKey:
+        if not apikey:
             self._error("PassiveTotal API key is invalid or blank")
 
         if obj._meta['crits_type'] == 'Domain':
-            params = { 'value': obj.domain, 'apiKey': apiKey }
+            params = { 'value': obj.domain, 'apikey': apikey }
         elif obj._meta['crits_type'] == 'IP':
-            params = { 'value': obj.ip, 'apiKey': apiKey }
+            params = { 'value': obj.ip, 'apikey': apikey }
         else:
             logger.error("PassiveTotal: Invalid type.")
             self._error("Invalid type.")
