@@ -71,7 +71,7 @@ class PassiveTotalService(Service):
         apiKey = config.get('pt_api_key', '')
         queryUrl = config.get('pt_query_url', '')
 
-        if not apikey:
+        if not apiKey:
             self._error("PassiveTotal API key is invalid or blank")
 
         if obj._meta['crits_type'] == 'Domain':
