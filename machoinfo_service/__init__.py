@@ -100,8 +100,8 @@ class MachOInfoService(Service):
                             data = sig['pkcs7']
                             filename = hashlib.md5(data).hexdigest()
                             handle_cert_file(filename, data, obj.source,
-                                             parent_id=str(obj.id),
-                                             parent_type=obj._meta['crits_type'],
+                                             related_id=str(obj.id),
+                                             related_type=obj._meta['crits_type'],
                                              method=self.name,
                                              relationship='Extracted_From',
                                              user=self.current_task.username)
