@@ -1,5 +1,3 @@
-import pysnugglefish
-
 from crits.samples.sample import Sample
 from crits.core.user_tools import user_sources
 from snugglefish_service.snugglefish import SnuggleIndex
@@ -31,6 +29,8 @@ def snugglefish_status():
 
 def snugglefish_search(indexes, search, user):
     """Execute search of selected index with the given string."""
+
+    import pysnugglefish
 
     # Return a dictionary where the key is the index name and the
     # value a dictionary with status and a list of potential matches.
