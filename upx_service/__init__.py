@@ -99,7 +99,7 @@ class UpxService(Service):
             md5 = hashlib.md5(data).hexdigest()
             filename = md5 + ".upx"
             handle_file(filename, data, obj.source,
-                        parent_id=str(obj.id),
+                        related_id=str(obj.id),
                         campaign=obj.campaign,
                         method=self.name,
                         relationship='Packed_From',

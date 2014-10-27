@@ -164,7 +164,7 @@ class PEInfoService(Service):
                                      config['resource'])
             for f in self.added_files:
                 handle_file(f[0], f[1], obj.source,
-                            parent_id=str(obj.id),
+                            related_id=str(obj.id),
                             campaign=obj.campaign,
                             method=self.name,
                             relationship='Extracted_From',
