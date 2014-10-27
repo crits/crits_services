@@ -481,7 +481,7 @@ class CuckooService(Service):
             h = md5(data).hexdigest()
             self._info("New file: %s (%d bytes, %s)" % (name, len(data), h))
             handle_file(name, data, self.obj.source,
-                        parent_id=str(self.obj.id),
+                        related_id=str(self.obj.id),
                         campaign=self.obj.campaign,
                         method=self.name,
                         relationship='Related_To',
