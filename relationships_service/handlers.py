@@ -35,7 +35,7 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
     # color scheme:
     # http://colorschemedesigner.com/#00426p4O9CCPc
     color_dict = {
-        'Actor': '#000000',
+        'Actor': '#900C0C',
         'Campaign': '#FF3737',
         'Certificate': '#FFA837',
         'Comment': '#3A98DA',
