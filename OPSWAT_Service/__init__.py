@@ -42,8 +42,6 @@ class OPSWATService(Service):
 
         # Rename keys so they render nice.
         fields = forms.OPSWATConfigForm().fields
-        print fields
-        print config
         for name, field in fields.iteritems():
             display_config[field.label] = config[name]
 
