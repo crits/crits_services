@@ -17,6 +17,10 @@ class CRITsScript(CRITsBaseScript):
                 type="string", help="scanned FILENAME")
         parser.add_option("-s", "--source", action="store",
                 dest="source", type="string", help="source")
+        parser.add_option("-m", "--method", action="store",
+                dest="method", type="string", help="source method")
+        parser.add_option("-r", "--reference", action="store",
+                dest="reference", type="string", help="source reference")
         parser.add_option("-p", "--parent", action="store", dest="parent",
                 type="string", default="", help="parent md5")
         parser.add_option("-P", "--parent-type", action="store", dest="parent_type",
@@ -38,7 +42,8 @@ class CRITsScript(CRITsBaseScript):
         parent = opts.parent
         parent_type = opts.parent_type
         user = opts.user
-        method = "Command line add_pcap_file.py"
+        method = opts.method or "Command line add_pcap_file.py"
+        reference = opts.reference
 
         f = open(filename, 'rb')
         data = f.read()
@@ -47,7 +52,7 @@ class CRITsScript(CRITsBaseScript):
 
         status = handle_pcap_file(fname, data, source, user, description,
                                   parent_md5=parent, parent_type=parent_type,
-                                  method=method)
+                                  method=method, reference=reference)
 
         if status['success']:
             md5 = hashlib.md5(data).hexdigest()
