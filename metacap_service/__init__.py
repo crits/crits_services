@@ -29,6 +29,7 @@ class MetaCapService(Service):
     template = "metacap_service_template.html"
     description = "Generate layer 3 and 4 metadata from a PCAP."
     supported_types = ['PCAP']
+    compatability_mode = True
 
     @staticmethod
     def parse_config(config):
