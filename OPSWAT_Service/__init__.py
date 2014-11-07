@@ -3,6 +3,7 @@ import xml.parsers.expat
 
 from datetime import datetime
 
+from django.conf import settings
 from django.template.loader import render_to_string
 
 from crits.core.data_tools import create_zip
@@ -42,8 +43,6 @@ class OPSWATService(Service):
 
         # Rename keys so they render nice.
         fields = forms.OPSWATConfigForm().fields
-        print fields
-        print config
         for name, field in fields.iteritems():
             display_config[field.label] = config[name]
 
@@ -72,8 +71,8 @@ class OPSWATService(Service):
         data = obj.filedata.read()
         zipdata = create_zip([("samples", data)])
         url = config.get('url', '')
-        if not config.get('use_proxy'):
-            proxy_handler = urllib2.ProxyHandler({})
+        if config.get('use_proxy'):
+            proxy_handler = urllib2.ProxyHandler({'http': settings.HTTP_PROXY})
             opener = urllib2.build_opener(proxy_handler)
             urllib2.install_opener(opener)
         req = urllib2.Request(url)

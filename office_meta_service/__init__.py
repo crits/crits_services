@@ -69,7 +69,7 @@ class OfficeMetaService(Service):
             self._add_result('directory', name, result)
             if config.get('save_streams', 0) == 1 and 'data' in curr_dir:
                 handle_file(name, curr_dir['data'], obj.source,
-                            parent_id=str(obj.id),
+                            related_id=str(obj.id),
                             campaign=obj.campaign,
                             method=self.name,
                             relationship='Extracted_From',

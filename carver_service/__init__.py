@@ -53,7 +53,7 @@ class CarverService(Service):
         else:
             filename = hashlib.md5(data).hexdigest()
             handle_file(filename, data, obj.source,
-                        parent_id=str(obj.id),
+                        related_id=str(obj.id),
                         campaign=obj.campaign,
                         method=self.name,
                         relationship='Contains',

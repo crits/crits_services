@@ -231,11 +231,12 @@ class YaraService(Service):
                 return
             self._info("Submitted job to yara queue.")
         else:
+            data = obj.filedata.read()
             sigsets = self._compile_rules(config['sigdir'], config['sigfiles'])
             for sigset in sigsets:
                 logger.debug("Signature set name: %s" % sigset['name'])
                 self._info("Scanning with %s" % sigset['name'])
-                matches = sigset['rules'].match(data=obj.filedata.read())
+                matches = sigset['rules'].match(data=data)
                 for match in matches:
                     strings = {}
                     for s in match.strings:
