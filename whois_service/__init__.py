@@ -1,0 +1,125 @@
+import logging
+import requests
+import pythonwhois
+
+from django.template.loader import render_to_string
+
+from crits.services.core import Service, ServiceConfigError
+
+from . import forms
+
+logger = logging.getLogger(__name__)
+
+class WHOISService(Service):
+    """
+    Request more information about an artifacts from WHOIS or pyDat.
+    """
+
+    name = "whois"
+    version = '1.0.0'
+    supported_types = [ 'Domain' ]
+    description = "Lookup WHOIS records for domains."
+
+    @staticmethod
+    def get_config(existing_config):
+        config = {}
+        fields = forms.WHOISConfigForm().fields
+        for name, field in fields.iteritems():
+            config[name] = field.initial
+
+        # If there is a config in the database, use values from that.
+        if existing_config:
+            for key, value in existing_config.iteritems():
+                config[key] = value
+        return config
+
+    @staticmethod
+    def get_config_details(config):
+        display_config = {}
+
+        # Rename keys so they render nice.
+        fields = forms.WHOISConfigForm().fields
+        for name, field in fields.iteritems():
+            display_config[field.label] = config[name]
+        return display_config
+
+    @classmethod
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
+                                {'name': self.name,
+                                 'form': forms.WHOISConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.WHOISConfigForm
+        return form, html
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        form = forms.WHOISRunForm(pydat_url=config['pydat_url'], data=config)
+        return form
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        html = render_to_string("services_run_form.html",
+                                {'name': self.name,
+                                 'form': forms.WHOISRunForm(pydat_url=config['pydat_url']),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+        return html
+
+    def run(self, obj, config):
+        # Live queries work well on the "bigger" TLDs. Using it on a .coop
+        # results in hilarity because the parser misses everything.
+        # This is a tough nut to crack.
+        if config['live_query']:
+            try:
+                results = pythonwhois.get_whois(obj.domain)
+            except pythonwhois.shared.WhoisException as e:
+                self._error("Unable to find WHOIS information. %s" % str(e))
+                return
+            
+            contacts = results.get('contacts', {})
+            for contact_type in contacts.keys():
+                # If not provided it defaults to None.
+                if not contacts[contact_type]:
+                    continue
+                for k, v in contacts[contact_type].iteritems():
+                    self._add_result(contact_type + " Contact", v, {'Key': k})
+
+            for ns in results.get('nameservers', []):
+                self._add_result('Nameservers', ns, {})
+
+            for registrar in results.get('registrar', []):
+                self._add_result('Registrar', registrar, {})
+
+            for key in ['creation_date', 'expiration_date', 'updated_date']:
+                for date in results.get(key, []):
+                    if date:
+                        self._add_result('Dates', date, {'Type': key})
+
+        if config['pydat_url'] and config['pydat_query']:
+            # Check for trailing slash, because pydat.example.org//ajax is bad.
+            url = config['pydat_url']
+            if url[-1] != '/':
+                url += '/'
+            url += 'ajax/domain/' + obj.domain + '/latest/'
+
+            r = requests.get(url)
+            if r.status_code != 200:
+              self._error("Response code not 200.")
+              return
+
+            results = r.json()
+            if not results['success']:
+                self._error(results['error'])
+                return
+
+            if results['total'] == 0:
+                self._info("No pyDat results found.")
+                return
+
+            for data in results['data']:
+                for k, v in data.iteritems():
+                    # Don't add empty strings.
+                    if v:
+                        self._add_result('pyDat Latest', v, {'Key': k})
+        return
