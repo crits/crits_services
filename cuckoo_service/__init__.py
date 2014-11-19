@@ -125,7 +125,7 @@ class CuckooService(Service):
         proxy_host = self.config.get('proxy_host')
         proxy_port = self.config.get('proxy_port')
         if proxy_host:
-            proxy = proxy_host + ':' + proxy_port
+            proxy = proxy_host + ':' + str(proxy_port)
         else:
             proxy = ''
         return {'http': proxy, 'https': proxy}
