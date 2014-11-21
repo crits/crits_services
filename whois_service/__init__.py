@@ -18,6 +18,7 @@ class WHOISService(Service):
     name = "whois"
     version = '1.0.0'
     supported_types = [ 'Domain' ]
+    template = 'whois_service_template.html'
     description = "Lookup WHOIS records for domains."
 
     @staticmethod
@@ -76,7 +77,7 @@ class WHOISService(Service):
             except pythonwhois.shared.WhoisException as e:
                 self._error("Unable to find WHOIS information. %s" % str(e))
                 return
-            
+
             contacts = results.get('contacts', {})
             for contact_type in contacts.keys():
                 # If not provided it defaults to None.
@@ -98,15 +99,39 @@ class WHOISService(Service):
 
         if config['pydat_url'] and config['pydat_query']:
             # Check for trailing slash, because pydat.example.org//ajax is bad.
-            url = config['pydat_url']
-            if url[-1] != '/':
-                url += '/'
-            url += 'ajax/domain/' + obj.domain + '/latest/'
+            base = config['pydat_url']
+            if base[-1] != '/':
+                base += '/'
+
+            # Figure out how many versions exist
+            url = base + 'ajax/domain/' + obj.domain
 
             r = requests.get(url)
             if r.status_code != 200:
-              self._error("Response code not 200.")
-              return
+                self._error("Response code not 200.")
+                return
+
+            results = r.json()
+            if not results['success']:
+                self._error(results['error'])
+                return
+
+            if results['total'] == 0:
+                self._info("Metadata not found in pyDat")
+                return
+
+            link = base + 'domains/domainName/' + obj.domain
+            self._info('pyDat URL: %s' % link)
+
+            for data in results['data']:
+                self._info('Version found: %s' % data['dataVersion'])
+
+            url = base + 'ajax/domain/' + obj.domain + '/latest/'
+
+            r = requests.get(url)
+            if r.status_code != 200:
+                self._error("Response code not 200.")
+                return
 
             results = r.json()
             if not results['success']:
@@ -122,4 +147,5 @@ class WHOISService(Service):
                     # Don't add empty strings.
                     if v:
                         self._add_result('pyDat Latest', v, {'Key': k})
+
         return
