@@ -125,7 +125,7 @@ class CuckooService(Service):
         proxy_host = self.config.get('proxy_host')
         proxy_port = self.config.get('proxy_port')
         if proxy_host:
-            proxy = proxy_host + ':' + proxy_port
+            proxy = proxy_host + ':' + str(proxy_port)
         else:
             proxy = ''
         return {'http': proxy, 'https': proxy}
@@ -500,6 +500,6 @@ class CuckooService(Service):
                                   org,
                                   user=self.current_task.username,
                                   related_id=str(self.obj.id),
-                                  related_type="PCAP",
+                                  related_type="Sample",
                                   method=self.name)
         self._add_result("pcap_added", h, {'md5': h})
