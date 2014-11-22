@@ -8,6 +8,16 @@ class WHOISConfigForm(forms.Form):
                                 widget=forms.TextInput(),
                                 help_text="Base URL for pyDat.",
                                 initial='')
+    dt_api_key = forms.CharField(required=False,
+                                 label="DT API Key",
+                                 widget=forms.TextInput(),
+                                 help_text="DomainTools API key.",
+                                 initial='')
+    dt_username = forms.CharField(required=False,
+                                  label="DT Username",
+                                  widget=forms.TextInput(),
+                                  help_text="DomainTools username.",
+                                  initial='')
 
     def __init__(self, *args, **kwargs):
         super(WHOISConfigForm, self).__init__(*args, **kwargs)
@@ -19,15 +29,20 @@ class WHOISRunForm(forms.Form):
                                     label="Live",
                                     help_text="Perform a live query.")
 
-    def __init__(self, pydat_url=None, *args, **kwargs):
+    def __init__(self, pydat_url=None, dt_api_key=None, *args, **kwargs):
         super(WHOISRunForm, self).__init__(*args, **kwargs)
 
-        # If pyDat is configured, add a checkbox and prefer that.
-        # Otherwise, prefer the live query.
+        # If pyDat or DomainTools are configured, add a checkbox and
+        # prefer them. Otherwise, prefer the live query.
         if pydat_url:
             self.fields['pydat_query'] = forms.BooleanField(required=False,
                                                             initial=True,
                                                             label="pyDat",
                                                             help_text="Perform a pyDat query.")
-        else:
+        if dt_api_key:
+            self.fields['dt_query'] = forms.BooleanField(required=False,
+                                                          initial=True,
+                                                          label='DT',
+                                                          help_text="Perform a DomainTools query.")
+        if not pydat_url and not dt_api_key:
             self.fields['live_query'].initial = True
