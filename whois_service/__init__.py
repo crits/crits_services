@@ -175,8 +175,6 @@ class WHOISService(Service):
 
         results = resp.json()
         results = results['response']['parsed_whois']
-        from pprint import pprint
-        pprint(results)
 
         contacts = results.get('contacts', {})
         for contact_type in contacts.keys():
