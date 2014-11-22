@@ -78,7 +78,7 @@
             <td>
                 {{ result.Key }}
             </td>
-            {% if result.Key == "contactEmail" or result.Key == "registrant_email" or result.Key == "administrativeContact_email" %}
+            {% if result.Key == "contactEmail" or result.Key == "registrant_email" or result.Key == "administrativeContact_email" or result.Key == "email" %}
             <td align="right" class="ui-icon ui-icon-plusthick create_indicator" data-type="{{ result.Type }}"></td>
             {% else %}
             <td/>
