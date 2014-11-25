@@ -101,18 +101,18 @@ class WHOISService(Service):
             if not contacts[contact_type]:
                 continue
             for k, v in contacts[contact_type].iteritems():
-                self._add_result(contact_type + " Contact", v, {'Key': k})
+                self._add_result("Live: " + contact_type + " Contact", v, {'Key': k})
 
         for ns in results.get('nameservers', []):
-            self._add_result('Nameservers', ns, {})
+            self._add_result('Live: Nameservers', ns, {})
 
         for registrar in results.get('registrar', []):
-            self._add_result('Registrar', registrar, {})
+            self._add_result('Live: Registrar', registrar, {})
 
         for key in ['creation_date', 'expiration_date', 'updated_date']:
             for date in results.get(key, []):
                 if date:
-                    self._add_result('Dates', date, {'Type': key})
+                    self._add_result('Live: Dates', date, {'Type': key})
 
     def do_pydat_query(self, obj, config):
         # Check for trailing slash, because pydat.example.org//ajax is bad.
@@ -180,19 +180,19 @@ class WHOISService(Service):
         for contact_type in contacts.keys():
             for k, v in contacts[contact_type].iteritems():
                 if v:
-                    self._add_result(contact_type + " Contact", v, {'Key': k})
+                    self._add_result("DomainTools: " + contact_type + " Contact", v, {'Key': k})
 
         for key in ['created_date', 'expired_date', 'updated_date']:
             if results[key]:
-                self._add_result('Dates', results[key], {'Key': key})
+                self._add_result('DomainTools: Dates', results[key], {'Key': key})
 
         for ns in results.get('nameservers', []):
-            self._add_result('Nameservers', ns, {})
+            self._add_result('DomainTools: Nameservers', ns, {})
 
         registrar = results.get('registrar', {})
         for k, v in registrar.iteritems():
             if v:
-                self._add_result('Registrar', v, {'Key': k})
+                self._add_result('DomainTools: Registrar', v, {'Key': k})
 
     def run(self, obj, config):
         if config['live_query']:
