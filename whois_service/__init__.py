@@ -121,7 +121,7 @@ class WHOISService(Service):
             base += '/'
 
         # Figure out how many versions exist
-        url = base + 'ajax/domain/' + obj.domain
+        url = base + 'ajax/domain/' + obj.domain + '/'
 
         r = requests.get(url)
         if r.status_code != 200:
