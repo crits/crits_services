@@ -201,5 +201,5 @@ class WHOISService(Service):
         if config['pydat_url'] and config['pydat_query']:
             self.do_pydat_query(obj, config)
 
-        if config['dt_api_key']:
+        if config['dt_api_key'] and config['dt_username'] and config['dt_query']:
             self.do_dt_query(obj, config)
