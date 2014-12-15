@@ -6,9 +6,10 @@
         data = {
             'value': value,
             'oid': "{{ subscription.id }}",
-            'type': 'Address - email-addr'
+            'ind_type': 'Address - email-addr',
+            'obj_type': 'Domain'
         };
-        url = "{% url 'crits.indicators.views.indicator_from_domain' %}";
+        url = "{% url 'crits.indicators.views.indicator_from_obj' %}";
         $.ajax({
             type: "POST",
             url: url,
