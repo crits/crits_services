@@ -1,0 +1,71 @@
+{% load url from future %}
+
+<script>
+$(document).ready(function() {
+    $("#diffie_submit").click(function() {
+      $('.diffie_loader').html('<img src="/new_images/loader.gif" />');
+      var form_data = $('#diffie_config_form').serialize();
+      $.ajax({
+        type: "POST",
+        url: "{% url 'diffie_service.views.diffie_results' subscription.type subscription.id %}",
+        data: form_data,
+        dataType: "json",
+        success: function(data) {
+          if (data.success) {
+              console.log(data);
+              $('#diffie_results_first').html(data.first);
+              $('#diffie_results_second').html(data.second);
+              $('.diffie_loader').html('');
+          } else {
+              $(".diffie_loader").html(data.message);
+          }
+        }
+      });
+    });
+    $("#diffie_service_button").click(function() {
+        // Only fetch the form when making it visible.
+        $.ajax({
+            type: "GET",
+            url: "{% url 'diffie_service.views.get_diffie_config_form' subscription.type subscription.id %}",
+            dataType: "json",
+            success: function(data) {
+                if (data.success) {
+                    $("#diffie_form_table").html(data.form);
+                } else {
+                    $("#diffie_form_table").html(data.message);
+                }
+            }
+        });
+    });
+});
+</script>
+
+<div id="diffie_service" width="100%">
+    <span class="horizontal_menu" style="text-align: center;">
+        <div id="diffie_config_container">
+            <br />
+            <div class='content_box content_details' style="width: 100%;">
+                <h3 class="titleheader" with="100%">
+                    <span>Diffie Configuration Options</span>
+                </h3>
+                <form id="diffie_config_form">
+                    <table id="diffie_form_table" class="form"></table>
+                </form>
+            </div>
+        </div>
+        <button class="form_submit_button" id="diffie_submit" name="diffie_execute">Run Diffie</button>
+    </span>
+    <span class="diffie_loader horizontal_menu"></span>
+
+    <div class='content_box content_details' style="width: 100%;">
+        <h3 class="titleheader" with="100%">
+            <span>Diffie Results</span>
+        </h3>
+        <table width="100%">
+            <tr>
+                <td valign="top"><div id="diffie_results_first"></div></td>
+                <td valign="top"><div id="diffie_results_second"></div></td>
+            </tr>
+        </table>
+    </div>
+</div>
