@@ -39,13 +39,11 @@ class WHOISRunForm(forms.Form):
                                                             initial=True,
                                                             label="pyDat",
                                                             help_text="Perform a pyDat query.")
-            self.data['pydat_query'] = True
         if dt_api_key:
             self.fields['dt_query'] = forms.BooleanField(required=False,
                                                          initial=True,
                                                          label='DT',
                                                          help_text="Perform a DomainTools query.")
-            self.data['dt_query'] = True
 
         if not pydat_url and not dt_api_key:
             self.fields['live_query'].initial = True
