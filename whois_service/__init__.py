@@ -70,6 +70,12 @@ class WHOISService(Service):
 
     @staticmethod
     def bind_runtime_form(analyst, config):
+        if 'live_query' not in config:
+            config['live_query'] = False
+        if 'pydat_query' not in config:
+            config['pydat_query'] = False
+        if 'dt_query' not in config:
+            config['dt_query'] = False
         form = forms.WHOISRunForm(pydat_url=config['pydat_url'],
                                   dt_api_key=config['dt_api_key'],
                                   data=config)
@@ -104,15 +110,15 @@ class WHOISService(Service):
                 self._add_result("Live: " + contact_type + " Contact", v, {'Key': k})
 
         for ns in results.get('nameservers', []):
-            self._add_result('Live: Nameservers', ns, {})
+            self._add_result('Live: Nameservers', ns, {'Key': 'Nameserver'})
 
         for registrar in results.get('registrar', []):
-            self._add_result('Live: Registrar', registrar, {})
+            self._add_result('Live: Registrar', registrar, {'Key': 'Registrar'})
 
         for key in ['creation_date', 'expiration_date', 'updated_date']:
             for date in results.get(key, []):
                 if date:
-                    self._add_result('Live: Dates', date, {'Type': key})
+                    self._add_result('Live: Dates', date, {'Key': key})
 
     def do_pydat_query(self, obj, config):
         # Check for trailing slash, because pydat.example.org//ajax is bad.
