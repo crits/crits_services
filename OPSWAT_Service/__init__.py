@@ -72,9 +72,14 @@ class OPSWATService(Service):
         zipdata = create_zip([("samples", data)])
         url = config.get('url', '')
         if config.get('use_proxy'):
+            self._debug("OPSWAT: proxy handler set to: %s" % settings.HTTP_PROXY)
             proxy_handler = urllib2.ProxyHandler({'http': settings.HTTP_PROXY})
-            opener = urllib2.build_opener(proxy_handler)
-            urllib2.install_opener(opener)
+        else:
+            self._debug("OPSWAT: proxy handler unset")
+            proxy_handler = urllib2.ProxyHandler({})
+        opener = urllib2.build_opener(proxy_handler)
+        urllib2.install_opener(opener)
+
         req = urllib2.Request(url)
         req.add_header("Content-Type", "application/zip")
         req.add_data(bytearray(zipdata))
