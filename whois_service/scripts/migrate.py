@@ -28,7 +28,7 @@ class CRITsScript(CRITsBaseScript):
             domain = opts.domain
         else:
             if opts.verbose:
-                print "[+] Using ALL doains"
+                print "[+] Using ALL domains"
             domain = None
 
         query = {
