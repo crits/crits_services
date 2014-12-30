@@ -32,11 +32,22 @@ class CRITsScript(CRITsBaseScript):
             domain = None
 
         query = {
-                  'whois':
-                      {
-                        '$exists': True,
-                        '$not': {'$size': 0}
-                      }
+                  '$or': [
+                    {
+                      'whois':
+                          {
+                            '$exists': True,
+                            '$not': {'$size': 0}
+                          }
+                    },
+                    {
+                      'unsupported_attrs.whois':
+                          {
+                            '$exists': True,
+                            '$not': {'$size': 0}
+                          }
+                    }
+                  ]
                 }
         if domain:
             query['domain'] = domain
