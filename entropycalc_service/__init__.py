@@ -48,6 +48,7 @@ class EntropycalcService(Service):
                                  'identifier': identifier})
 
     def _calculate_entropy(self, data):
+        print len(data)
         entropy = 0.0
         if len(data) == 0:
             return entropy
@@ -69,5 +70,9 @@ class EntropycalcService(Service):
         start = config['start']
         end = config['end']
         data = obj.filedata.read()
-        output = self._calculate_entropy(data[start:end])
+        # If start end is -1, just leave it off.
+        if end == -1:
+            output = self._calculate_entropy(data[start:])
+        else:
+            output = self._calculate_entropy(data[start:end])
         self._add_result('Entropy calculation', "%.1f" % output, {'Value': output})
