@@ -70,7 +70,8 @@
         </colgroup>
         <tr>
             <th>Type</th>
-            <th colspan="2">Value</th>
+            <th class="ui-icon ui-icon-plusthick" title="Add Indicator"></th>
+            <th>Value</th>
         </tr>
     </thead>
     <tbody>
@@ -80,7 +81,7 @@
                 {{ result.Key }}
             </td>
             {% if result.Key == "contactEmail" or result.Key == "registrant_email" or result.Key == "administrativeContact_email" or result.Key == "email" %}
-            <td align="right" class="ui-icon ui-icon-plusthick create_indicator" data-type="{{ result.Type }}"></td>
+            <td class="ui-icon ui-icon-plusthick create_indicator" data-type="{{ result.Type }}"></td>
             {% else %}
             <td/>
             {% endif %}
