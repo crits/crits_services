@@ -1,3 +1,4 @@
+import ast
 from optparse import OptionParser
 
 from mongoengine.base import ValidationError
@@ -16,6 +17,8 @@ class CRITsScript(CRITsBaseScript):
         parser.add_option("-d", "--domain", action="store", dest="domain",
                           type="string",
                           help="Domain to use (if not provided, do all)")
+        parser.add_option("-c", "--config", dest="config", default={},
+                          help="Service configuration")
         parser.add_option("-v", "--verbose", action="store_true",
                           dest="verbose", default=False, help="Be verbose")
         parser.add_option("-n", "--dry_run", action="store_true",
@@ -30,6 +33,16 @@ class CRITsScript(CRITsBaseScript):
             if opts.verbose:
                 print "[+] Using ALL domains"
             domain = None
+
+        config = {}
+        if opts.config:
+            config = ast.literal_eval(opts.config)
+
+        if not config:
+            print "No config provided, defaulting to live only."
+            config['live_query'] = True
+        else:
+            print "Using config: %s" % config
 
         query = {
                   '$or': [
@@ -62,7 +75,8 @@ class CRITsScript(CRITsBaseScript):
                                      'Domain',
                                      dom.id,
                                      self.username,
-                                     obj=dom)
+                                     obj=dom,
+                                     custom_config=config)
                 dom.save()
             except ServiceAnalysisError as e:
                 print "Service error: %s" % e
