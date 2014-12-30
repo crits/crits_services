@@ -26,6 +26,7 @@ class ChopShopService(Service):
     template = "chopshop_analysis.html"
     supported_types = ['PCAP']
     description = "Extract HTTP and DNS data from a PCAP."
+    compatability_mode = True
 
     @staticmethod
     def parse_config(config):

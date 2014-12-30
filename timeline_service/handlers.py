@@ -102,8 +102,10 @@ def generate_timeline(obj_type, obj_id, user):
                                                 comment.comment)
         append_to_timeline(timeline, comment.created, i)
 
+    analysis_results = main_obj.get_analysis_results()
+
     # analysis
-    for analysis in main_obj.analysis:
+    for analysis in analysis_results:
         analyst = analysis.analyst
         service_name = analysis.service_name
         version = analysis.version

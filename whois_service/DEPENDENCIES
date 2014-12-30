@@ -1,0 +1,4 @@
+The WHOIS CRITs service requires the requests and pythonwhois modules.
+
+Optionally, you can configure this service to use pyDat 2.0 or greater
+as a source of WHOIS data.

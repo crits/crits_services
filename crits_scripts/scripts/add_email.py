@@ -21,8 +21,10 @@ class CRITsScript(CRITsBaseScript):
                 default=False, help="YAML file to import")
         oparse.add_option("-s","--source", action="store", dest="source",
                 type="string", help="source")
+        oparse.add_option("-m","--method", action="store", dest="method",
+                type="string", default="", help="source method")
         oparse.add_option("-r","--reference", action="store", dest="reference",
-                type="string", default="", help="source")
+                type="string", default="", help="source reference")
         (opts, args) = oparse.parse_args(argv)
 
         if not opts.eml and not opts.json and not opts.yaml:
@@ -36,12 +38,18 @@ class CRITsScript(CRITsBaseScript):
         if opts.eml:
             filename = opts.eml
             handler = handle_eml
+            method = "Command Line EML Upload"
         elif opts.json:
             filename = opts.json
             handler = handle_json
+            method = "Command Line JSON Upload"
         elif opts.yaml:
             filename = opts.yaml
             handler = handle_yaml
+            method = "Command Line YAML Upload"
+
+        if opts.method:
+            method = method + " - " + opts.method
 
         try:
             fh = open(filename, 'rb')
@@ -55,7 +63,7 @@ class CRITsScript(CRITsBaseScript):
             return
 
         obj = handler(data, opts.source, opts.reference, self.username,
-                      "Command line")
+                      method)
         if obj['status']:
             try:
                 obj['object'].save()
