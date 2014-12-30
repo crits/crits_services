@@ -26,13 +26,10 @@
         data = {
             'value': value,
             'oid': "{{ subscription.id }}",
-            'type': ind_type,
+            'ind_type': ind_type,
+            'obj_type': otype
         };
-        if (otype == "Event") {
-            url = "{% url 'crits.indicators.views.indicator_from_event' %}";
-        } else if (otype == "RawData") {
-            url = "{% url 'crits.indicators.views.indicator_from_raw' %}";
-        }
+        url = "{% url 'crits.indicators.views.indicator_from_obj' %}";
         $.ajax({
             type: "POST",
             url: url,

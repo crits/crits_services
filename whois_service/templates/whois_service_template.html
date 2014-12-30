@@ -1,0 +1,103 @@
+{% load url from future %}
+{% load service_tags %}
+
+<script>
+    function create_indicator(value, me) {
+        data = {
+            'value': value,
+            'oid': "{{ subscription.id }}",
+            'ind_type': 'Address - email-addr',
+            'obj_type': 'Domain'
+        };
+        url = "{% url 'crits.indicators.views.indicator_from_obj' %}";
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: data,
+            dataType: "json",
+            success: function(data) {
+                if (data.success) {
+                    $('#relationship_box_container').parent().html(data.message);
+                    if (typeof me !== "undefined") {
+                        $(me).attr('title', 'Success!');
+                    } else {
+                        $('#creation_result').text("Success!");
+                    }
+                    $(me)
+                    .css({
+                        'background-image': "url('/css/images/ui-icons_70b2e1_256x240.png')"});
+                } else {
+                    if (typeof me !== "undefined") {
+                        $(me).attr('title', data.message);
+                    } else {
+                        $('#creation_result').html(data.message);
+                    }
+                }
+            }
+        });
+    }
+
+    function clear_create_clicks() {
+        $('.create_indicator').off('click');
+    }
+
+    $(document).ready(function() {
+        clear_create_clicks();
+
+        $('.create_indicator').on('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var me = $(this);
+            var value = me.closest('tr').find('a').text();
+            create_indicator(value, me);
+        });
+    });
+</script>
+
+{% regroup analysis.results by subtype as result_list %}
+{% for result_subtype in result_list %}
+    <h4>{{ result_subtype.grouper }}</h4>
+    <table class="chart">
+
+    {% for result in result_subtype.list %}
+    {% if forloop.first %}
+    {# Create the header the first time through the loop. #}
+    <thead>
+        <colgroup>
+            <col width="20%" />
+            <col width="15px" />
+            <col width="80%" />
+        </colgroup>
+        <tr>
+            <th>Type</th>
+            <th class="ui-icon ui-icon-plusthick" title="Add Indicator"></th>
+            <th>Value</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% endif %}
+        <tr>
+            <td>
+                {{ result.Key }}
+            </td>
+            {% if result.Key == "contactEmail" or result.Key == "registrant_email" or result.Key == "administrativeContact_email" or result.Key == "email" %}
+            <td class="ui-icon ui-icon-plusthick create_indicator" data-type="{{ result.Type }}"></td>
+            {% else %}
+            <td/>
+            {% endif %}
+            <td class="potential_indicator">
+                {% if result.result %}
+                <a class="potential_link" href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&q={{result.result|urlencode}}">{{result.result}}</a>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+    </table>
+{% empty %}
+    {% if analysis.status == 'started' %}
+        <p> This service is still running. </p>
+    {% else %}
+        <p> This service produced no results. </p>
+    {% endif %}
+{% endfor %}
