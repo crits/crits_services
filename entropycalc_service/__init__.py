@@ -70,7 +70,7 @@ class EntropycalcService(Service):
         start = config['start']
         end = config['end']
         data = obj.filedata.read()
-        # If start end is -1, just leave it off.
+        # If end is -1, just leave it off.
         if end == -1:
             output = self._calculate_entropy(data[start:])
         else:
