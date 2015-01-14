@@ -2,6 +2,7 @@ import logging
 import requests
 import pythonwhois
 
+from django.conf import settings
 from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
@@ -129,7 +130,7 @@ class WHOISService(Service):
         # Figure out how many versions exist
         url = base + 'ajax/domain/' + obj.domain + '/'
 
-        r = requests.get(url)
+        r = requests.get(url, proxies=self.proxies)
         if r.status_code != 200:
             self._error("Response code not 200.")
             return
@@ -151,7 +152,7 @@ class WHOISService(Service):
 
         url = base + 'ajax/domain/' + obj.domain + '/latest/'
 
-        r = requests.get(url)
+        r = requests.get(url, proxies=self.proxies)
         if r.status_code != 200:
             self._error("Response code not 200.")
             return
@@ -201,6 +202,12 @@ class WHOISService(Service):
                 self._add_result('DomainTools: Registrar', v, {'Key': k})
 
     def run(self, obj, config):
+        if settings.HTTP_PROXY:
+            self.proxies = {'http': settings.HTTP_PROXY,
+                            'https': settings.HTTP_PROXY}
+        else:
+            self.proxies = {}
+
         if config['live_query']:
             self.do_live_query(obj, config)
 
