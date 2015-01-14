@@ -148,7 +148,7 @@ class WHOISService(Service):
         self._info('pyDat URL: %s' % link)
 
         for data in results['data']:
-            self._info('Version found: %s' % data['dataVersion'])
+            self._info('Version found: %s' % data['Version'])
 
         url = base + 'ajax/domain/' + obj.domain + '/latest/'
 
