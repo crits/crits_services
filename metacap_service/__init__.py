@@ -118,17 +118,23 @@ class MetaCapService(Service):
         # possible to just get a path to a file on disk.
         with self._write_to_file() as pcap_file:
             choplib.filename = pcap_file
-            chopui.bind(choplib)
-            chopui.start()
-            chopui.jsonclass.set_service(self)
-            choplib.start()
+            try:
+                chopui.bind(choplib)
+                chopui.start()
+                while chopui.jsonclass == None:
+                    time.sleep(.1)
+                chopui.jsonclass.set_service(self)
+                choplib.start()
 
-            while chopui.is_alive():
-                time.sleep(.1)
+                while chopui.is_alive():
+                    time.sleep(.1)
 
-            chopui.join()
-            choplib.finish()
-            choplib.join()
+            except Exception as e:
+                self._error(str(e))
+            finally:
+                chopui.join()
+                choplib.finish()
+                choplib.join()
 
 class jsonhandler:
     def __init__(self, ui_stop_fn=None, lib_stop_fn=None, format_string=None):
