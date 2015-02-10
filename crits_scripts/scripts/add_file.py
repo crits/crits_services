@@ -6,8 +6,9 @@ from crits.samples.handlers import handle_file
 from crits.core.basescript import CRITsBaseScript
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username=None):
-        self.username = username
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def run(self, argv):
         parser = OptionParser()
@@ -69,7 +70,7 @@ class CRITsScript(CRITsBaseScript):
             source,
             reference=opts.reference,
             backdoor=trojan,
-            user=self.username,
+            user=self.user.username,
             related_md5=parent_md5,
             related_id=parent_id,
             related_type=parent_type,

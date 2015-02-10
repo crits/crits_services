@@ -1,14 +1,12 @@
-from stix.core import STIXPackage
-from crits.standards.parsers import STIXParser
 from crits.core.basescript import CRITsBaseScript
 from crits.standards.handlers import import_standards_doc
 
-import sys
 from optparse import OptionParser
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username=None):
-        self.username = username
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def run(self, argv):
         parser = OptionParser()

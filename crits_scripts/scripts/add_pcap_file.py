@@ -6,8 +6,9 @@ from crits.pcaps.handlers import handle_pcap_file
 from crits.core.basescript import CRITsBaseScript
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username=None):
-        self.username = username
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def run(self, argv):
         parser = OptionParser()
@@ -25,8 +26,6 @@ class CRITsScript(CRITsBaseScript):
                 type="string", default="", help="parent md5")
         parser.add_option("-P", "--parent-type", action="store", dest="parent_type",
                 type="string", default="PCAP", help="parent type (Sample, PCAP...)")
-        parser.add_option("-u", "--user", action="store", dest="user",
-                type="string", default="", help="user")
 
         (opts, args) = parser.parse_args(argv)
 
@@ -41,7 +40,7 @@ class CRITsScript(CRITsBaseScript):
         description = opts.description
         parent = opts.parent
         parent_type = opts.parent_type
-        user = opts.user
+        user = self.user.username
         method = opts.method or "Command line add_pcap_file.py"
         reference = opts.reference
 

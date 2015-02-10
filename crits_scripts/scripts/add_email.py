@@ -5,11 +5,9 @@ from crits.emails.handlers import handle_eml, handle_json, handle_yaml
 from crits.core.basescript import CRITsBaseScript
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username=None):
-        if username:
-            self.username = username
-        else:
-            self.username = "add_email"
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def run(self, argv):
         oparse = OptionParser()
@@ -62,13 +60,14 @@ class CRITsScript(CRITsBaseScript):
             print "[-] Cannot open file."
             return
 
-        obj = handler(data, opts.source, opts.reference, self.username,
+        obj = handler(data, opts.source, opts.reference, self.user.username,
                       method)
         if obj['status']:
             try:
                 obj['object'].save()
             except Exception, e:
                 message = "Failed to save object: %s " % str(e)
+                print message
 
             print "[-] Success: %s" % obj['object'].id
             for (f, v) in obj.get('attachments', {}).items():
