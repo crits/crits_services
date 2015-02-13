@@ -1,0 +1,2 @@
+The STIX Validator service allows you to provide what you think is a STIX XML
+structure and validate it using stix-validator.
