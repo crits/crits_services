@@ -1,4 +1,5 @@
-Check the VirusTotal database to see if it contains this sample, domain or IP.
+This service checks the VirusTotal database to see if it contains this sample, domain or IP. It will then collect relevant data using either a public or 
+private key.
 
 This does not submit the file to VirusTotal, but only performs a lookup of the
 sample's MD5.
