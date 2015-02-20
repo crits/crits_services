@@ -176,6 +176,10 @@ def pcap_pdml_html(pcap_md5, analyst):
                 pdml_html = str(transform(xml_input))
                 save_pdml = True
             except Exception:
+                temp_pdml.close()
+                # delete PDML file
+                os.unlink(pdml_name)
+                os.unlink(pcap_name)
                 return {'html': 'Could not parse/transform PDML output!'}
 
             temp_pdml.close()

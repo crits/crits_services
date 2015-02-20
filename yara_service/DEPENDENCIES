@@ -1,4 +1,4 @@
 The Yara service requires:
 
-- yara 3.1
+- yara 3.3
 - yara-python
