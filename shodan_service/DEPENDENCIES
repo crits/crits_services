@@ -1,0 +1,3 @@
+The shodan service requires:
+
+shodan: https://pypi.python.org/pypi/shodan/
