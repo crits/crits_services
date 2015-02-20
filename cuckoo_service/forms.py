@@ -12,6 +12,10 @@ class CuckooConfigForm(forms.Form):
     port = forms.IntegerField(required=True,
                               label="Cuckoo API server port",
                               initial=8090)
+    secure = forms.BooleanField(required=False,
+                                label="Secure?",
+                                initial=False,
+                                help_text="Use https for the API.")
     proxy_host = forms.CharField(required=False,
                                  label="Proxy host",
                                  initial='',
@@ -37,6 +41,18 @@ class CuckooConfigForm(forms.Form):
                                         "use for the analysis. Use 'all' for "
                                         "ALL machines and 'any' for first "
                                         "available.")
+    timeout = forms.IntegerField(required=False,
+                                 label="Timeout",
+                                 help_text="Maximum time (in seconds) to "
+                                           "allow the analysis to run. Leave "
+                                           "as 0 to use the timeout specified "
+                                           " in the Cuckoo configuration.",
+                                 initial=0)
+    enforce_timeout = forms.BooleanField(required=False,
+                                         label="Enforce Timeout?",
+                                         initial=False,
+                                         help_text="Always wait the timeout "
+                                                   "period.")
 
     def __init__(self, *args, **kwargs):
         super(CuckooConfigForm, self).__init__(*args, **kwargs)
@@ -52,6 +68,11 @@ class CuckooRunForm(forms.Form):
                                            "as 0 to use the timeout specified "
                                            " in the Cuckoo configuration.",
                                  initial=0)
+    enforce_timeout = forms.BooleanField(required=False,
+                                         label="Enforce Timeout?",
+                                         initial=False,
+                                         help_text="Always wait the timeout "
+                                                   "period.")
     machine = forms.ChoiceField(required=True,
                               label="Machine",
                               initial=[],
