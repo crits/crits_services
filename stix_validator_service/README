@@ -1,0 +1,6 @@
+The STIX Validator service allows you to provide what you think is a STIX XML
+structure and validate it using stix-validator.
+
+With this service you will see a new Nav Menu item under Services called "STIX
+Validator". Clicking on that will bring you to the interface for validating your
+STIX document.
