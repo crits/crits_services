@@ -187,11 +187,10 @@ class YaraService(Service):
 
         if config['distribution_url']:
             msg = {
-                    'type': 'fileref',
                     'source': {
                          'type': 'crits',
-                         'zip_password': 'infected',
                          'crits': {
+                              'zip_password': 'infected',
                               'location': settings.INSTANCE_URL,
                               'object_type': obj._meta['crits_type'],
                               'object_id': str(obj.id),
@@ -199,7 +198,7 @@ class YaraService(Service):
                               'start_date': self.current_task.start_date,
                               'username': self.current_task.username,
                               'api_key': config['api_key']
-                             }
+                         }
                     },
                     'destination': {
                          'type': 'crits',
@@ -213,8 +212,13 @@ class YaraService(Service):
                               'api_key': config['api_key']
                              }
                     },
-                    'config': {
-                        'sigfiles': self.config['sigfiles']
+                    'route': {
+                        'yara': {
+                            'route': {},
+                            'config': {
+                                'sigfiles': self.config['sigfiles']
+                            }
+                        }
                     }
                 }
 
