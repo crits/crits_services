@@ -27,7 +27,7 @@ class CodetectiveService(Service):
     """
 
     name = "codetective"
-    version = '0.0.1'
+    version = '0.0.2'
     supported_types = ['Sample']
     description = "Find password hashes and so on"
 
@@ -47,7 +47,7 @@ class CodetectiveService(Service):
     @staticmethod
     def parse_config(config):
         try:
-            from Codetective.codetective import get_type_of, show2, Finding
+            from Codetective.codetective import get_type_of, Finding
         except:
             raise ServiceConfigError("Unable to import Codetective/codetective.py - make sure that there is Codetective/__init__.py present.")
 
@@ -73,7 +73,7 @@ class CodetectiveService(Service):
                 'end_offset': config['end_offset'],
                 'filters': config['filters'],
                 'analyze': config['analyze']}
-        return forms.CodetectiveServiceConfigForm(data)
+        return forms.CodetectiveServiceRunForm(data)
 
     @classmethod
     def generate_config_form(self, config):
@@ -84,23 +84,23 @@ class CodetectiveService(Service):
         form = forms.CodetectiveServiceConfigForm
         return form, html
 
-
-
-    def _doit(self, data, filters, analyze):
-        self._log('info',"filters:%s analyze:%x" %(filters, analyze))
-        results = get_type_of(data, filters)
-        for finding in results:
-            #results2.append(finding.display())
-            if finding.certainty >= 45:
-                if isinstance(finding.payload, (list, tuple)):
-                    self._add_result('Codetective', "%s" % str(finding.payload[1]), {'Offset': finding.location, 'Type': finding.type, 'Confidence': finding.confidence, 'Certainty': finding.certainty, 'Details':finding.details, 'Datestamp': finding.created_on})
-                else:
-                    self._add_result('Codetective', "%s" % str(finding.payload), {'Offset': finding.location, 'Type': finding.type, 'Confidence': finding.confidence, 'Certainty': finding.certainty, 'Details':finding.details, 'Datestamp': finding.created_on})
-
     def run(self, obj, config):
         start_offset = config['start_offset']
         end_offset = config['end_offset']
         analyze = config['analyze']
         filters = config['filters']
-        self._doit(obj.filedata.read()[start_offset:end_offset], filters, analyze )
+        try:
+            self._log('info',"filters:%s analyze:%x" %(filters, analyze))
+            results = get_type_of(obj.filedata.read()[start_offset:end_offset], filters)
+            for finding in results:
+                if finding.certainty >= 45:
+                    if isinstance(finding.payload, (list, tuple)):
+                        self._info("Codetective got tuple or list in the results, skipping")
+                        #self._add_result('Codetective', "%s" % str(finding.payload[1]), {'Offset': finding.location, 'Type': finding.type, 'Confidence': finding.confidence, 'Certainty': finding.certainty, 'Details':str(finding.details), 'Datestamp': finding.created_on})
+                    else:
+                        self._add_result('Codetective', "%s" % str(finding.payload), {'Offset': finding.location, 'Type': finding.type, 'Confidence': finding.confidence, 'Certainty': finding.certainty, 'Details':str(finding.details).encode('ascii'), 'Datestamp': finding.created_on})
+        except Exception as err:
+            self._info("Codetective failed against: %s: %s" % (obj.filename, err))
+            return
+        self._info("Finished Codetective against: %s" % obj.filename )
 
