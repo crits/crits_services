@@ -8,6 +8,5 @@ Installation instructions:
 
 cd /data/crits_services/codetective_service/
 git clone https://github.com/blackthorne/Codetective.git
-touch ./Codetective/__init__.py
 
 
