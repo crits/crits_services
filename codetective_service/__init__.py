@@ -82,14 +82,14 @@ class CodetectiveService(Service):
                 'analyze': config['analyze']}
         return forms.CodetectiveServiceRunForm(data)
         
-    @classmethod
-    def generate_runtime_form(self, config):
-        html = render_to_string('services_run_form.html',
-                                {'name': self.name,
-                                 'form': forms.CodetectiveServiceRunForm(initial=config),
-                                 'config_error': None})
-        form = forms.CodetectiveServiceRunForm
-        return form, html
+#    @classmethod
+#    def generate_runtime_form(self, config):
+#        html = render_to_string('services_run_form.html',
+#                                {'name': self.name,
+#                                 'form': forms.CodetectiveServiceRunForm(initial=config),
+#                                 'config_error': None})
+#        form = forms.CodetectiveServiceRunForm
+#        return form, html
 
     def run(self, obj, config):
         start_offset = config['start_offset']
