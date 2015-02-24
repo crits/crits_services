@@ -96,7 +96,7 @@ class CodetectiveService(Service):
             for finding in results:
                 self._add_result('Codetective', "%s" % str(finding.payload), {'Offset': finding.location, 'Type': finding.type, 'Confidence': finding.confidence, 'Certainty': finding.certainty, 'Details':str(finding.details).encode('ascii'), 'Datestamp': finding.created_on})
         except Exception as err:
-            self._info("Codetective failed against: %s: %s" % (obj.filename, err))
+            self._info("Codetective failed on: %s: %s" % (str(obj.id), err))
             return
-        self._info("Finished Codetective against: %s" % obj.filename )
+        self._info("Finished Codetective on: %s" % str(obj.id) )
 
