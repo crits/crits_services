@@ -14,12 +14,10 @@ logger = logging.getLogger(__name__)
 # This will work if there's an __init__.py inside Codetective folder
 from Codetective.codetective import get_type_of, Finding
 
-
 DEFAULT_END = -1
 DEFAULT_START = 0
 DEFAULT_ANALYZE = True
 DEFAULT_MODULES = ["win", "web", "crypto", "personal", "unix", "db", "other"]
-
 
 class CodetectiveService(Service):
     """
@@ -27,7 +25,7 @@ class CodetectiveService(Service):
     """
 
     name = "codetective"
-    version = '0.0.3'
+    version = '0.0.4'
     supported_types = ['Sample']
     description = "Find password hashes and so on"
 
@@ -67,7 +65,6 @@ class CodetectiveService(Service):
         if obj.filedata.grid_id == None:
             raise ServiceConfigError("Missing filedata.")
 
-
     @classmethod
     def generate_config_form(self, config):
         html = render_to_string('services_config_form.html',
@@ -77,6 +74,14 @@ class CodetectiveService(Service):
         form = forms.CodetectiveServiceConfigForm
         return form, html
     
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        data = {'start_offset': config['start_offset'],
+                'end_offset': config['end_offset'],
+                'filters': config['filters'],
+                'analyze': config['analyze']}
+        return forms.CodetectiveServiceRunForm(data)
+        
     @classmethod
     def generate_runtime_form(self, config):
         html = render_to_string('services_run_form.html',
@@ -86,14 +91,6 @@ class CodetectiveService(Service):
         form = forms.CodetectiveServiceRunForm
         return form, html
 
-    @staticmethod
-    def bind_runtime_form(analyst, config):
-        data = {'start_offset': config['start_offset'],
-                'end_offset': config['end_offset'],
-                'filters': config['filters'],
-                'analyze': config['analyze']}
-        return forms.CodetectiveServiceRunForm(data)
-        
     def run(self, obj, config):
         start_offset = config['start_offset']
         end_offset = config['end_offset']
