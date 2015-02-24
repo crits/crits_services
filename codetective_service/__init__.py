@@ -27,7 +27,7 @@ class CodetectiveService(Service):
     """
 
     name = "codetective"
-    version = '0.0.2'
+    version = '0.0.3'
     supported_types = ['Sample']
     description = "Find password hashes and so on"
 
@@ -92,13 +92,9 @@ class CodetectiveService(Service):
         try:
             self._log('info',"filters:%s analyze:%x" %(filters, analyze))
             results = get_type_of(obj.filedata.read()[start_offset:end_offset], filters)
+            results = [finding for finding in results if finding.certainty >= 45]
             for finding in results:
-                if finding.certainty >= 45:
-                    if isinstance(finding.payload, (list, tuple)):
-                        self._info("Codetective got tuple or list in the results, skipping")
-                        #self._add_result('Codetective', "%s" % str(finding.payload[1]), {'Offset': finding.location, 'Type': finding.type, 'Confidence': finding.confidence, 'Certainty': finding.certainty, 'Details':str(finding.details), 'Datestamp': finding.created_on})
-                    else:
-                        self._add_result('Codetective', "%s" % str(finding.payload), {'Offset': finding.location, 'Type': finding.type, 'Confidence': finding.confidence, 'Certainty': finding.certainty, 'Details':str(finding.details).encode('ascii'), 'Datestamp': finding.created_on})
+                self._add_result('Codetective', "%s" % str(finding.payload), {'Offset': finding.location, 'Type': finding.type, 'Confidence': finding.confidence, 'Certainty': finding.certainty, 'Details':str(finding.details).encode('ascii'), 'Datestamp': finding.created_on})
         except Exception as err:
             self._info("Codetective failed against: %s: %s" % (obj.filename, err))
             return
