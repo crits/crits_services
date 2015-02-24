@@ -67,13 +67,6 @@ class CodetectiveService(Service):
         if obj.filedata.grid_id == None:
             raise ServiceConfigError("Missing filedata.")
 
-    @staticmethod
-    def bind_runtime_form(analyst, config):
-        data = {'start_offset': config['start_offset'],
-                'end_offset': config['end_offset'],
-                'filters': config['filters'],
-                'analyze': config['analyze']}
-        return forms.CodetectiveServiceRunForm(data)
 
     @classmethod
     def generate_config_form(self, config):
@@ -83,7 +76,24 @@ class CodetectiveService(Service):
                                  'config_error': None})
         form = forms.CodetectiveServiceConfigForm
         return form, html
+    
+    @classmethod
+    def generate_runtime_form(self, config):
+        html = render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                 'form': forms.CodetectiveServiceRunForm(initial=config),
+                                 'config_error': None})
+        form = forms.CodetectiveServiceRunForm
+        return form, html
 
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        data = {'start_offset': config['start_offset'],
+                'end_offset': config['end_offset'],
+                'filters': config['filters'],
+                'analyze': config['analyze']}
+        return forms.CodetectiveServiceRunForm(data)
+        
     def run(self, obj, config):
         start_offset = config['start_offset']
         end_offset = config['end_offset']
