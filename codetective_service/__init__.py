@@ -16,7 +16,6 @@ from Codetective.codetective import get_type_of, Finding
 
 DEFAULT_END = -1
 DEFAULT_START = 0
-DEFAULT_ANALYZE = True
 DEFAULT_MODULES = ["win", "web", "crypto", "personal", "unix", "db", "other"]
 
 class CodetectiveService(Service):
@@ -79,8 +78,7 @@ class CodetectiveService(Service):
     def bind_runtime_form(analyst, config):
         data = {'start_offset': config['start_offset'][0],
                 'end_offset': config['end_offset'][0],
-                'certainty': config['certainty'][0],
-                'analyze': config['analyze']}
+                'certainty': config['certainty'][0]}
         return forms.CodetectiveServiceRunForm(data)
     
     @classmethod
@@ -94,7 +92,6 @@ class CodetectiveService(Service):
     def run(self, obj, config):
         start_offset = config['start_offset']
         end_offset = config['end_offset']
-        analyze = config['analyze']
         certainty = config['certainty']
         filters = config['filters']
         data = obj.filedata.read()[start_offset:end_offset]
