@@ -80,7 +80,7 @@ class CodetectiveService(Service):
         data = {'start_offset': config['start_offset'][0],
                 'end_offset': config['end_offset'][0],
                 'certainty': config['certainty'][0],
-                'analyze': config['analyze'][0]}
+                'analyze': config['analyze']}
         return forms.CodetectiveServiceRunForm(data)
     
     @classmethod
