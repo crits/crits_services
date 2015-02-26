@@ -17,7 +17,7 @@ class CodetectiveServiceRunForm(forms.Form):
     DEFAULT_MODULES = ["win", "web", "crypto", "personal", "unix", "db", "other"]
     error_css_class = 'error'
     required_css_class = 'required'
-    start_offset = forms.IntegerField(required=False,
+    certainty = forms.IntegerField(required=False,
                                  label="certainty",
                                  help_text="Certainty: (0-100).",
                                  initial=45)
