@@ -14,7 +14,6 @@ class CodetectiveServiceConfigForm(forms.Form):
         super(CodetectiveServiceConfigForm, self).__init__(*args, **kwargs)
 
 class CodetectiveServiceRunForm(forms.Form):
-    DEFAULT_MODULES = ["win", "web", "crypto", "personal", "unix", "db", "other"]
     error_css_class = 'error'
     required_css_class = 'required'
     certainty = forms.IntegerField(required=False,
@@ -29,11 +28,7 @@ class CodetectiveServiceRunForm(forms.Form):
                                  label="End offset",
                                  help_text="End offset of your search.",
                                  initial=-1)
-    analyze = forms.BooleanField(required=False,
-                                 label="Analyze",
-                                 help_text="show more details whenever possible - expands shadow files fields",
-                                 initial=True)
-    
+
     def __init__(self, *args, **kwargs):
         super(CodetectiveServiceRunForm, self).__init__(*args, **kwargs)
 
