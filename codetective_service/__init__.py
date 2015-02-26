@@ -77,10 +77,10 @@ class CodetectiveService(Service):
     
     @staticmethod
     def bind_runtime_form(analyst, config):
-        data = {'start_offset': config['start_offset'],
-                'end_offset': config['end_offset'],
-                'certainty': config['certainty'],
-                'analyze': config['analyze']}
+        data = {'start_offset': config['start_offset'][0],
+                'end_offset': config['end_offset'][0],
+                'certainty': config['certainty'][0],
+                'analyze': config['analyze'][0]}
         return forms.CodetectiveServiceRunForm(data)
     
     @classmethod
