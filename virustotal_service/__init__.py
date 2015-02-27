@@ -254,10 +254,10 @@ class VirusTotalService(Service):
         """
 
         save = False
-
-        if self.obj.ssdeep != report['ssdeep']:
-            self.obj.ssdeep = report['ssdeep']
-            save = True
+# SSDEEP stuff is not present in regular report
+#        if self.obj.ssdeep != report['ssdeep']:
+#            self.obj.ssdeep = report['ssdeep']
+#            save = True
         if self.obj.sha1 != report['sha1']:
             self.obj.sha1 = report['sha1']
             save = True
