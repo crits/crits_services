@@ -1,4 +1,4 @@
-The crits service created with the code from: https://github.com/blackthorne/Codetective
+The crits service is utilizing the code from: https://github.com/blackthorne/Codetective (you'll have to obtain a copy and put it in the service's directory)
 
 Codetective
 Sometimes we ran into hashes and other codes and can't figure out where did they came from and how they were built. If you work on pen-testing that might easily happen when you are testing systems from a black box perspective and you are able to grab a password file with hashed contents maybe from an exposed backup file or by dumping memory.. This may also be useful as a part of a fingerprinting process.
@@ -6,7 +6,15 @@ Sometimes we ran into hashes and other codes and can't figure out where did they
 
 Installation instructions:
 
-cd /data/crits_services/codetective_service/
+#clone the repo into some conveninent scratch location:
+cd /tmp/
 git clone https://github.com/blackthorne/Codetective.git
 
+#put what we need just where we need it
+mkdir /data/crits_services/codetective_service/Codetective
+cp /tmp/Codedetctive/codetective.py /tmp/Codedetctive/__init__.py /data/crits_services/codetective_service/Codetective/
 
+#delete cloned repo, as it is no longer needed
+rm /tmp/Codetective
+
+Done!
