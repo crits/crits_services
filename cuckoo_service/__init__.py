@@ -23,7 +23,7 @@ class CuckooService(Service):
     """
 
     name = 'cuckoo'
-    version = '1.0.1'
+    version = '1.0.2'
     supported_types = ['Sample']
     description = "Analyze a sample using Cuckoo Sandbox."
 
@@ -79,7 +79,8 @@ class CuckooService(Service):
         machines = CuckooService._tuplize_machines(config['machine'])
         return render_to_string("services_run_form.html",
                                 {'name': self.name,
-                                 'form': forms.CuckooRunForm(machines=machines),
+                                 'form': forms.CuckooRunForm(machines=machines,
+                                                             initial=config),
                                  'crits_type': crits_type,
                                  'identifier': identifier})
 
@@ -90,6 +91,7 @@ class CuckooService(Service):
         # The integer values are submitted as a list for some reason.
         # Package and machine are submitted as a list too.
         data = { 'timeout': config['timeout'][0],
+                 'enforce_timeout': config['enforce_timeout'],
                  'existing_task_id': config['existing_task_id'][0],
                  'package': config['package'][0],
                  'ignored_files': config['ignored_files'][0],
@@ -117,7 +119,11 @@ class CuckooService(Service):
 
     @property
     def base_url(self):
-        return 'http://%s:%s' % (self.config.get('host'),
+        if self.config.get('secure'):
+            proto = 'https'
+        else:
+            proto = 'http'
+        return '%s://%s:%s' % (proto, self.config.get('host'),
                                  self.config.get('port'))
 
     @property
@@ -153,6 +159,10 @@ class CuckooService(Service):
         timeout = self.config.get('timeout')
         if timeout:
             payload['timeout'] = timeout
+
+        enforce_timeout = self.config.get('enforce_timeout')
+        if enforce_timeout:
+            payload['enforce_timeout'] = 'True';
 
         tasks = {}
 
