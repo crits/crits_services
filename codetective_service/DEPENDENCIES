@@ -1,10 +1,6 @@
 The codetective_service is a wrapper using 
 https://github.com/blackthorne/Codetective
 
-In order to make the imports work, please create __init__.py inside the Codetective folder that's cloned from github.
-
-touch Codetective/__init__.py
-
 Imports include:
 re, sys, argparse, base64, urlparse, encodings, string, math, collections, datetime, io, struct, os
 
