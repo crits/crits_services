@@ -5,16 +5,5 @@ Sometimes we ran into hashes and other codes and can't figure out where did they
 
 
 Installation instructions:
-
-#clone the repo into some conveninent scratch location:
-cd /tmp/
-git clone https://github.com/blackthorne/Codetective.git
-
-#put what we need just where we need it
-mkdir /data/crits_services/codetective_service/Codetective
-cp /tmp/Codedetctive/codetective.py /tmp/Codedetctive/__init__.py /data/crits_services/codetective_service/Codetective/
-
-#delete cloned repo, as it is no longer needed
-rm /tmp/Codetective
-
+Just make sure that you have the imported libs present.
 Done!
