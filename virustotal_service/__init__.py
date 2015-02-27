@@ -32,7 +32,7 @@ class VirusTotalService(Service):
     Requires an API key available from virustotal.com
 
     TODO:
-        - Add IP addresses to domains....maybe. 
+        - Add IP addresses to domains....maybe.
         - Perform a check to see if the API key is really private
     """
 
@@ -41,6 +41,22 @@ class VirusTotalService(Service):
     supported_types = ['Sample', 'Domain', 'IP']
     required_fields = []
     description = "Look up a Sample, Domain or IP in VirusTotal"
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        if 'vt_add_pcap' not in config:
+            config['vt_add_pcap'] = False
+        if 'vt_add_domains' not in config:
+            config['vt_add_domains'] = False
+        return forms.VirusTotalRunForm(config)
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        return render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                'form': forms.VirusTotalRunForm(),
+                                'crits_type': crits_type,
+                                'identifier': identifier})
 
     @staticmethod
     def save_runtime_config(config):
@@ -90,26 +106,24 @@ class VirusTotalService(Service):
         """
         Retreives a PCAP files from VT using the Private API.
 
-        Args: 
+        Args:
             md5 (String): MD5 of the sample we would like to pull the pcap from.
 
-        TODO: 
-            Add optional switch in the get request to store the pcap as a temp file
-                before adding it to Crits. Switch is stream=True and Crits provides
-                a handler for temp files. 
+        TODO:
+            Add optional switch in the get request to store the pcap as a temp
+            file before adding it to CRITs. Switch is stream=True and CRITs
+            provides a handler for temp files.
             Make Error message uniform like the rest
         """
         network_url = self.config.get('vt_network_url', '')
-        params = {'apikey': self.config.get('vt_api_key', ''),
-                  'hash': md5
-        }
+        params = {'apikey': self.config.get('vt_api_key', ''), 'hash': md5}
 
         try:
             response = requests.get(network_url, params=params)
         except Exception as e:
             logger.error("Virustotal: network connection error for PCAP (%s)" % e)
             self._error("Network connection error checking virustotal for PCAP (%s)" % e)
-            return
+            return None
 
         if response.headers['content-type'] == 'application/cap':
             self._info("Gathered PCAP file for %s" % md5)
@@ -122,15 +136,16 @@ class VirusTotalService(Service):
             return None
 
     def run(self, obj, config):
-        # We assign config and obj to self because it is referenced often outside this script
-        # This is model after the guys who wrote the cuckoo script and all credit goes to them
-        # on this cool trick
+        # We assign config and obj to self because it is referenced often
+        # outside this script
+        # This is model after the guys who wrote the cuckoo script and all
+        # credit goes to them on this cool trick
         self.config = config
         self.obj = obj
 
         # Pull configuration and check to see if a key is presented
         private_key = config.get('vt_api_key_private', False)
-        pull_pcap = config.get('vt_api_pcap', False)
+        pull_pcap = config.get('vt_add_pcap', False)
         key = config.get('vt_api_key', '')
         sample_url = config.get('vt_query_url', '')
         domain_url = config.get('vt_domain_url', '')
@@ -170,17 +185,21 @@ class VirusTotalService(Service):
             self._error("Network connection error checking virustotal (%s)" % e)
             return
 
-        # Check to see if a VT provided valid results. If not throw error and exit
+        # Check to see if a VT provided valid results. If not throw error and
+        # exit
         if response_dict.get('response_code', 0) != 1:
             self._error("Exiting because Virustotal provided a negative response code.")
             return
 
         # Process Results for Sample
         if obj._meta['crits_type'] == 'Sample':
+            # If we are missing any hashes for this file, add them
+            self._process_hashes(response_dict)
+
             # Process Public Key data and store scandate for later use
             response = self._process_public_sample(response_dict)
             if not response['success']:
-                self._debug(response['message'])
+                self._info(response['message'])
             scandate = response.get('scandate', None)
 
             # If selected, process private key data
@@ -192,17 +211,17 @@ class VirusTotalService(Service):
                 # Process private metadata
                 response = self._process_private_sample_metadata(response_dict)
                 if not response['success']:
-                    self._debug(response['message'])
+                    self._info(response['message'])
 
                 # Process private VirusTotal metadata
                 response = self._process_private_sample_vtmetadata(response_dict)
                 if not response['success']:
-                    self._debug(response['message'])
+                    self._info(response['message'])
 
                 # Process private VirusTotal behaviour information
                 response = self._process_private_sample_behaviour(response_dict, scandate)
                 if not response['success']:
-                    self._debug(response['message'])
+                    self._info(response['message'])
 
                 # Pull pcap file, add to DB, and create relationship
                 if pull_pcap:
@@ -215,14 +234,40 @@ class VirusTotalService(Service):
             # Process public VirusTotal domain information
             response = self._process_public_domain(response_dict)
             if not response['success']:
-                self._debug(response['message'])
+                self._info(response['message'])
 
         # Process results for IP
         elif obj._meta['crits_type'] == 'IP':
             # Process public VirusTotal ip information
             response = self._process_public_ip(response_dict)
             if not response['success']:
-                self._debug(response['message'])
+                self._info(response['message'])
+
+    def _process_hashes(self, report):
+        """
+        Process hash data from VirusTotal.
+
+        Args:
+            report (dict): json report information
+
+        Return: None
+        """
+
+        save = False
+
+        if self.obj.ssdeep != report['ssdeep']:
+            self.obj.ssdeep = report['ssdeep']
+            save = True
+        if self.obj.sha1 != report['sha1']:
+            self.obj.sha1 = report['sha1']
+            save = True
+        if self.obj.sha256 != report['sha256']:
+            self.obj.sha256 = report['sha256']
+            save = True
+
+        if save:
+            self.obj.save(username=self.current_task.username)
+        return
 
     def _process_public_sample(self, report):
         """
@@ -234,7 +279,7 @@ class VirusTotalService(Service):
         Return: dict with keys:
             'success' (boolean),
             'message' (str),
-            'scandate' (str), if available 
+            'scandate' (str), if available
         """
         status = {
             'success':  False,
@@ -259,22 +304,23 @@ class VirusTotalService(Service):
 
         # Add VT scan data
         scans = report.get('scans', [])
-        for scan in scans:
-            if scans[scan]["result"]:
-                result = scans[scan]["result"]
-            else:
-                result = ''
-            detection = {
-                "engine":       scan,
-                "date":         scans[scan].get('update', ''),
-                "detected":     scans[scan].get('detected', ''),
-                "version":      scans[scan].get('version', ''),
-            }
-            self._add_result('av_result', result, detection)
+        if scans:
+            for scan in scans:
+                if scans[scan]["result"]:
+                    result = scans[scan]["result"]
+                else:
+                    result = ''
+                detection = {
+                    "engine":       scan,
+                    "date":         scans[scan].get('update', ''),
+                    "detected":     scans[scan].get('detected', ''),
+                    "version":      scans[scan].get('version', ''),
+                }
+                self._add_result('av result', result, detection)
         else:
             status['message'].append("Scan data not included in VT response.")
 
-        # Updating status information and returning 
+        # Updating status information and returning
         if not status['message']:
             status['success'] =  True
             status['message'] = "Processed Public Report Information."
@@ -285,13 +331,13 @@ class VirusTotalService(Service):
 
     def _process_private_sample_metadata(self, report):
         """
-        Process private sample report information focused on file meta data 
+        Process private sample report information focused on file meta data
         from VirusTotal. This includes the section:
             - Developer Data
             - PE Language
             - Signature Check
         Args:
-            report (dict): unprocessed main json report information from VT. 
+            report (dict): unprocessed main json report information from VT.
 
         Return: dict with keys:
             'success' (boolean),
@@ -308,13 +354,17 @@ class VirusTotalService(Service):
         # Developer Metadata
         if exiftool_dict:
             developerdata = {
-                'Product_Name': exiftool_dict.get('ProductName', ''),
-                'Product_Version': exiftool_dict.get('ProductVersionNumber', ''),
-                'File_Version': exiftool_dict.get('FileVersionNumber', ''),
-                'File_Description': exiftool_dict.get('FileDescription', ''),
+                'Product Name': exiftool_dict.get('ProductName', ''),
+                'Product Version': exiftool_dict.get('ProductVersionNumber', ''),
+                'File Version': exiftool_dict.get('FileVersionNumber', ''),
+                'File Description': exiftool_dict.get('FileDescription', ''),
                 'InternalName': exiftool_dict.get('InternalName', ''),
             }
-            self._add_result('Developer_Metadata', exiftool_dict.get('CompanyName', ''), developerdata)
+            # Make sure at least one of the keys is set with a value.
+            for v in developerdata.values():
+                if v != '':
+                    self._add_result('Developer Metadata', exiftool_dict.get('CompanyName', ''), developerdata)
+                    break
         else:
             status['message'].append("Exiftool data not included in VT response.")
 
@@ -323,27 +373,32 @@ class VirusTotalService(Service):
             sigcheck = {
                 'Copyright': sigcheck_dict.get('copyright', ''),
                 'Description': sigcheck_dict.get('description', ''),
-                'File_Version': sigcheck_dict.get('file version', ''),
-                'Internal_Name': sigcheck_dict.get('internal name', ''),
-                'Original_Name': sigcheck_dict.get('original name', ''),
+                'File Version': sigcheck_dict.get('file version', ''),
+                'Internal Name': sigcheck_dict.get('internal name', ''),
+                'Original Name': sigcheck_dict.get('original name', ''),
                 'Product': sigcheck_dict.get('product', ''),
-                'Link_Data': sigcheck_dict.get('link date', ''),
+                'Link Date': sigcheck_dict.get('link date', ''),
                 'Publisher': sigcheck_dict.get('publisher', ''),
                 'Signers': sigcheck_dict.get('signers', ''),
                 'Signing Date': sigcheck_dict.get('signing date', '')
             }
-            self._add_result('Signature_Information', sigcheck_dict.get('publisher', ''), sigcheck)
+            # Make sure at least one of the keys is set with a value.
+            for v in sigcheck.values():
+                if v != '':
+                    self._add_result('Signature Information', sigcheck_dict.get('publisher', ''), sigcheck)
+                    break
         else:
             status['message'].append("Signature data not included in VT response.")
 
         # PE Language Informaton
         pe_lang = additional_info_dict.get('pe-resource-langs', {})
         if pe_lang:
-            self._add_result('Language_Information', exiftool_dict.get('LanguageCode', ''), pe_lang)
+            for k, v in pe_lang.iteritems():
+                self._add_result('Language Information', k, {'Value': v})
         else:
             status['message'].append("PE Language data not included in VT response.")
 
-        # Updating status information and returning 
+        # Updating status information and returning
         if not status['message']:
             status['success'] =  True
             status['message'] = "Processed private sample metadata."
@@ -359,7 +414,7 @@ class VirusTotalService(Service):
             - VirusTotal Metadata (times seen)
             - VirusTotal Reputation
         Args:
-            report (dict): unprocessed main json report information from VT. 
+            report (dict): unprocessed main json report information from VT.
 
         Return: dict with keys:
             'success' (boolean),
@@ -375,28 +430,28 @@ class VirusTotalService(Service):
         # VirusTotal Metadata
         if additional_info_dict:
             vt_metadata = {
-                'First_Seen': report.get('first_seen', ''),
-                'Last_Seen': report.get('last_seen', ''),
-                'Times_Submitted': report.get('times_submitted', ''),
-                'Unique_Sources': report.get('unique_sources', '')
+                'First Seen': report.get('first_seen', ''),
+                'Last Seen': report.get('last_seen', ''),
+                'Times Submitted': report.get('times_submitted', ''),
+                'Unique Sources': report.get('unique_sources', '')
             }
-            self._add_result('Virus_Total_Metadata', report.get('scan_id', ''), vt_metadata)
+            self._add_result('VirusTotal Timestamps', report.get('scan_id', ''), vt_metadata)
             for item in report.get('submission_names', []):
-                self._add_result('Virus_Total_Metadata', item, {'Submission_Name': 'Submission Name(s)'})
+                self._add_result('VirusTotal Submission Names', item)
 
             # VirusTotal Reputation
             vt_reputation = {
-                'Community_Reputation': report.get('community_reputation', 0),
-                'Harmless_Votes':       report.get('harmless_votes', 0),
-                'Malicious_Votes':      report.get('malicious_votes', 0)
+                'Community Reputation': report.get('community_reputation', 0),
+                'Harmless Votes':       report.get('harmless_votes', 0),
+                'Malicious Votes':      report.get('malicious_votes', 0)
             }
             vt_reputation_string =  "%d / %d" % (report.get('malicious_votes', 0), report.get('harmless_votes', 0))
-            self._add_result('Virus_Total_Reputation', vt_reputation_string, vt_reputation)
+            self._add_result('VirusTotal Reputation', vt_reputation_string, vt_reputation)
         else:
             status['message'].append("Additional information not included in VT response.")
 
 
-        # Updating status information and returning 
+        # Updating status information and returning
         if not status['message']:
             status['success'] =  True
             status['message'] = "Processed private sample vtmetadata."
@@ -412,7 +467,7 @@ class VirusTotalService(Service):
             - VirusTotal Metadata (times seen)
             - VirusTotal Reputation
         Args:
-            report (dict): unprocessed main json report information from VT. 
+            report (dict): unprocessed main json report information from VT.
 
         Return: dict with keys:
             'success' (boolean),
@@ -430,15 +485,20 @@ class VirusTotalService(Service):
             behaviour_network_dict = behaviour_dict.get('network', {})
 
             if behaviour_network_dict:
-                # Grab DNS data if available 
+                # Grab DNS data if available
                 behaviour_network_dns = behaviour_network_dict.get('dns', [])
                 if behaviour_network_dns:
                     for item in behaviour_network_dns:
-                        self._process_domain(item.get('hostname', ''), item.get('ip', ''), scandate)
+                        self._add_result('VirusTotal Behaviour DNS', str(domain), {'IP_Address': str(ip)})
+                        # Add domain to CRITs
+                        domain = item.get('hostname', None)
+                        ip = item.get('ip', None)
+                        if domain and self.config.get('vt_add_domains', False):
+                            self._process_domain(domain, ip, scandate)
                 else:
                     status['message'].append("DNS behaviour information not included in VT response.")
 
-                # Grab HTTP data if available 
+                # Grab HTTP data if available
                 behaviour_network_http = behaviour_network_dict.get('http', [])
                 if behaviour_network_http:
                     for item in behaviour_network_http:
@@ -446,23 +506,23 @@ class VirusTotalService(Service):
                             'Method':       item.get('method', ''),
                             'User-agent':   item.get('user-agent', '')
                         }
-                        self._add_result('Virus_Total_Behaviour_HTTP', item.get('url', ''), item_dict)
+                        self._add_result('VirusTotal Behaviour HTTP', item.get('url', ''), item_dict)
                 else:
                     status['message'].append("HTTP behaviour information not included in VT response.")
 
-                # Grab TCP data if available 
+                # Grab TCP data if available
                 behaviour_network_tcp = behaviour_network_dict.get('tcp', [])
                 if behaviour_network_tcp:
                     for item in behaviour_network_tcp:
-                        self._add_result('Virus_Total_Behaviour_TCP', item)
+                        self._add_result('VirusTotal Behaviour TCP', item)
                 else:
                     status['message'].append("TCP behaviour information not included in VT response.")
 
-                # Grab UDP data if available 
+                # Grab UDP data if available
                 behaviour_network_udp = behaviour_network_dict.get('udp', [])
                 if behaviour_network_udp:
                     for item in behaviour_network_udp:
-                        self._add_result('Virus_Total_Behaviour_UDP', item)
+                        self._add_result('VirusTotal Behaviour UDP', item)
                 else:
                     status['message'].append("UDP behaviour information not included in VT response.")
 
@@ -470,7 +530,7 @@ class VirusTotalService(Service):
             behaviour_extra = behaviour_dict.get('extra', [])
             if behaviour_extra:
                 for item in behaviour_extra:
-                    self._add_result('Virus_Total_Behaviour_Flag', item, {'VT_Flag': 'VT_Flag'})
+                    self._add_result('VirusTotal Behaviour Flag', item, {'VT_Flag': 'VT_Flag'})
             else:
                 status['message'].append("Behaviour flag information not included in VT response.")
 
@@ -482,14 +542,14 @@ class VirusTotalService(Service):
                         'method':   item.get('method', ''),
                         'success':  item.get('success', '')
                     }
-                    self._add_result('Virus_Total_Hooking_Detected', item.get('type', ''), item_dict)
+                    self._add_result('VirusTotal Hooking Detected', item.get('type', ''), item_dict)
             else:
                 status['message'].append("Hooking behaviour information not included in VT response.")
 
         else:
             status['message'].append("Behaviour information not included in VT response.")
 
-        # Updating status information and returning 
+        # Updating status information and returning
         if not status['message']:
             status['success'] =  True
             status['message'] = "Processed private sample behaviour data."
@@ -591,7 +651,7 @@ class VirusTotalService(Service):
         else:
             status['message'].append("Undetected domain sample information not included in VT response.")
 
-        # Updating status information and returning 
+        # Updating status information and returning
         if not status['message']:
             status['success'] =  True
             status['message'] = "Processed public domain information."
@@ -602,7 +662,7 @@ class VirusTotalService(Service):
 
     def _process_public_ip(self, report):
         """
-        Process public key ip data from VirusTotal. 
+        Process public key ip data from VirusTotal.
 
         Args:
             report (dict): json report information
@@ -626,7 +686,7 @@ class VirusTotalService(Service):
                         }
                 self._add_result('Detected URLs', url.get('url', ''), stats)
         else:
-            status['message'].append("Detected URL information not included in VT response.")       
+            status['message'].append("Detected URL information not included in VT response.")
 
         resolutions = report.get('resolutions', [])
         if resolutions:
@@ -684,9 +744,9 @@ class VirusTotalService(Service):
                         }
                 self._add_result('Undetected Downloaded Samples', samp.get('sha256', ''), stats)
         else:
-            status['message'].append("Undetected downloaded sample information not included in VT response.")       
+            status['message'].append("Undetected downloaded sample information not included in VT response.")
 
-        # Updating status information and returning 
+        # Updating status information and returning
         if not status['message']:
             status['success'] =  True
             status['message'] = "Processed public ip information."
@@ -697,7 +757,7 @@ class VirusTotalService(Service):
 
     def _process_pcap(self, pcap, scandate):
         """
-        Add Pcap file to Crits. 
+        Add Pcap file to CRITs.
 
         Args:
             pcap (binary): pcap data
@@ -710,77 +770,72 @@ class VirusTotalService(Service):
         self._notify()
         org = get_user_organization(self.current_task.username)
         h = md5(pcap).hexdigest()
-        result = handle_pcap_file("%s.pcap" % h,                            # File Name
-                                  pcap,                                     # Pcap data
-                                  org,                                      # Data Source
-                                  user=self.current_task.username,          # User adding the PCAP
-                                  description='Created %s' % (scandate),    # Description 
-                                  related_id=str(self.obj.id),              # Top level ID of related object
-                                  related_type="Sample",                    # Top level type of the related object
-                                  method=self.name,                         # Method for aquiring the PCAP
-                                  reference=None,                           # Reference to the source of this PCAP
-                                  relationship='Related_To')                # Relationship between parent and the PCAP         
-        self._add_result("pcap_added", h, {'md5': h})
+        result = handle_pcap_file("%s.pcap" % h,
+                                  pcap,
+                                  org,
+                                  user=self.current_task.username,
+                                  description='Created %s' % (scandate),
+                                  related_id=str(self.obj.id),
+                                  related_type="Sample",
+                                  method=self.name,
+                                  reference=None,
+                                  relationship='Related_To')
+        self._add_result("pcap added", h, {'md5': h})
 
     def _process_domain(self, domain, ip, scandate):
         """
-        Add domain to Crits. 
+        Add domain to CRITs.
 
         Args:
             domain (str): pcap data
-            scandate (str): scan date from when domain is believed to be collected. 
+            scandate (str): scan date from when domain is believed to be
+            collected.
 
         TODO:
             handle IP
         """
 
-        if domain == 'none':
-            self._debug("Domain is blank: %s." % (domain))
-        else:
-            self._info("Adding domain %s and creating relationship to %s" % (str(domain), str(self.obj.id)))
-            self._notify()
-            org = get_user_organization(self.current_task.username)
+        self._info("Adding domain %s and creating relationship to %s" % (str(domain), str(self.obj.id)))
+        self._notify()
+        org = get_user_organization(self.current_task.username)
 
-            url_contains_ip = False
-            #domain_host = urlparse.urlparse(domain).hostname
-            (sdomain, fqdn) = get_domain(domain)
-            if sdomain == "no_tld_found_error":
-                try:
-                    validate_ipv46_address(domain_or_ip)
-                    url_contains_ip = True
-                except DjangoValidationError:
-                    pass
-            if not url_contains_ip:
-                result = None
-                result = upsert_domain(sdomain,                                  # Root domain
-                                       fqdn,                                     # domain
-                                       org,                                      # Data Source
-                                       username=self.current_task.username,          # User adding the Domain
-                                       campaign=None,                            # Link to campaign
-                                       confidence=None,
-                                       bucket_list=None,
-                                       ticket=None)
+        url_contains_ip = False
+        #domain_host = urlparse.urlparse(domain).hostname
+        (sdomain, fqdn) = get_domain(domain)
+        if sdomain == "no_tld_found_error":
+            try:
+                validate_ipv46_address(domain_or_ip)
+                url_contains_ip = True
+            except DjangoValidationError:
+                pass
+        if not url_contains_ip:
+            result = None
+            result = upsert_domain(sdomain,
+                                   fqdn,
+                                   org,
+                                   username=self.current_task.username,
+                                   campaign=None,
+                                   confidence=None,
+                                   bucket_list=None,
+                                   ticket=None)
 
-                # If domain was added, create relationship.
-                if not result['success']:
-                    self._debug("Cannot add domain %s. reason: %s" % (str(domain), str(result['message'])))
-                else:
-                    # add relationshiop
-                    dmain = result['object']
+            # If domain was added, create relationship.
+            if not result['success']:
+                self._info("Cannot add domain %s. reason: %s" % (str(domain), str(result['message'])))
+            else:
+                # add relationshiop
+                dmain = result['object']
 
-                    msg = dmain.add_relationship(rel_item=self.obj,         #the top-level object to relate to
-                                                 rel_type='Related_To',       
-                                                 rel_date=scandate,
-                                                 analyst=self.current_task.username,
-                                                 rel_confidence='unknown',
-                                                 rel_reason='Provided by VirusTotal. Date is from when vt analysis was performed',
-                                                 get_rels=False)
-                    
-                    if not msg['success']:
-                        self._debug("Cannot add relationship because %s" % (str(msg['message'])))
-                    
-                    dmain.save(username=self.current_task.username)
-                    self.obj.save(username=self.current_task.username)
+                msg = dmain.add_relationship(rel_item=self.obj,
+                                             rel_type='Related_To',
+                                             rel_date=scandate,
+                                             analyst=self.current_task.username,
+                                             rel_confidence='unknown',
+                                             rel_reason='Provided by VirusTotal. Date is from when vt analysis was performed',
+                                             get_rels=False)
 
-                    # Add domain to Crits
-                    self._add_result('Virus_Total_Behaviour_DNS', str(domain), {'IP_Address': str(ip)})
+                if not msg['success']:
+                    self._info("Cannot add relationship because %s" % (str(msg['message'])))
+
+                dmain.save(username=self.current_task.username)
+                self.obj.save(username=self.current_task.username)
