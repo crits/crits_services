@@ -489,10 +489,10 @@ class VirusTotalService(Service):
                 behaviour_network_dns = behaviour_network_dict.get('dns', [])
                 if behaviour_network_dns:
                     for item in behaviour_network_dns:
-                        self._add_result('VirusTotal Behaviour DNS', str(domain), {'IP_Address': str(ip)})
                         # Add domain to CRITs
                         domain = item.get('hostname', None)
                         ip = item.get('ip', None)
+                        self._add_result('VirusTotal Behaviour DNS', str(domain), {'IP_Address': str(ip)})
                         if domain and self.config.get('vt_add_domains', False):
                             self._process_domain(domain, ip, scandate)
                 else:
