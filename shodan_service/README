@@ -1,0 +1,6 @@
+Check the Shodan database to see if it contains this IP.
+
+Requires an API key available from https://www.shodan.io
+
+Free accounts get a free API key which can be found at https://account.shodan.io.
+The Shodan API for IP-based lookups has no restrictions with the free API key!

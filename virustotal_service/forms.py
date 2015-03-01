@@ -7,10 +7,6 @@ class VirusTotalConfigForm(forms.Form):
                                 initial=False,
                                 label='Private key?',
                                 help_text="Is the key a private key?")
-    vt_api_pcap = forms.BooleanField(required=False,
-                                initial=False,
-                                label='Pull pcap?',
-                                help_text="If available, should we pull the pcap file?")
     vt_api_key = forms.CharField(required=True,
                                  label="API Key",
                                  widget=forms.TextInput(),
@@ -36,3 +32,18 @@ class VirusTotalConfigForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super(VirusTotalConfigForm, self).__init__(*args, **kwargs)
+
+class VirusTotalRunForm(forms.Form):
+    error_css_class = 'error'
+    required_css_class = 'required'
+    vt_add_pcap = forms.BooleanField(required=False,
+                                     initial=False,
+                                     label='PCAP',
+                                     help_text="Add PCAP file")
+    vt_add_domains = forms.BooleanField(required=False,
+                                        initial=False,
+                                        label='Domain',
+                                        help_text="Add Domains")
+
+    def __init__(self, *args, **kwargs):
+        super(VirusTotalRunForm, self).__init__(*args, **kwargs)

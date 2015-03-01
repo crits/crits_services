@@ -121,6 +121,7 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
     # the dictionary for the source.
     obj_graph = {}
 
+    campaign_cache = {}
     node_position = 0
     for (obj_id, obj) in objects.iteritems():
         if obj_id in obj_graph:
@@ -141,7 +142,9 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
         if hasattr(obj, 'campaign'):
             for i, campaign in enumerate(obj.campaign):
                 name = "%s" % obj.campaign[i].name
-                (x, campaign_details) = get_campaign_details(name, user)
+                if name not in campaign_cache:
+                    campaign_cache[name] = get_campaign_details(name, user)
+                (x, campaign_details) = campaign_cache[name]
                 if 'error' in campaign_details:
                     continue
                 campaign_id = str(campaign_details['campaign_detail'].id)
