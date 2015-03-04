@@ -1,6 +1,13 @@
 {% load url from future %}
 {% load service_tags %}
 
+<style>
+    #gmap {
+        margin: 0 auto;
+        display: block;
+    }
+</style>
+
 <script>
     function create_indicator(value, me) {
         data = {
@@ -50,6 +57,14 @@
             var value = me.closest('tr').find('a').text();
             create_indicator(value, me);
         });
+
+        // Add Google Map image based on latitude and longitude from results.
+        var latitude = $('tr:has(td:contains("latitude"))').children("td:last").text().trim()
+        var longitude = $('tr:has(td:contains("longitude"))').children("td:last").text().trim()
+        if(latitude && longitude) {
+            gmap = '<img id="gmap" src="https://maps.googleapis.com/maps/api/staticmap?center='+latitude+','+longitude+'&zoom=12&size=400x400&markers=color:blue%7Clabel:S%7C'+latitude+','+longitude+'"></img>';
+            $('h4:contains("General")').next().after(gmap);
+        }
     });
 </script>
 
