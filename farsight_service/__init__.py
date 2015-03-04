@@ -76,18 +76,18 @@ class FarsightService(Service):
     def run(self, obj, config):
         key = config.get('farsight_api_key', '')
         url = config.get('farsight_api_url', '')
- 
+
         if not key:
             self._error("No valid Farsight key found")
             return
 
         if obj._meta['crits_type'] == 'IP':
-            url = '%s/lookup/rdata/ip/%s' % (url,obj.ip)
+            url = '%s/lookup/rdata/ip/%s?limit=1000' % (url, obj.ip)
         elif obj._meta['crits_type'] == 'Domain':
-            url = '%s/lookup/rrset/name/%s' % (url, obj.domain)
+            url = '%s/lookup/rrset/name/%s?limit=1000' % (url, obj.domain)
 
         req = urllib2.Request(url, headers={'X-API-Key' : '%s' % key, 'Accept': 'application/json'})
-        
+
         if settings.HTTP_PROXY:
             proxy = urllib2.ProxyHandler({'https': settings.HTTP_PROXY})
             opener = urllib2.build_opener(proxy)
@@ -100,7 +100,7 @@ class FarsightService(Service):
                 if not line:
                     break
                 res.append(simplejson.loads(line))
-        
+
         except Exception as e:
             logger.error("Farsight: network connection error (%s)" % e)
             self._error("Network connection error checking Farsight (%s)" % e)
@@ -109,37 +109,94 @@ class FarsightService(Service):
         if not res:
             return
 
+        # Results are stored in a dict, where the key is the rrtype and the
+        # value is a list of dictionaries. They look like this:
+        #
+        # Domains:
+        #
+        # {'A': [{'Count': 1538,
+        #         'First Time': '2010-10-03 21:58:57',
+        #         'Last Time': '2015-03-04 07:18:33',
+        #         'data': ['129.21.49.45']},
+        #        {'Count': 3,
+        #         'First Time': '2010-07-31 10:26:24',
+        #         'Last Time': '2010-09-15 08:00:17',
+        #         'data': ['129.21.50.215']}],
+        #  'MX': [{'Count': 2006,
+        #         'First Time': '2010-06-25 09:49:57',
+        #         'Last Time': '2014-12-28 23:20:04',
+        #         'data': ['10 syn.atarininja.org']},
+        #         {'Count': 12,
+        #         'First Time': '2015-01-03 00:32:46',
+        #         'Last Time': '2015-03-02 21:52:27',
+        #         'data': ['5 gmr-smtp-in.l.google.com',
+        #                  '10 alt1.gmr-smtp-in.l.google.com',
+        #                  '20 alt2.gmr-smtp-in.l.google.com',
+        #                  '30 alt3.gmr-smtp-in.l.google.com',
+        #                  '40 alt4.gmr-smtp-in.l.google.com']}],
+        #
+        # IPs:
+        #
+        # {'A': [{'Count': 417,
+        #         'First Time': '2010-09-29 05:41:11',
+        #         'Last Time': '2015-02-27 09:18:20',
+        #         'data': ['syn.csh.rit.edu']},
+        #        {'Count': 1538,
+        #         'First Time': '2010-10-03 21:58:57',
+        #         'Last Time': '2015-03-04 07:18:33',
+        #         'data': ['atarininja.org']},
+        #        {'Count': 8520,
+        #         'First Time': '2010-09-29 02:26:51',
+        #         'Last Time': '2015-03-03 16:43:34',
+        #         'data': ['syn.atarininja.org']},
+        #        {'Count': 206,
+        #         'First Time': '2010-10-02 16:17:14',
+        #         'Last Time': '2015-02-23 03:43:16',
+        #         'data': ['donkeyonawaffle.org']},
+        #        {'Count': 4598,
+        #         'First Time': '2010-09-29 03:45:21',
+        #         'Last Time': '2015-03-04 09:31:33',
+        #         'data': ['syn.donkeyonawaffle.org']}]}
+        results = {}
         for itm in res:
-            if obj._meta['crits_type'] == 'IP':
-                stats = {
-                      'Count': itm.get('count', 'n/a'),
-                      'Record Type': itm.get('rrtype', 'n/a'),
-                      'First Time': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(itm.get('time_first', 'n/a'))),
-                      'Last Time': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(itm.get('time_last', 'n/a')))
-                    }
-                self._add_result('General', itm.get('rrname', 'n/a.')[:-1],  stats)
             if obj._meta['crits_type'] == 'Domain':
-                if itm.get('rrtype', 'n/a') == 'NS':
-                    stats = {
-                        'Count': itm.get('count', 'n/a'),
-                        'Record Type': itm.get('rrtype', 'n/a'),
-                        'First Time': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(itm.get('zone_time_first', itm.get('time_first')))),
-                        'Last Time': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(itm.get('zone_time_last', itm.get('time_last')))),
-                      }
-                    data = []
-                    for d in itm.get('rdata'):
-                        data.append(d[:-1])
-                    stats['Data'] = ','.join(data)
-                    self._add_result('General', itm.get('rrname', 'n/a')[:-1], stats)
-                if itm.get('rrtype', 'n/a') == 'A':
-                    stats = {
-                        'Count': itm.get('count', 'n/a'),
-                        'Record Type': itm.get('rrtype', 'n/a'),
-                        'First Time': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(itm.get('time_first', 'n/a'))),
-                        'Last Time': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(itm.get('time_last', 'n/a'))),
-                      }
-                    data = []
-                    for d in itm.get('rdata'):
-                        data.append(d[:-1])
-                    stats['Data'] = ','.join(data)
-                    self._add_result('General', itm.get('rrname', 'n/a.')[:-1],  stats)
+                key = 'rdata'
+            elif obj._meta['crits_type'] == 'IP':
+                key = 'rrname'
+
+            stats = {
+                'Count': itm.get('count', ''),
+                'First Time': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(itm.get('zone_time_first', itm.get('time_first')))),
+                'Last Time': time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(itm.get('zone_time_last', itm.get('time_last')))),
+                'data': [],
+              }
+            entry = itm.get(key, [])
+            if isinstance(entry, list):
+                for d in entry:
+                    # Chop the trailing period.
+                    if d[-1] == '.':
+                        stats['data'].append(d[:-1])
+                    else:
+                        stats['data'].append(d)
+            elif isinstance(entry, basestring):
+                # Chop the trailing period.
+                if entry[-1] == '.':
+                    stats['data'].append(entry[:-1])
+                else:
+                    stats['data'].append(entry)
+            else:
+                # Not going to process this.
+                continue
+
+            rrtype = itm.get('rrtype', 'Unknown')
+            if rrtype in results:
+                results[rrtype].append(stats)
+            else:
+                results[rrtype] = [stats]
+
+        for rrtype, stats_list in results.iteritems():
+            for stats in stats_list:
+                data = stats['data']
+                del stats['data']
+                for d in data:
+                    self._add_result(rrtype, d, stats)
