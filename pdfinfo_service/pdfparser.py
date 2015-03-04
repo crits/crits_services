@@ -148,7 +148,7 @@ class cPDFDocument:
         else:
             try:
                 import StringIO
-                self.infile = StringIO.StringIO(file)   
+                self.infile = StringIO.StringIO(file)
             except:
                 print('Error opening file %s' % file)
                 print(sys.exc_info()[1])
@@ -567,7 +567,7 @@ class cPDFElementIndirectObject:
 def mycallback(data):
     print(data['rule'])
     yara.CALLBACK_CONTINUE
-  
+
 class cPDFElementStartxref:
     def __init__(self, index):
         self.type = PDF_ELEMENT_STARTXREF
