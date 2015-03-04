@@ -93,9 +93,11 @@ class ShodanService(Service):
         if not result_dict:
             return
 
+        # These are the keys we don't care about
+        keys = ['data', 'ports', 'hostnames', 'vulns', 'ip_str']
         if obj._meta['crits_type'] == 'IP':
             for key, val in sorted(result_dict.iteritems()):
-                if key not in 'dataportshostnamesvulnsip_str':
+                if key not in keys:
                     stats = {'data': result_dict.get(key, 'n/a')}
                     if result_dict.get(key, 'n/a'):
                         self._add_result('General', key, stats)
