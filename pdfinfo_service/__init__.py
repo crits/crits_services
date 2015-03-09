@@ -4,8 +4,10 @@ import logging
 from crits.services.core import Service, ServiceConfigError
 
 import pdfparser
+import pdfid
 import math
 import re
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -47,68 +49,87 @@ class PDFInfoService(Service):
         else:
             return "0.0"
 
-    def run(self, obj, config):
-        data = obj.filedata.read()
-        self.object_summary = {
-            'XRef':             0,
-            'Catalog':          0,
-            'ObjStm':           0,
-            'Page':             0,
-            'Metadata':         0,
-            'XObject':          0,
-            'Sig':              0,
-            'Pages':            0,
-            'FontDescriptor':   0,
-            'Font':             0,
-            'EmbeddedFile':     0,
-            'StructTreeRoot':   0,
-            'Mask':             0,
-            'Group':            0,
-            'Outlines':         0,
-            'Action':           0,
-            'Annot':            0,
-            'Other_objects':    0,
-            'Encoding':         0,
-            'ExtGState':        0,
-            'Pattern':          0,
-            '3D':               0,
-            'Total':            0,
-            'Version':      '',
-        }
-        self.object_summary["Version"] = self._get_pdf_version(data[:1024])
+    def run_pdfid(self, data):
+        """
+        Uses PDFid to generate stats for the PDF
+        - Display keyword matches
+        """
+        xml_data = pdfid.PDFiD(data)
+        json_data = pdfid.PDFiD2JSON(xml_data,'')
+        pdfid_dict = json.loads(json_data)[0]
+        try:
+            for item in pdfid_dict['pdfid']['keywords']['keyword']:
+                self._add_result('pdfid', item['name'], {'count':item['count']})
+        except KeyError:
+            pass
 
+    def run_pdfparser(self, data):
+        """
+        Uses pdf-parser to get information for each object.
+        """        
         oPDFParser = pdfparser.cPDFParser(data)
-        done = True
         self._debug("Parsing document")
+        done = True
+
         while done == True:
             try:
                 pdf_object = oPDFParser.GetObject()
             except Exception as e:
                 pdf_object = None
+ 
             if pdf_object != None:
                 if pdf_object.type in [pdfparser.PDF_ELEMENT_INDIRECT_OBJECT]:
                     rawContent = pdfparser.FormatOutput(pdf_object.content, True)
                     section_md5_digest = hashlib.md5(rawContent).hexdigest()
                     section_entropy = self.H(rawContent)
                     object_type = pdf_object.GetType()
+
+                    object_stream = False
+                    if pdf_object.ContainsStream():
+                        object_stream = True
+
+                    object_references = []
+                    for reference in pdf_object.GetReferences():
+                        object_references.append(reference[0])
+                    object_references = ','.join(object_references)
+
+                    js_tags = str(pdf_object.Contains('/JavaScript') | pdf_object.Contains('/JS'))
+
+                    row_title = "{} ({})".format(object_type,section_md5_digest)
                     result = {
                             "obj_id":           pdf_object.id,
                             "obj_version":      pdf_object.version,
                             "size":             len(rawContent),
-                            "md5":              section_md5_digest,
                             "type":             object_type,
+                            "md5":              section_md5_digest,
                             "entropy":          section_entropy,
+                            "javascript_tags":  js_tags,
+                            "obj_references":   object_references,
+                            "obj_stream":       object_stream,
                     }
-                    if object_type[1:] in self.object_summary:
-                        self.object_summary[object_type[1:]] += 1
-                    else:
-                        self.object_summary["Other_objects"] += 1
-                    self.object_summary["Total"] += 1
-                    self._add_result('pdf_object', pdf_object.id, result)
+                    self._add_result('pdf_parser', row_title, result)
             else:
                 done = False
-        for item in self.object_summary.items():
-            item_str = "{0}: {1}".format(item[0], item[1])
-            self._add_result('stats', item_str, {'type': item[0], 'count': item[1]})
+
+    def run(self, obj, config):
+        """
+        Run PDF service
+        """
+        data = obj.filedata.read()
+        self.object_summary = {}
+        self.object_summary["PDF Version"] = self._get_pdf_version(data[:1024])
+
+        try:
+            self.object_summary["PDF Parser Version"] = pdfparser.__version__
+            self.object_summary["PDFid Version"] = pdfid.__version__
+        except AttributeError:
+            pass
+
+        for key, value in self.object_summary.items():
+            self._add_result('pdf_overview', (key + ": " + value),{})
+
+        self.run_pdfid(data)
+        self.run_pdfparser(data)
+
     def _parse_error(self, item, e):
         self._error("Error parsing %s (%s): %s" % (item, e.__class__.__name__, e))
