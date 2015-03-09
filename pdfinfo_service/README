@@ -2,3 +2,16 @@ PDFInfo will parse a PDF file and generate rich metadata about the document. It
 leverages the pdf-parser script from Didier Stevens.
 
 http://blog.didierstevens.com/programs/pdf-tools/
+
+How to upgrade PDF tools:
+    PDF-Parser:
+        Requires script to be renamed from pdf-parser.py to pdfparser.py
+        cPDFDocument class needs to support StringIO:
+            - self.infile = open(file, 'rb')
+            + import StringIO
+            + self.infile = StringIO.StringIO(file)
+    PDFid
+        cBinaryFile class needs to support StringIO:
+            - self.infile = open(file, 'rb')
+            + import StringIO
+            + self.infile = StringIO.StringIO(file)
