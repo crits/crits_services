@@ -696,7 +696,7 @@ class VirusTotalService(Service):
                         }
                 self._add_result('Resolutions', resolution.get('hostname', ''), stats)
         else:
-            tatus['message'].append("Resolution information not included in VT response.")
+           status['message'].append("Resolution information not included in VT response.")
 
         detected_communicating_samples = report.get('detected_communicating_samples', [])
         if detected_communicating_samples:
