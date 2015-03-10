@@ -133,10 +133,6 @@ class PDFInfoService(Service):
                     section_entropy = self.H(rawContent)
                     object_type = pdf_object.GetType()
 
-                    object_stream = False
-                    streamContent = ''
-                    stream_md5_digest = ''
-                    stream_entropy = ''
                     if pdf_object.ContainsStream():
                         object_stream = True
                         try:
@@ -150,6 +146,11 @@ class PDFInfoService(Service):
                             streamContent = pdf_object.Stream('')
                         stream_md5_digest = hashlib.md5(streamContent).hexdigest()
                         stream_entropy = self.H(streamContent)
+                    else:
+                        object_stream = False
+                        streamContent = ''
+                        stream_md5_digest = ''
+                        stream_entropy = ''
 
                     object_references = []
                     for reference in pdf_object.GetReferences():
