@@ -54,14 +54,24 @@ class PDFInfoService(Service):
         Uses PDFid to generate stats for the PDF
         - Display keyword matches
         """
+        xml_json_success = True
+
         xml_data = pdfid.PDFiD(data)
-        json_data = pdfid.PDFiD2JSON(xml_data,'')
-        pdfid_dict = json.loads(json_data)[0]
         try:
-            for item in pdfid_dict['pdfid']['keywords']['keyword']:
-                self._add_result('pdfid', item['name'], {'count':item['count']})
-        except KeyError:
-            pass
+            json_data = pdfid.PDFiD2JSON(xml_data,'')
+            pdfid_dict = json.loads(json_data)[0]
+        except UnicodeDecodeError:
+            xml_json_success = False
+        
+        if xml_json_success:
+            try:
+                for item in pdfid_dict['pdfid']['keywords']['keyword']:
+                    self._add_result('pdfid', item['name'], {'count':item['count']})
+            except KeyError:
+                pass
+        else:
+            for count, item in re.findall(r'<Keyword\sCount="([^\"]+)"[^>]+Name=\"([^\"]+)\"',xml_data.toxml()):
+                self._add_result('pdfid', item, {'count':count})
 
     def js_ref_search(self, data):
         """
