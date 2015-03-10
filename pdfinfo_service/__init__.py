@@ -93,7 +93,7 @@ class PDFInfoService(Service):
                                     js_items.append(tag)
                     else:
                         if (pdf_object.Contains('/JavaScript') | pdf_object.Contains('/JS')):
-                            js_items.append(pdf_object.id)
+                            js_items.append(str(pdf_object.id))
             else:
                 done = True
         return js_items               
@@ -147,7 +147,7 @@ class PDFInfoService(Service):
                     object_references = ','.join(object_references)
 
                     js_found = False
-                    if pdf_object.id in js_items:
+                    if str(pdf_object.id) in js_items:
                         js_found = True
 
                     result = {
