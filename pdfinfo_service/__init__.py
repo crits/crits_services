@@ -89,7 +89,7 @@ class PDFInfoService(Service):
                         tags += re.findall(r'\/JS\s(\d+)\s\d+\sR',rawContent[:100])
                         for tag in tags:
                             for ref in pdf_references:
-                                if tag == int(ref[0]):
+                                if tag == ref[0]:
                                     js_items.append(tag)
                     else:
                         if (pdf_object.Contains('/JavaScript') | pdf_object.Contains('/JS')):
