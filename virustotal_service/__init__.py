@@ -9,6 +9,7 @@ from hashlib import md5
 
 from django.conf import settings
 from django.template.loader import render_to_string
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 from crits.services.core import Service, ServiceConfigError
 from crits.pcaps.handlers import handle_pcap_file
@@ -768,11 +769,10 @@ class VirusTotalService(Service):
         """
         self._info("Adding PCAP and creating relationship to %s" % (str(self.obj.id)))
         self._notify()
-        org = get_user_organization(self.current_task.username)
         h = md5(pcap).hexdigest()
         result = handle_pcap_file("%s.pcap" % h,
                                   pcap,
-                                  org,
+                                  self.obj.source,
                                   user=self.current_task.username,
                                   description='Created %s' % (scandate),
                                   related_id=str(self.obj.id),
@@ -797,7 +797,6 @@ class VirusTotalService(Service):
 
         self._info("Adding domain %s and creating relationship to %s" % (str(domain), str(self.obj.id)))
         self._notify()
-        org = get_user_organization(self.current_task.username)
 
         url_contains_ip = False
         #domain_host = urlparse.urlparse(domain).hostname
@@ -812,7 +811,7 @@ class VirusTotalService(Service):
             result = None
             result = upsert_domain(sdomain,
                                    fqdn,
-                                   org,
+                                   self.obj.source,
                                    username=self.current_task.username,
                                    campaign=None,
                                    confidence=None,
