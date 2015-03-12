@@ -73,15 +73,30 @@ class PDFInfoService(Service):
             for count, item in re.findall(r'<Keyword\sCount="([^\"]+)"[^>]+Name=\"([^\"]+)\"',xml_data.toxml()):
                 self._add_result('pdfid', item, {'count':count})
 
-    def js_ref_search(self, data):
+    def object_search(self, data, search_size=100):
         """
-        Locate PDF objects that reference JavaScript
-        @return list of object id's that contain JS
-        - This could be achieved using PeePDF.
+        Locate defined objects and references via defined tags
+        @return dict of object types and object id's
+        - Define regex or strings to locate PDF tags of interest
+
+        Note: It is important that objects_str does not detect
+            objects_regex items.
+
+        TODO: Remove references that point to /Names entries.
         """
         oPDFParser = pdfparser.cPDFParser(data)
         done = False 
-        js_items = []
+        objects = {}
+        objects_regex = [('js', r'\/JavaScript\s(\d+)\s\d+\sR'),
+                        ('js', r'\/JS\s(\d+)\s\d+\sR'),
+                        ('file', r'\/F\s(\d+)\s\d+\sR')]
+
+        objects_str = [('js', '/JavaScript\n'),
+                        ('js', '/JavaScript\r\n'),
+                        ('js', '/JS\n'),
+                        ('js', '/JS\r\n'),
+                        ('file', '/F\n'),
+                        ('file', '/F\r\n')]
 
         while done == False:
             try:
@@ -91,22 +106,32 @@ class PDFInfoService(Service):
 
             if pdf_object != None:
                 if pdf_object.type in [pdfparser.PDF_ELEMENT_INDIRECT_OBJECT]:
+                    #See if this PDF object has references to items of interest
                     rawContent = pdfparser.FormatOutput(pdf_object.content, True)
                     pdf_references = pdf_object.GetReferences()
                     if pdf_references:
-                        #Search for JavaScript references and match with GetReferences()
-                        tags = re.findall(r'\/JavaScript\s(\d+)\s\d+\sR',rawContent[:100])
-                        tags += re.findall(r'\/JS\s(\d+)\s\d+\sR',rawContent[:100])
-                        for tag in tags:
-                            for ref in pdf_references:
-                                if tag == ref[0]:
-                                    js_items.append(tag)
-                    else:
-                        if (pdf_object.Contains('/JavaScript') | pdf_object.Contains('/JS')):
-                            js_items.append(str(pdf_object.id))
+                        #Match getReferences() with objects_regex results
+                        for item in objects_regex:
+                            matches = re.findall(item[1],rawContent[:search_size])
+                            for match in matches:
+                                for ref in list(pdf_references):
+                                    #Record found items
+                                    if match == ref[0]:
+                                        pdf_references.remove(ref)
+                                        if objects.get(item[0]):
+                                            objects[item[0]].append(match)
+                                        else:
+                                            objects[item[0]] = [match]
+                    #Find items within the current object.
+                    for item in objects_str:
+                        if pdf_object.Contains(item[1]):
+                            if objects.get(item[0]):
+                                objects[item[0]].append(str(pdf_object.id))
+                            else:
+                                objects[item[0]] = [str(pdf_object.id)]
             else:
                 done = True
-        return js_items               
+        return objects
 
     def run_pdfparser(self, data):
         """
@@ -115,10 +140,9 @@ class PDFInfoService(Service):
         oPDFParser = pdfparser.cPDFParser(data)
         self._debug("Parsing document")
         done = False
-        js_items = []
+        found_objects = {}
 
-        #Walk objects and look for JavaScript
-        js_items = self.js_ref_search(data)
+        found_objects = self.object_search(data)
 
         while done == False:
             try:
@@ -145,21 +169,22 @@ class PDFInfoService(Service):
                             #Provide raw stream data
                             streamContent = pdf_object.Stream('')
                         stream_md5_digest = hashlib.md5(streamContent).hexdigest()
-                        stream_entropy = self.H(streamContent)
                     else:
                         object_stream = False
-                        streamContent = ''
                         stream_md5_digest = ''
-                        stream_entropy = ''
 
                     object_references = []
                     for reference in pdf_object.GetReferences():
                         object_references.append(reference[0])
                     object_references = ','.join(object_references)
 
-                    js_found = False
-                    if str(pdf_object.id) in js_items:
-                        js_found = True
+                    object_content = []
+                    if found_objects.get('js'):
+                        if str(pdf_object.id) in found_objects.get('js'):
+                            object_content.append('JavaScript')
+                    if found_objects.get('file'):
+                        if str(pdf_object.id) in found_objects.get('file'):
+                            object_content.append('EmbeddedFile')
 
                     result = {
                             "obj_id":           pdf_object.id,
@@ -168,11 +193,10 @@ class PDFInfoService(Service):
                             "obj_md5":          section_md5_digest,
                             "type":             object_type,
                             "entropy":          section_entropy,
-                            "javascript":       str(js_found),
-                            "obj_references":   object_references,
-                            "obj_stream":       object_stream,
+                            "content":          ','.join(object_content),
+                            "x_refs":           object_references,
+                            "stream":           object_stream,
                             "stream_md5":       stream_md5_digest,
-                            "stream_entropy":   stream_entropy,
                     }
                     self._add_result('pdf_parser', pdf_object.id, result)
             else:
