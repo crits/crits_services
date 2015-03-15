@@ -29,15 +29,15 @@ class CHMInfoService(Service):
                     r'<script':'CHM contains JavaScript',
                     r'.savetofile':'CHM contains a function to save data to file',
                     r'document.write(':'CHM contains a function to save data to file.',
-                    r'adodb.stream':'CHM creates ADO steam object for file access',
-                    r'msxml2.xmlhttp':'CHM uses an XHLHTTP object to create a network connection',
-                    r'System.Net.WebClient':'CHM uses the PowerShell WebClient class to create a network connection',
-                    r'cmd.exe':'CHM references Windows command prompt',
-                    r'cscript':'CHM references console scripting host',
-                    r'wscript':'CHM references Windows scripting host',
-                    r'rundll32':'CHM contains suspicious reference to Windows file',
-                    r'powershell':'CHM references PowerShell',
-                    r'end if':'CHM contains if statement',
+                    r'adodb.stream':'CHM creates ADO steam object for file access.',
+                    r'msxml2.xmlhttp':'CHM uses an XHLHTTP object to create a network connection.',
+                    r'System.Net.WebClient':'CHM uses the PowerShell WebClient class to create a network connection.',
+                    r'cmd.exe':'CHM references Windows command prompt.',
+                    r'cscript':'CHM references console scripting host.',
+                    r'wscript':'CHM references Windows scripting host.',
+                    r'rundll32':'CHM contains suspicious reference to Windows file.',
+                    r'powershell':'CHM references PowerShell.',
+                    r'end if':'CHM contains if statement.',
                     }
     item_regex = {r'<iframe\s.*src="([^\"]*)".*>':'CHM file creates an IFRAME',
                     r'<object\s[^>]+codebase=\"([^\"]*)\"':'CHM contains object that references external code',
@@ -73,6 +73,7 @@ class CHMInfoService(Service):
     def find_items(self, data):
         """
         Find interesting CHM items using regex and strings
+        - Inspects the pages within the CHM
         """
         results = []
         data = self.unescape(data).lower()
@@ -90,7 +91,8 @@ class CHMInfoService(Service):
     @classmethod
     def find_urls(self, data):
         """
-        Extract URLs from document objects
+        Extract URLs/IPs from document items
+        - Inspects the pages within the CHM
         """
         results = []
         url = re.compile(ur'''(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s
@@ -98,12 +100,14 @@ class CHMInfoService(Service):
             \'\"]+\)))*\)|[^\s`!()\[\]{};:\'\"\.,<>?\xab\xbb\u201c\u201d\u2018\u2019]))''')
         ip = re.compile(ur'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b')
 
+        #Regex matches
         data = self.unescape(data)
         matches = re.findall(url,data)
         for match in matches:
             if not match in results:
                 results.append(match)
 
+        #String matches
         matches = re.findall(ip,data)
         for match in matches:
             if not match in results:
@@ -114,6 +118,7 @@ class CHMInfoService(Service):
     def unescape(data):
         """
         Unescape HTML code
+        - Used to assist with inspection of document items
         """
         html_parser = HTMLParser.HTMLParser()
         try:
@@ -146,7 +151,7 @@ class CHMInfoService(Service):
         obj_items.append(chmparse.topics)
         obj_items = [x for x in obj_items if x is not None]
 
-        #Analyse objects in CHM
+        #Analyse objects/pages in CHM
         for item in obj_items:
             fetch = chmparse.ResolveObject(item)
             if fetch[0] == 0:
@@ -213,21 +218,25 @@ class CHMInfoService(Service):
         if result.get('obj_items_summary'):
             obj_items_summary = result.pop('obj_items_summary')
         
+        #General CHM info
         for key, value in result.items():
             self._add_result('chm_overview', (key + ": " + value), {})
 
+        #URLs and IPs found in CHM
         for object_item in obj_items_summary:
             if object_item.get('urls'):
                 for url in object_item.get('urls'):
                     self._add_result('chm_urls', url, {'item': object_item.get('name')})
                 object_item.pop('urls')
 
+        #Detection results from CHM analysis
         for object_item in obj_items_sumary:
             if object_item.get('detection'):
                 for detection in object_item.get('detection'):
                     self._add_result('chm_detection', detection, {'item': object_item.get('name')})
                 object_item.pop('detection')
 
+        #Details of each object/page in the CHM
         for object_item in obj_items_summary:
             name = object_item.pop('name')
             self._add_result('chm_items', name, object_item)
