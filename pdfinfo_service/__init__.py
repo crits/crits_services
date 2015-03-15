@@ -32,6 +32,9 @@ class PDFInfoService(Service):
             raise ServiceConfigError("Not a valid PDF.")
 
     def H(self, data):
+        """
+        Calculate entropy for provided data
+        """
         if not data:
             return 0
         entropy = 0
@@ -42,6 +45,9 @@ class PDFInfoService(Service):
         return entropy
 
     def _get_pdf_version(self, data):
+        """
+        Inspect PDF header and return version
+        """
         header_ver = re.compile('%PDF-([A-Za-z0-9\.]{1,3})[\r\n]', re.M)
         matches = header_ver.match(data)
         if matches:
@@ -75,14 +81,12 @@ class PDFInfoService(Service):
 
     def object_search(self, data, search_size=100):
         """
-        Locate defined objects and references via defined tags
-        @return dict of object types and object id's
-        - Define regex or strings to locate PDF tags of interest
+        Locate objects and references of interest
+        @return dictionary containing object types and object id's
+        - Use regex and strings to locate PDF tags of interest
 
-        Note: It is important that objects_str does not detect
-            objects_regex items.
-
-        TODO: Remove references that point to /Names entries.
+        Note: It is important that objects_str definitions do 
+            not detect objects found with objects_regex defs.
         """
         oPDFParser = pdfparser.cPDFParser(data)
         done = False 
@@ -98,6 +102,7 @@ class PDFInfoService(Service):
                         ('file', '/F\n'),
                         ('file', '/F\r\n')]
 
+        #Walk the PDF objects
         while done == False:
             try:
                 pdf_object = oPDFParser.GetObject()
@@ -114,10 +119,9 @@ class PDFInfoService(Service):
                         for item in objects_regex:
                             matches = re.findall(item[1],rawContent[:search_size])
                             for match in matches:
-                                for ref in list(pdf_references):
+                                for ref in pdf_references:
                                     #Record found items
                                     if match == ref[0]:
-                                        pdf_references.remove(ref)
                                         if objects.get(item[0]):
                                             objects[item[0]].append(match)
                                         else:
@@ -138,10 +142,10 @@ class PDFInfoService(Service):
         Uses pdf-parser to get information for each object.
         """        
         oPDFParser = pdfparser.cPDFParser(data)
-        self._debug("Parsing document")
         done = False
         found_objects = {}
 
+        #Walk the PDF and inspect PDF objects
         found_objects = self.object_search(data)
 
         while done == False:
@@ -152,11 +156,13 @@ class PDFInfoService(Service):
 
             if pdf_object != None:
                 if pdf_object.type in [pdfparser.PDF_ELEMENT_INDIRECT_OBJECT]:
+                    #Get general information for this PDF object
                     rawContent = pdfparser.FormatOutput(pdf_object.content, True)
                     section_md5_digest = hashlib.md5(rawContent).hexdigest()
                     section_entropy = self.H(rawContent)
                     object_type = pdf_object.GetType()
 
+                    #Access data associated with this PDF object
                     if pdf_object.ContainsStream():
                         object_stream = True
                         try:
@@ -173,11 +179,13 @@ class PDFInfoService(Service):
                         object_stream = False
                         stream_md5_digest = ''
 
+                    #Collect references between this object and others
                     object_references = []
                     for reference in pdf_object.GetReferences():
                         object_references.append(reference[0])
                     object_references = ','.join(object_references)
 
+                    #Get results from the object searching
                     object_content = []
                     if found_objects.get('js'):
                         if str(pdf_object.id) in found_objects.get('js'):
@@ -207,19 +215,16 @@ class PDFInfoService(Service):
         Run PDF service
         """
         data = obj.filedata.read()
-        self.object_summary = {}
-        self.object_summary["PDF Version"] = self._get_pdf_version(data[:1024])
 
+        self._info('Sample PDF Version: {}'.format(self._get_pdf_version(data[:1024]))
         try:
-            self.object_summary["PDF Parser Version"] = pdfparser.__version__
-            self.object_summary["PDFid Version"] = pdfid.__version__
+            self._info('PDF Parser Version: {}'.format(pdfparser.__version__)
+            self._info('PDFid Version: {}'.format(pdfid.__version__)
         except AttributeError:
             pass
 
-        for key, value in self.object_summary.items():
-            self._add_result('pdf_overview', (key + ": " + value),{})
-
         self.run_pdfid(data)
+        self._notify()
         self.run_pdfparser(data)
 
     def _parse_error(self, item, e):
