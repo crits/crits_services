@@ -1,0 +1,7 @@
+This plugin depends on the following packages:
+pychm (python-chm)
+libchm1
+HTTPParser
+
+Installation intructions:
+apt-get install python-chm libchm1
