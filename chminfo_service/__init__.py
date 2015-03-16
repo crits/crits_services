@@ -11,8 +11,6 @@ from django.template.loader import render_to_string
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
 
-logger = logging.getLogger(__name__)
-
 class CHMInfoService(Service):
     """
     Microsoft Compiled HTML Help file information service
