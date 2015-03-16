@@ -174,6 +174,16 @@ class PDFInfoService(Service):
                         if "decompress failed." in streamContent[:50]:
                             #Provide raw stream data
                             streamContent = pdf_object.Stream('')
+
+                        #Stream returns list of object tags (not actual stream data)
+                        if type(streamContent) == list:
+                            streamContent = pdfparser.FormatOutput(pdf_object.content, True)
+                            #Inspect pdf_object.content and extract raw stream
+                            stream_start = streamContent.find('stream') + len('stream')
+                            stream_end = streamContent.rfind('endstream')
+                            if stream_start >= 0 and stream_end > 0:
+                                streamContent = streamContent[stream_start:stream_end]
+
                         stream_md5_digest = hashlib.md5(streamContent).hexdigest()
                     else:
                         object_stream = False
