@@ -91,16 +91,16 @@ class PDFInfoService(Service):
         oPDFParser = pdfparser.cPDFParser(data)
         done = False 
         objects = {}
-        objects_regex = [('js', r'\/JavaScript\s(\d+)\s\d+\sR'),
-                        ('js', r'\/JS\s(\d+)\s\d+\sR'),
-                        ('file', r'\/F\s(\d+)\s\d+\sR')]
+        objects_regex = [(r'js', r'\/JavaScript\s(\d+)\s\d+\sR'),
+                        (r'js', r'\/JS\s(\d+)\s\d+\sR'),
+                        (r'file', r'\/F\s(\d+)\s\d+\sR')]
 
-        objects_str = [('js', '/JavaScript\n'),
-                        ('js', '/JavaScript\r\n'),
-                        ('js', '/JS\n'),
-                        ('js', '/JS\r\n'),
-                        ('file', '/F\n'),
-                        ('file', '/F\r\n')]
+        objects_str = [(r'js', '/JavaScript\n'),
+                        (r'js', '/JavaScript\r\n'),
+                        (r'js', '/JS\n'),
+                        (r'js', '/JS\r\n'),
+                        (r'file', '/F\n'),
+                        (r'file', '/F\r\n')]
 
         #Walk the PDF objects
         while done == False:
@@ -216,10 +216,10 @@ class PDFInfoService(Service):
         """
         data = obj.filedata.read()
 
-        self._info('Sample PDF Version: {}'.format(self._get_pdf_version(data[:1024]))
+        self._info('Sample PDF Version: {}'.format(self._get_pdf_version(data[:1024])))
         try:
-            self._info('PDF Parser Version: {}'.format(pdfparser.__version__)
-            self._info('PDFid Version: {}'.format(pdfid.__version__)
+            self._info('PDF Parser Version: {}'.format(pdfparser.__version__))
+            self._info('PDFid Version: {}'.format(pdfid.__version__))
         except AttributeError:
             pass
 
