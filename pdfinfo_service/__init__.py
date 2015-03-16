@@ -208,7 +208,6 @@ class PDFInfoService(Service):
                             "obj_id":           pdf_object.id,
                             "obj_version":      pdf_object.version,
                             "size":             len(rawContent),
-                            "obj_md5":          section_md5_digest,
                             "type":             object_type,
                             "entropy":          section_entropy,
                             "content":          ','.join(object_content),
@@ -216,7 +215,7 @@ class PDFInfoService(Service):
                             "stream":           object_stream,
                             "stream_md5":       stream_md5_digest,
                     }
-                    self._add_result('pdf_parser', pdf_object.id, result)
+                    self._add_result('pdf_parser', section_md5_digest, result)
             else:
                 done = True
 
