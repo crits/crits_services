@@ -29,7 +29,7 @@ class CHMInfoService(Service):
                     r'document.write(':'CHM contains a function to save data to file.',
                     r'adodb.stream':'CHM creates ADO steam object for file access.',
                     r'msxml2.xmlhttp':'CHM uses an XHLHTTP object to create a network connection.',
-                    r'System.Net.WebClient':'CHM uses the PowerShell WebClient class to create a network connection.',
+                    r'system.net.webclient':'CHM uses the PowerShell WebClient class to create a network connection.',
                     r'cmd.exe':'CHM references Windows command prompt.',
                     r'cscript':'CHM references console scripting host.',
                     r'wscript':'CHM references Windows scripting host.',
@@ -43,9 +43,9 @@ class CHMInfoService(Service):
                     r'<object\s[^>]+data=\"([^\"]*)\"':'CHM contains object that references external code',
                     r'<object\s[^>]+data=\'([^\"]*)\'':'CHM contains object that references external code',
                     r'createobject\(([^\)]*)':'CHM attempts to create an object',
-                    r'.DownloadFile(([^\)]*)': 'CHM attempts to download a file',
+                    r'.downloadfile\(([^\)^,]*)': 'CHM attempts to download a file',
                     r'.exec\(([^\)]*)':'CHM attempts to execute a file',
-                    r'.shellexecute(([^\)]*)': 'CHM attempts to execute a file',
+                    r'.shellexecute\(([^\)]*)': 'CHM attempts to execute a file',
                 }
 
     def __init__(self):
@@ -76,13 +76,13 @@ class CHMInfoService(Service):
         results = []
         data = self.unescape(data).lower()
         for match, desc in self.item_regex.items():
-            found = re.findall(match, data)
-            if found:
-                temp = desc + ' (' + found + ').'
+            found = re.findall(match.lower(), data)
+            for res in found:
+                temp = desc + ' (' + res + ').'
                 results.append(temp)
 
         for match, desc in self.item_string.items():
-            if match in data:
+            if match.lower() in data:
                 results.append(desc)
         return results
 
@@ -112,8 +112,8 @@ class CHMInfoService(Service):
                 results.append(match)
         return results
 
-    @staticmethod
-    def unescape(data):
+    @classmethod
+    def unescape(self, data):
         """
         Unescape HTML code
         - Used to assist with inspection of document items
@@ -129,33 +129,33 @@ class CHMInfoService(Service):
         return data
 
     @classmethod
-    def analyse(self):
+    def analyze(self):
         """
         Extract metadata and analyze the CHM file
         @return analysis results dictionary
         """
-        obj_items = []
+        obj_items = set()
         obj_items_details = {}
         obj_items_summary = []
         locale_desc = ''
 
-        locale_desc = chmparse.GetLCID()
+        locale_desc = self.chmparse.GetLCID()
         if locale_desc:
-            locale_desc = ', '.join(local_desc)
+            locale_desc = ', '.join(locale_desc)
 
         #Create a list of items within the CHM
-        obj_items.append(chmparse.home)
-        obj_items.append(chmparse.index)
-        obj_items.append(chmparse.topics)
+        obj_items.add(self.chmparse.home)
+        obj_items.add(self.chmparse.index)
+        obj_items.add(self.chmparse.topics)
         obj_items = [x for x in obj_items if x is not None]
 
         #Analyse objects/pages in CHM
         for item in obj_items:
-            fetch = chmparse.ResolveObject(item)
+            fetch = self.chmparse.ResolveObject(item)
             if fetch[0] == 0:
                 #Read data for object
                 try:
-                    item_details = chmparse.RetrieveObject(fetch[1])
+                    item_details = self.chmparse.RetrieveObject(fetch[1])
                     if len(item_details) == 2:
                         data = item_details[1]
                         size = item_details[0]
@@ -164,40 +164,41 @@ class CHMInfoService(Service):
                             'name':         item,
                             'size':         size,
                             'md5':          md5_digest,
-                            'urls':         find_urls(data),
-                            'detection':    find_items(data),
+                            'urls':         self.find_urls(data),
+                            'detection':    self.find_items(data),
                         }
-                        obj_item_summary.append(obj_items_details)
+                        obj_items_summary.append(obj_items_details)
                     else:
                         self._error('RetrieveObject() did not return data for "{}".'.format(item))
                 except Exception:
                     self._error('Analysis of item "{}" failed.'.format(item))
 
         result = {
-            'title':                chmparse.title,
-            'index':                chmparse.index,
-            'binary_index':         chmparse.binaryindex,
-            'topics':               chmparse.topics,
-            'home':                 chmparse.home,
-            'encoding':             chmparse.encoding,
-            'locale_id':            chmparse.lcid,
+            'title':                self.chmparse.title,
+            'index':                self.chmparse.index,
+            'binary_index':         self.chmparse.binaryindex,
+            'topics':               self.chmparse.topics,
+            'home':                 self.chmparse.home,
+            'encoding':             self.chmparse.encoding,
+            'locale_id':            self.chmparse.lcid,
             'locale_desc':          locale_desc,
-            'searchable':           str(chmparse.searchable),
+            'searchable':           str(self.chmparse.searchable),
             'items':                ', '.join(obj_items),
             'obj_items_summary':    obj_items_summary,
         }
         chmparse.CloseCHM()
         return result
 
-    @contextmanager
-    def tempinput(data):
+    @classmethod
+    def load_chm(self, data):
         """
-        tempfile management
+        Load CHM using CHM library
+        - Requires the use of tempfile.
         """
         temp = tempfile.NamedTemporaryFile(delete=False)
         temp.write(data)
         temp.close()
-        yield temp.name
+        self.chmparse.LoadCHM(temp.name)
         os.unlink(temp.name)
 
     def run(self, obj, config):
@@ -206,19 +207,18 @@ class CHMInfoService(Service):
         """
         data = obj.filedata.read()
 
-        with tempinput(data) as tempfilename:
-            self.chmparse.LoadCHM(tempfilename)
+        self.load_chm(data)
 
         #Conduct analysis
         result = self.analyze()
 
         #Handle output of results
-        if result.get('obj_items_summary'):
+        if 'obj_items_summary' in result.keys():
             obj_items_summary = result.pop('obj_items_summary')
         
         #General CHM info
         for key, value in result.items():
-            self._add_result('chm_overview', (key + ": " + value), {})
+            self._add_result('chm_overview', '{}: {}'.format(key,value), {})
 
         #URLs and IPs found in CHM
         for object_item in obj_items_summary:
@@ -228,7 +228,7 @@ class CHMInfoService(Service):
                 object_item.pop('urls')
 
         #Detection results from CHM analysis
-        for object_item in obj_items_sumary:
+        for object_item in obj_items_summary:
             if object_item.get('detection'):
                 for detection in object_item.get('detection'):
                     self._add_result('chm_detection', detection, {'item': object_item.get('name')})
