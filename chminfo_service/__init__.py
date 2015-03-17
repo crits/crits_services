@@ -3,13 +3,13 @@ import re
 import hashlib
 import tempfile
 import HTMLParser
+import logging
 from chm import chm
 from contextlib import contextmanager
 
-from django.template.loader import render_to_string
-
 from crits.services.core import Service, ServiceConfigError
-from crits.samples.handlers import handle_file
+
+logger = logging.getLogger(__name__)
 
 class CHMInfoService(Service):
     """
@@ -23,19 +23,20 @@ class CHMInfoService(Service):
     description = "Generate information about Windows CHM files."
     added_files = []
 
+    chmparse = chm.CHMFile()
     item_string = {r'x-oleobject':'CHM contains reference to OLE Object.',
-                    r'<script':'CHM contains JavaScript',
-                    r'.savetofile':'CHM contains a function to save data to file',
+                    r'<script':'CHM contains JavaScript.',
+                    r'.savetofile':'CHM contains a function to save data to file.',
                     r'document.write(':'CHM contains a function to save data to file.',
                     r'adodb.stream':'CHM creates ADO steam object for file access.',
                     r'msxml2.xmlhttp':'CHM uses an XHLHTTP object to create a network connection.',
                     r'system.net.webclient':'CHM uses the PowerShell WebClient class to create a network connection.',
-                    r'cmd.exe':'CHM references Windows command prompt.',
-                    r'cscript':'CHM references console scripting host.',
-                    r'wscript':'CHM references Windows scripting host.',
-                    r'rundll32':'CHM contains suspicious reference to Windows file.',
-                    r'powershell':'CHM references PowerShell.',
-                    r'end if':'CHM contains if statement.',
+                    r'cmd.exe':'CHM references Windows Command Prompt (cmd).',
+                    r'cscript':'CHM references Console Based Script Host (cscript).',
+                    r'wscript':'CHM references Windows Based Script Host (wscript).',
+                    r'rundll32':'CHM references Windows host process (rundll32).',
+                    r'powershell':'CHM references Windows PowerShell.',
+                    r'end if':'CHM contains \'if\' statement.',
                     }
     item_regex = {r'<iframe\s.*src="([^\"]*)".*>':'CHM file creates an IFRAME',
                     r'<object\s[^>]+codebase=\"([^\"]*)\"':'CHM contains object that references external code',
@@ -47,14 +48,6 @@ class CHMInfoService(Service):
                     r'.exec\(([^\)]*)':'CHM attempts to execute a file',
                     r'.shellexecute\(([^\)]*)': 'CHM attempts to execute a file',
                 }
-
-    def __init__(self):
-        """
-        Initialize the CHMInfo service objects
-        """
-        self.chmparse = chm.CHMFile()
-        self.urls = []
-        self.items = []
 
     @staticmethod
     def valid_for(obj):
@@ -75,12 +68,14 @@ class CHMInfoService(Service):
         """
         results = []
         data = self.unescape(data).lower()
+        #Regex matching
         for match, desc in self.item_regex.items():
             found = re.findall(match.lower(), data)
             for res in found:
                 temp = desc + ' (' + res + ').'
                 results.append(temp)
 
+        #String matching
         for match, desc in self.item_string.items():
             if match.lower() in data:
                 results.append(desc)
@@ -103,7 +98,7 @@ class CHMInfoService(Service):
         matches = re.findall(url,data)
         for match in matches:
             if not match in results:
-                results.append(match)
+                results.append(match[0])
 
         #String matches
         matches = re.findall(ip,data)
@@ -124,8 +119,6 @@ class CHMInfoService(Service):
             data = html_parser.unescape(data)
         except UnicodeDecodeError:
             self._error('HTMLParser library encountered an error when decoding Unicode characters.')
-        data = data.replace('\',\'','')
-        data = data.replace('\",\"','')
         return data
 
     @classmethod
@@ -181,32 +174,36 @@ class CHMInfoService(Service):
             'home':                 self.chmparse.home,
             'encoding':             self.chmparse.encoding,
             'locale_id':            self.chmparse.lcid,
-            'locale_desc':          locale_desc,
+            'locale_description':   locale_desc,
             'searchable':           str(self.chmparse.searchable),
-            'items':                ', '.join(obj_items),
+            'chm_items':            ', '.join(obj_items),
             'obj_items_summary':    obj_items_summary,
         }
-        chmparse.CloseCHM()
         return result
 
     @classmethod
     def load_chm(self, data):
         """
         Load CHM using CHM library
-        - Requires the use of tempfile.
+        - Use tempfile as libchm will only accept a filename.
         """
         temp = tempfile.NamedTemporaryFile(delete=False)
         temp.write(data)
         temp.close()
-        self.chmparse.LoadCHM(temp.name)
-        os.unlink(temp.name)
+        try:
+            self.chmparse.LoadCHM(temp.name)
+        except Exception as e:
+            raise e
+        finally:
+            #Delete tempfile on disk
+            os.unlink(temp.name) 
 
     def run(self, obj, config):
         """
         Being plugin processing
         """
+        #Load sample
         data = obj.filedata.read()
-
         self.load_chm(data)
 
         #Conduct analysis
@@ -215,29 +212,31 @@ class CHMInfoService(Service):
         #Handle output of results
         if 'obj_items_summary' in result.keys():
             obj_items_summary = result.pop('obj_items_summary')
-        
+
         #General CHM info
         for key, value in result.items():
-            self._add_result('chm_overview', '{}: {}'.format(key,value), {})
+            self._add_result('chm_overview', key, {'value': value})
 
-        #URLs and IPs found in CHM
+        #Details of each object/page in the CHM
         for object_item in obj_items_summary:
-            if object_item.get('urls'):
-                for url in object_item.get('urls'):
-                    self._add_result('chm_urls', url, {'item': object_item.get('name')})
-                object_item.pop('urls')
+            self._add_result('chm_items', object_item.get('name'), 
+                                {'size': object_item.get('size'), 
+                                'md5': object_item.get('md5')})
 
         #Detection results from CHM analysis
         for object_item in obj_items_summary:
             if object_item.get('detection'):
                 for detection in object_item.get('detection'):
-                    self._add_result('chm_detection', detection, {'item': object_item.get('name')})
-                object_item.pop('detection')
+                    self._add_result('chm_detection', detection, {'chm_item': object_item.get('name')})
 
-        #Details of each object/page in the CHM
+        #URLs and IPs found in CHM
         for object_item in obj_items_summary:
-            name = object_item.pop('name')
-            self._add_result('chm_items', name, object_item)
+            if object_item.get('urls'):
+                for url in object_item.get('urls'):
+                    self._add_result('chm_urls', url, {'chm_item': object_item.get('name')})
+
+        #Close file in memory
+        self.chmparse.CloseCHM()
 
     def _parse_error(self, item, e):
         self._error("Error parsing %s (%s): %s" % (item, e.__class__.__name__, e))
