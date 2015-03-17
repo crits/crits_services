@@ -59,11 +59,11 @@ class CHMInfoService(Service):
     @staticmethod
     def valid_for(obj):
         chm_magic = '\x49\x54\x53\x46\x03\x00\x00\x00\x60\x00\x00\x00'
-        if chmparse.filedata != None:
+        if obj.filedata != None:
             data = obj.filedata.read()
             # Need to reset the read pointer.
             obj.filedata.seek(0)
-            if data.startswith(office_magic):
+            if data.startswith(chm_magic):
                 return
         raise ServiceConfigError("Not a valid ITSF (CHM) file.")
 
