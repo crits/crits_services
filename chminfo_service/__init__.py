@@ -5,7 +5,6 @@ import tempfile
 import HTMLParser
 import logging
 from chm import chm
-from contextlib import contextmanager
 
 from crits.services.core import Service, ServiceConfigError
 
