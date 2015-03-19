@@ -21,7 +21,7 @@ class PDFInfoService(Service):
     """
 
     name = "pdfinfo"
-    version = '1.1.2'
+    version = '1.2.0'
     description = "Extract information from PDF files."
     supported_types = ['Sample']
 
