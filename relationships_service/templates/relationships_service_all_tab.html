@@ -2,9 +2,11 @@
 
 <script src="/js/d3.v2.min.js"></script>
 <script>
+
 $(document).ready(function() {
     $('#draggable').draggable();
     $('#graph_config').draggable();
+    $('#graph_actions').draggable();
     // default graph lists
     var nodes = [];
     var links = [];
@@ -38,12 +40,53 @@ $(document).ready(function() {
         generate_graph(nodes, links);
     });
 
+    $(document).on('click', '#add_campaign', function(e) {
+        // Collect id and type for each visible non-campaign node.
+        var data = [];
+        for (var i = 0; i < nodes.length; i++) {
+            if (nodes[i].visible && nodes[i].type != 'Campaign') {
+                data.push({'id': nodes[i].id, 'type': nodes[i].type})
+            }
+        }
+
+        var name = $("#campaign_names option:selected").text();
+        var confidence = $("#confidence_values option:selected").text();
+        // Stringify the resulting list of objects. They will be de-serialized
+        // on the other end.
+        $.ajax({
+            type: "POST",
+            data: { 'name': name,
+                    'nodes': JSON.stringify(data),
+                    'confidence': confidence },
+            url: "{% url 'relationships_service.views.add_campaign' %}",
+            success: function(data) {
+                $('#campaign_results').text(data.message);
+            }
+        });
+    });
+
     $("#relationships_service_button").click(function() {
         // don't load data more than once.
         // allows switching of tabs without losing graph.
         if (nodes.length > 0) {
             return;
         }
+
+        // Get list of campaigns for selection.
+        $.ajax({
+            type: "GET",
+            url: "{% url 'crits.campaigns.views.campaign_names' %}",
+            async: false,
+            success: function(data) {
+                $.each(data, function (index, value) {
+                    $('#campaign_names').append($('<option/>', { 
+                        value: value,
+                        text : value 
+                    }));
+                }); 
+            }
+        });
+
         $('#change_graph').trigger('click');
     });
 
@@ -160,8 +203,12 @@ $(document).ready(function() {
         .css({'position': 'absolute', 'top': 60, 'left' : 20});
         $('#graph_config').show()
         .css({'position': 'absolute', 'top': 60, 'right' : 20});
+        $('#graph_actions').show()
+        .css({'position': 'absolute', 'top': 275, 'right' : 20});
     }
+
 });
+
 </script>
 <style>
 #draggable {
@@ -170,6 +217,11 @@ $(document).ready(function() {
     float: left;
 }
 #graph_config {
+    width: 100px;
+    z-index: 5;
+    float: right;
+}
+#graph_actions {
     width: 100px;
     z-index: 5;
     float: right;
@@ -207,6 +259,17 @@ $(document).ready(function() {
             <option value="Target" selected="selected">Targets</option>
         </select>
         <button id="change_graph" style="vertical-align: top;">Update</button>
+    </div>
+    <div id="graph_actions" class="ui-widget-content" style="display: none;">
+        <select id="campaign_names" name="campaigns">
+        </select>
+        <select id="confidence_values" name="confidence_values">
+            <option value="low" selected="selected">low</option>
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+        </select>
+        <button id="add_campaign" style="vertical-align: top;">Add Campaign</button>
+        <div id="campaign_results"></div>
     </div>
     <div id="draggable" class="ui-widget-content" style="display: none;">
         <ul id="graph_legend">

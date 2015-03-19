@@ -1,8 +1,10 @@
 from django.core.urlresolvers import reverse
 
+from crits.campaigns.campaign import Campaign
 from crits.campaigns.handlers import get_campaign_details
+from crits.core.crits_mongoengine import EmbeddedCampaign
 from crits.core.user_tools import user_sources
-from crits.core.class_mapper import class_from_type
+from crits.core.class_mapper import class_from_type, class_from_id
 
 def gather_relationships(obj_type, obj_id, user, depth, types):
     objects = {}
@@ -175,6 +177,7 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
               'label': '%s' % value,
               'url': href,
               'color': color,
+              'id': obj_id,
               'type': obj_type,
               'visible': visible
             }
@@ -221,3 +224,35 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             #'labelAnchors': labelAnchors,
             #'labelAnchorLinks': labelAnchorLinks,
            }
+
+def add_campaign_from_nodes(name, confidence, nodes, user):
+    result = { "success": False }
+
+    # Make sure Campaign exists
+    campaign_obj = Campaign.objects(name=name).first()
+    if not campaign_obj:
+        result["message"] = "Invalid campaign name."
+        return result
+
+    campaign = EmbeddedCampaign(name=name, confidence=confidence, analyst=user)
+
+    counter = 0
+    for node in nodes:
+        id_ = node.get('id', None)
+        type_ = node.get('type', None)
+
+        # Must have type and id, and type must not be Campaign
+        if not id_ or not type_ or type_.lower() == 'campaign':
+            continue
+
+        obj = class_from_id(type_, id_)
+        if not obj:
+            continue
+
+        obj.add_campaign(campaign)
+        obj.save()
+        counter += 1
+
+    result["message"] = "%s nodes processed" % counter
+    result["success"] = True
+    return result
