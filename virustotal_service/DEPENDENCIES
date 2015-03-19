@@ -1,2 +1,2 @@
-The Virustotal service has no dependencies outside of those that are required
-for CRITs to run.
+The Virustotal service requires the following python modules:
+	- Requests

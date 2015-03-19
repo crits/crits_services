@@ -30,8 +30,8 @@ The output will look something like this:
 
 Name: FOO
 Directory: /snuggles
-Created: 2014-01-06 23:17:47.592000
-Last update: 2014-01-06 23:17:47.592000
+Created: 2015-01-06 23:17:47.592000
+Last update: 2015-01-06 23:17:47.592000
 Query: {'source.name': 'FOO'}
 Last ID: None
 Total objects: 672631

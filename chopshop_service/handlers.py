@@ -94,7 +94,11 @@ def chopshop_carver(pcap_md5, options, analyst):
 
     if chopui.jsonclass == None:
         os.unlink(temp_pcap.name)
-        return {'success': False, 'message': 'Lost race condition in chopui. Try again.'}
+        chopui.join()
+        choplib.finish()
+        choplib.join()
+        return {'success': False,
+                'message': 'Lost race condition in chopui. Try again.'}
 
     # ChopUI must be started before the jsonhandler class is insantiated.
     # Tell the class what we are looking for now that it exists.
