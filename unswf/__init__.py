@@ -2,9 +2,8 @@
 #
 import logging
 import os
-import mmap
 import zlib
-import pylzma
+import lzma
 
 from django.conf import settings
 from django.template.loader import render_to_string
@@ -37,6 +36,17 @@ class clamdService(Service):
         if not data[:3] in ['CWS','ZWS']:
             raise ServiceConfigError("Not a valid compressed Flash file.")
 
+# Format of SWF when LZMA is used:
+#
+# | 4 bytes | 4 bytes | 4 bytes | 5 bytes | n bytes | 6 bytes |
+# | 'ZWS'+version | scriptLen | compressedLen | LZMA props | LZMA data | LZMA end marker |
+#
+# scriptLen is the uncompressed length of the SWF data. Includes 4 bytes SWF header and
+# 4 bytes for scriptLen it
+#
+# compressedLen does not include header (4+4+4 bytes) or lzma props (5 bytes)
+# compressedLen does include LZMA end marker (6 bytes)
+
     def run(self, obj, config):
         data = obj.filedata.read()
         try:
@@ -45,8 +55,8 @@ class clamdService(Service):
         if comp == 'CWS':
             swf = 'FWS' + header + zlib.decompress(data.read())
         if comp == 'ZWS':
-            data.read(4)
-            swf = 'FWS' + header + zlib.decompress(data.read())
+            data.seek(8+4) # seek to LZMA props
+            swf = 'FWS' + header + lzma.decompress(data.read())
         except Exception:
                 self._error("unswf: failed.")
                 return
