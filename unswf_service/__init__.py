@@ -2,17 +2,24 @@
 #
 import logging
 import os
+import io
 import zlib
 import lzma
+
+# for computing the MD5
+from hashlib import md5
+
+# for adding the extracted files
+from crits.samples.handlers import handle_file
 
 from django.conf import settings
 from django.template.loader import render_to_string
 from crits.services.core import Service, ServiceConfigError
 
-from . import forms
+#from . import forms
 
 logger = logging.getLogger(__name__)
-class clamdService(Service):
+class unswfService(Service):
      
     """
     Uncompress flash files.
@@ -48,24 +55,27 @@ class clamdService(Service):
 # compressedLen does include LZMA end marker (6 bytes)
 
     def run(self, obj, config):
-        data = obj.filedata.read()
+        self.config = config
+        self.obj = obj
+        data = io.BytesIO(obj.filedata.read())
+        swf = bytearray()
         try:
-        comp = data.read(3)
-        header = data.read(5)
-        if comp == 'CWS':
-            swf = 'FWS' + header + zlib.decompress(data.read())
-        if comp == 'ZWS':
-            data.seek(8+4) # seek to LZMA props
-            swf = 'FWS' + header + lzma.decompress(data.read())
-        except Exception:
-                self._error("unswf: failed.")
+            comp = data.read(3)
+            header = data.read(5)
+            if comp == 'CWS':
+                swf = 'FWS' + header + zlib.decompress(data.read())
+            if comp == 'ZWS':
+                data.seek(8+4) # seek to LZMA props
+                swf = 'FWS' + header + lzma.decompress(data.read())
+        except Exception as exc:
+                self._error("unswf: (%s)." % exc)
                 return
 
         if swf:
-            h = md5(swf).hexdigest()
+            h = md5(str(swf)).hexdigest()
             name = h
             self._info("New file: %s (%d bytes, %s)" % (name, len(swf), h))
-            handle_file(name, data, self.obj.source,
+            handle_file(name, swf, self.obj.source,
                 related_id=str(self.obj.id),
                 campaign=self.obj.campaign,
                 method=self.name,
