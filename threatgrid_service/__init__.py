@@ -99,7 +99,7 @@ class ThreatGRIDService(Service):
                 for item in error.get('error').get('errors'):
                     code = item.get('code')
                     message = item.get('message')
-                    self._error(response.get('HTTP Response {}: {}'.format(code, message)))
+                    self._info(response.get('HTTP Response {}: {}'.format(code, message)))
                 return
         elif req_type == 'post':
             #Complete HTTP POST Request
@@ -123,7 +123,7 @@ class ThreatGRIDService(Service):
                 for item in error.get('error').get('errors'):
                     code = item.get('code')
                     message = item.get('message')
-                    self._error(response.get('HTTP Response {}: {}'.format(code, message)))
+                    self._info(response.get('HTTP Response {}: {}'.format(code, message)))
                 return
         return        
 
@@ -132,12 +132,13 @@ class ThreatGRIDService(Service):
         Search for results by MD5
         """
         #Set API query parameters and conduct query
+        recent_id = 0
         params = {'md5': md5}
         response = self.api_request('/api/v2/samples', params, 'get')
         if response:
             result_count = response.get('data', {}).get('current_item_count', 0)
             self._info('{} results returned from ThreatGRID MD5 search.'.format(result_count))
-            #Loop through the page of results (only 1 page requested)
+            #Only show 1 page of results for CRITS.
             if result_count > 0:
                 for item in response.get('data',{}).get('items'):
                     result = {
@@ -148,11 +149,44 @@ class ThreatGRIDService(Service):
                             'state':            item.get('state'),
                             'status':           item.get('status'),
                             }
-                    self._add_result('threatgrid_search ({})'.format(md5), item.get('filename'), result)
-                return True
+                    self._add_result('threatgrid_search (md5:{})'.format(md5), item.get('filename'), result)
+                    recent_id = item.get('id')
+                self._notify()
+                #Return one of the analysis IDs
+                return recent_id
         else:
             self._error('An error occured while looking for sample: {}.'.format(md5))
         return False
+
+    def sort_iocs(self, iocs):
+        """
+        Sort IOCs by severity, confidence
+        """
+        for item in sorted(iocs, key=lambda x: (x.get('severity',0),x.get('confidence',0)), reverse=True):
+            yield item
+        return
+
+    def sample_iocs(self, tg_id):
+        """
+        Get Sample IOCs for a given ThreatGRID id
+        """
+        url = '/api/v2/samples/' + tg_id + '/analysis/iocs'
+        response = self.api_request(url, {}, 'get')
+        if response.get('data'):
+            iocs = response.get('data', {}).get('items')
+            for item in self.sort_iocs(iocs):
+                result = {
+                        'hits':         item.get('hits'),
+                        'severity':     item.get('severity'),
+                        'confidence':   item.get('confidence'),
+                        'categories':   ', '.join(item.get('category',[])),
+                        }
+                self._add_result('threatgrid_ioc (id:{})'.format(tg_id), item.get('title'), result)
+            self._notify()
+        elif reponse.get('error'):
+            self._info('No IOCs were found for ThreatGRID id:{}'.format(tg_id))
+        else:
+            self._error('An error occured when attempting to get IOCs for id:{}'.format(tg_id))
 
     def sample_submit(self, filename, crits_id, data):
         """
@@ -180,7 +214,7 @@ class ThreatGRIDService(Service):
                         'status':           submitted.get('status'),
                         }
                 self._add_result('threatgrid_submitted ({})'.format(submitted.get('md5')), submitted.get('filename'), result)
-
+                self._notify()
                 #Check that ThreatGRID and CRITS MD5's match.
                 md5 = hashlib.md5(data).hexdigest()
                 if md5 == submitted.get('md5').lower():
@@ -202,7 +236,10 @@ class ThreatGRIDService(Service):
             #Search for existing results or submit sample
             data = obj.filedata.read()
             md5 = hashlib.md5(data).hexdigest()
-            if not self.md5_search(md5):
+            found = self.md5_search(md5)
+            if found:
+                self.sample_iocs(found)
+            else:
                 self.sample_submit(obj.filename, obj.id, data)
         else:
             self._error("Invalid type passed to ThreatGRID service plugin.")
