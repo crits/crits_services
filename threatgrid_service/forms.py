@@ -6,10 +6,10 @@ class ThreatGRIDConfigForm(forms.Form):
     api_key = forms.CharField(required=True,
                                 label="API Key",
                                 widget=forms.TextInput(),
-                                help_text="Obtain API key from ThreatGRID device (user settings tab).",
+                                help_text="Obtain an API key from a ThreatGRID device.",
                                 initial='')
-    api_url = forms.CharField(required=True,
-                                label="ThreatGRID API URL",
+    host = forms.CharField(required=True,
+                                label="ThreatGRID URL",
                                 widget=forms.TextInput(),
                                 initial='https://threatgrid.com/')
 
