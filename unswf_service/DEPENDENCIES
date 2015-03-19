@@ -1,4 +1,3 @@
 Dependencies for unswf (is/are):
 
-pyliblzma
-
+pyliblzma ( https://pypi.python.org/pypi/pyliblzma )
