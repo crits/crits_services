@@ -180,30 +180,16 @@ class CHMInfoService(Service):
         }
         return result
 
-    @classmethod
-    def load_chm(self, data):
-        """
-        Load CHM using CHM library
-        - Use tempfile as libchm will only accept a filename.
-        """
-        temp = tempfile.NamedTemporaryFile(delete=False)
-        temp.write(data)
-        temp.close()
-        try:
-            self.chmparse.LoadCHM(temp.name)
-        except Exception as e:
-            raise e
-        finally:
-            #Delete tempfile on disk
-            os.unlink(temp.name) 
-
     def run(self, obj, config):
         """
         Being plugin processing
         """
-        #Load sample
-        data = obj.filedata.read()
-        self.load_chm(data)
+        #Load data from file as libchm will only accept a filename
+        with self._write_to_file() as chm_file:
+            try:
+                self.chmparse.LoadCHM(chm_file)
+            except Exception as e:
+                raise e
 
         #Conduct analysis
         result = self.analyze()
