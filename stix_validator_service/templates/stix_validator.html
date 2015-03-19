@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load url from future %}
+
+{% block title %}STIX Validator{% endblock %}
+
+{% block content %}
+
+<style>
+    #stix_xml {
+        width: 99%;
+        height: 300px;
+        margin: auto;
+    }
+</style>
+
+<p>
+This service is designed to take a block of XML and run it through the
+stix-validator (https://github.com/STIXProject/stix-validator). It will tell you
+if it finds anything wrong with the document. If there are issues, you can
+contact the STIX project at stix@mitre.org for help in properly formatting your
+XML or assisting the source of the XML in fixing it.
+</p>
+<div class="content_box">
+    <h3 class="titleheader">
+    <span>STIX XML:</span>
+    </h3>
+    <div class="content_body">
+        <textarea id="stix_xml"></textarea>
+        <input type="submit" name="submit" value="Validate" id="validate" />
+        <div id="stix_results"></div>
+    </div>
+</div>
+<div class="content_box">
+    <h3 class="titleheader">
+    <span>XML Validation Results:</span>
+    </h3>
+    <div class="content_body">
+        <div>
+            <pre id="xml_validation_results"></pre>
+        </div>
+    </div>
+</div>
+<div class="content_box">
+    <h3 class="titleheader">
+    <span>Best Practices Validation Results:</span>
+    </h3>
+    <div class="content_body">
+        <div>
+            <pre id="best_practices_results"></pre>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $(document).on('click', '#validate', function(e) {
+        var xml = $('#stix_xml').val();
+        data = {xml: xml};
+        $.ajax({
+            type: 'POST',
+            url: "{% url 'stix_validator_service.views.validate' %}",
+            data: data,
+            datatype: 'json',
+            success: function(data) {
+                $('#xml_validation_results').empty();
+                $('#best_practices_results').empty();
+                $('#xml_validation_results').append(JSON.stringify(data.results.xml,
+                            undefined, 2));
+                $('#best_practices_results').append(JSON.stringify(data.results.best_practices, undefined, 2));
+            }
+        });
+    });
+});
+</script>
+
+{% endblock %}
