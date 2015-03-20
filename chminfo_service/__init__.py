@@ -6,7 +6,12 @@ import HTMLParser
 import logging
 from chm import chm
 
+from django.template.loader import render_to_string
+
 from crits.services.core import Service, ServiceConfigError
+from crits.samples.handlers import handle_file
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +63,26 @@ class CHMInfoService(Service):
             if data.startswith(chm_magic):
                 return
         raise ServiceConfigError("Not a valid ITSF (CHM) file.")
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        if 'chm_items' not in config:
+            config['chm_items'] = False
+        return forms.CHMInfoRunForm(config)
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        return render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                 'form': forms.CHMInfoRunForm(),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+
+    @staticmethod
+    def get_config(existing_config):
+        # There are no config options for this service, blow away any existing
+        # configs.
+        return {}
 
     @classmethod
     def find_items(self, data):
@@ -160,10 +185,12 @@ class CHMInfoService(Service):
                             'detection':    self.find_items(data),
                         }
                         obj_items_summary.append(obj_items_details)
+                        self.added_files.append([item, size, md5_digest, data])
                     else:
                         self._error('RetrieveObject() did not return data for "{}".'.format(item))
-                except Exception:
+                except Exception as e:
                     self._error('Analysis of item "{}" failed.'.format(item))
+                    continue
 
         result = {
             'title':                self.chmparse.title,
@@ -202,11 +229,22 @@ class CHMInfoService(Service):
         for key, value in result.items():
             self._add_result('chm_overview', key, {'value': value})
 
-        #Details of each object/page in the CHM
-        for object_item in obj_items_summary:
-            self._add_result('chm_items', object_item.get('name'), 
-                                {'size': object_item.get('size'), 
-                                'md5': object_item.get('md5')})
+        if config['chm_items']:
+            #Data and details of each object/page in the CHM
+            for f in self.added_files:
+                handle_file(f[0], f[3], obj.source,
+                            related_id=str(obj.id),
+                            campaign=obj.campaign,
+                            method=self.name,
+                            relationship='Extracted_From',
+                            user=self.current_task.username)
+                self._add_result("chm_items_added", f[0], {'size': f[1],'md5': f[2]})
+        else:
+            #Details of each object/page in the CHM
+            for object_item in obj_items_summary:
+                self._add_result('chm_items', object_item.get('name'),
+                            {'size': object_item.get('size'),
+                            'md5': object_item.get('md5')})
 
         #Detection results from CHM analysis
         for object_item in obj_items_summary:
