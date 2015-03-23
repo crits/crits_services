@@ -1,5 +1,4 @@
 import urlparse
-import hashlib
 import logging
 import requests
 import json
@@ -26,6 +25,7 @@ class ThreatGRIDService(Service):
 
     host = ''
     api_key = ''
+    md5 = ''
 
     @staticmethod
     def save_runtime_config(config):
@@ -287,9 +287,7 @@ class ThreatGRIDService(Service):
                         }
                 self._add_result('threatgrid_submitted (md5:{})'.format(submitted.get('md5')), submitted.get('filename'), result)
                 self._notify()
-                #Check that ThreatGRID and CRITS MD5's match.
-                md5 = hashlib.md5(data).hexdigest()
-                if md5 == submitted.get('md5').lower():
+                if self.md5 == submitted.get('md5').lower():
                     return True
                 else:
                     self._error("MD5 mismatch between ThreatGRID and CRITS.")
@@ -303,13 +301,11 @@ class ThreatGRIDService(Service):
         """
         self.host = config.get('host', '')
         self.api_key = config.get('api_key', '')
+        self.md5 = obj.md5
 
         if obj._meta['crits_type'] == 'Sample':
             #Search for existing results or submit sample
-            data = obj.filedata.read()
-            md5 = hashlib.md5(data).hexdigest()
-            self._info(config)
-            found = self.md5_search(md5)
+            found = self.md5_search(self.md5)
             if found:
                 self.sample_iocs(found)
                 self.sample_network(found)
