@@ -12,6 +12,16 @@ class ThreatGRIDConfigForm(forms.Form):
                                 label="ThreatGRID URL",
                                 widget=forms.TextInput(),
                                 initial='https://threatgrid.com/')
-
     def __init__(self, *args, **kwargs):
         super(ThreatGRIDConfigForm, self).__init__(*args, **kwargs)
+
+class ThreatGRIDRunForm(forms.Form):
+    error_css_class = 'error'
+    required_css_class = 'required'
+    submit = forms.BooleanField(required=False,
+                                  label="Submit",
+                                  help_text="Submit sample if not found.",
+                                  initial=True)
+
+    def __init__(self, *args, **kwargs):
+        super(ThreatGRIDRunForm, self).__init__(*args, **kwargs)

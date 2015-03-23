@@ -78,6 +78,20 @@ class ThreatGRIDService(Service):
             display_config[field.label] = config[name]
         return display_config
 
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        if 'submit' not in config:
+            config['submit'] = False
+        return forms.ThreatGRIDRunForm(config)
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        return render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                'form': forms.ThreatGRIDRunForm(),
+                                'crits_type': crits_type,
+                                'identifier': identifier})
+
     def api_request(self, path, req_params, req_type='get'):
         """
         Handle HTTP/HTTPS requests to the API
@@ -294,12 +308,14 @@ class ThreatGRIDService(Service):
             #Search for existing results or submit sample
             data = obj.filedata.read()
             md5 = hashlib.md5(data).hexdigest()
+            self._info(config)
             found = self.md5_search(md5)
             if found:
                 self.sample_iocs(found)
                 self.sample_network(found)
             else:
-                self.sample_submit(obj.filename, obj.id, data)
+                if config.get('submit'):
+                    self.sample_submit(obj.filename, obj.id, data)
         else:
             self._error("Invalid type passed to ThreatGRID service plugin.")
             return

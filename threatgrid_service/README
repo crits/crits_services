@@ -2,5 +2,4 @@ Query ThreatGRID for analysis results or submit samples
 for analysis.
 
 TODO:
-- Currently the plugin looks for completed results for a MD5,
-    it should also look at queued items.
+- Ability to add indicators like Data Miner service.
