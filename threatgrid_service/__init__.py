@@ -285,7 +285,7 @@ class ThreatGRIDService(Service):
                         'state':            submitted.get('state'),
                         'status':           submitted.get('status'),
                         }
-                self._add_result('threatgrid_submitted ({})'.format(submitted.get('md5')), submitted.get('filename'), result)
+                self._add_result('threatgrid_submitted (md5:{})'.format(submitted.get('md5')), submitted.get('filename'), result)
                 self._notify()
                 #Check that ThreatGRID and CRITS MD5's match.
                 md5 = hashlib.md5(data).hexdigest()
