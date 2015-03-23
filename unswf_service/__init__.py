@@ -4,7 +4,7 @@ import logging
 import os
 import io
 import zlib
-import lzma
+import pylzma
 
 # for computing the MD5
 from hashlib import md5
@@ -26,7 +26,7 @@ class unswfService(Service):
     """
      
     name = "unswf"
-    version = '0.0.1'
+    version = '0.0.2'
     supported_types = ['Sample']
     description = "Uncompress flash files."
 
@@ -55,8 +55,8 @@ class unswfService(Service):
             if comp == 'CWS':
                 swf = 'FWS' + header + zlib.decompress(data.read())
             if comp == 'ZWS':
-                data.seek(8+4) # seek to LZMA props
-                swf = 'FWS' + header + lzma.decompress(data.read())
+                data.seek(12) # seek to LZMA props
+                swf = 'FWS' + header + pylzma.decompress(data.read())
         except Exception as exc:
                 self._error("unswf: (%s)." % exc)
                 return
