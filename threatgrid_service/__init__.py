@@ -219,7 +219,7 @@ class ThreatGRIDService(Service):
         if response.get('data'):
             #DNS
             for num in response.get('data',{}).get('items'):
-                item = response['data']['items']['num']
+                item = response['data']['items'][num]
                 if item.get('protocol') == 'DNS':
                     #Process DNS lookups
                     dns_objects = item.get('decoded')
@@ -228,17 +228,18 @@ class ThreatGRIDService(Service):
                             'dns_query':    dns_objects[obj].get('query',{}).get('query_data'),
                             'dns_type':     dns_objects[obj].get('query',{}).get('query_type'),
                             }
-                            dns_qid = dns_objects[obj].get('query',{}).get('query_id'),
-                        #Find the answer for each DNS query
+                        dns_qid = dns_objects[obj].get('query',{}).get('query_id')
+                        #Find the answer for each DNS query by id, type
                         for answer in  dns_objects[obj].get('answers',[]):
                             if answer.get('answer_id',0) == dns_qid:
-                                result['dns_answer'] = answer.get('answer_data')
-                                break
+                                if answer.get('answer_type','') == result['dns_type']:
+                                    result['dns_answer'] = answer.get('answer_data')
+                                    break
                         self._add_result('threatgrid_dns'.format(tg_id), result.pop('dns_query'), result)
             self._notify()
             #HTTP
             for num in response.get('data',{}).get('items'):
-                item = response['data']['items']['num']
+                item = response['data']['items'][num]
                 if item.get('protocol') == 'HTTP':
                     for decode in item.get('decoded'):
                         for entry in decode:
@@ -257,7 +258,7 @@ class ThreatGRIDService(Service):
             self._notify()
             #IP/Other
             for num in response.get('data',{}).get('items'):
-                item = response['data']['items']['num']
+                item = response['data']['items'][num]
                 if item.get('protocol') == None:
                     result = {
                             'transport':    item.get('transport'),
@@ -318,7 +319,7 @@ class ThreatGRIDService(Service):
             #Search for existing results or submit the sample
             found = self.md5_search(self.md5)
             if found:
-                self.info('Showing details for ThreatGRID id {}'.format(found))
+                self._info('Showing details for ThreatGRID id {}'.format(found))
                 self.sample_iocs(found)
                 self.sample_network(found)
             else:
