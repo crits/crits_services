@@ -173,7 +173,7 @@ class ThreatGRIDService(Service):
                             'state':            item.get('state'),
                             'status':           item.get('status'),
                             }
-                    self._add_result('threatgrid_search (md5:{})'.format(md5), item.get('filename'), result)
+                    self._add_result('threatgrid_search', item.get('filename'), result)
                     recent_id = item.get('id')
                 self._notify()
                 #Return one of the analysis IDs
@@ -205,7 +205,7 @@ class ThreatGRIDService(Service):
                         'confidence':   item.get('confidence'),
                         'categories':   ', '.join(item.get('category',[])),
                         }
-                self._add_result('threatgrid_ioc (id:{})'.format(tg_id), item.get('title'), result)
+                self._add_result('threatgrid_ioc', item.get('title'), result)
             self._notify()
         elif reponse.get('error'):
             self._info('No IOCs were found for ThreatGRID id:{}'.format(tg_id))
