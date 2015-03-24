@@ -6,6 +6,7 @@ import json
 from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
+from crits.indicators.indicator import Indicator
 
 from . import forms
 
@@ -21,6 +22,7 @@ class ThreatGRIDService(Service):
     name = "threatgrid"
     version = '1.0.0'
     supported_types = ['Sample']
+    template = "tg_service_template.html"
     description = 'Submit a sample to ThreatGRID'
 
     host = ''
@@ -214,6 +216,7 @@ class ThreatGRIDService(Service):
         """
         Get Sample Network indicators for a given ThreatGRID id
         """
+        indicators = []
         url = '/api/v2/samples/' + tg_id + '/analysis/network_streams'
         response = self.api_request(url, {}, 'get')
         if response.get('data'):
@@ -235,6 +238,8 @@ class ThreatGRIDService(Service):
                                 if answer.get('answer_type','') == result['dns_type']:
                                     result['dns_answer'] = answer.get('answer_data')
                                     break
+                        indicators.append([result.get('dns_query'), 'Domain'])
+                        indicators.append([result.get('dns_answer'), 'IP Address'])
                         self._add_result('threatgrid_dns'.format(tg_id), result.pop('dns_query'), result)
             self._notify()
             #HTTP
@@ -254,6 +259,8 @@ class ThreatGRIDService(Service):
                                     'dst':          item.get('dst'),
                                     'dst_port':     item.get('dst_port'),
                                     }
+                                indicators.append([result.get('host'), 'Domain'])
+                                indicators.append([result.get('dst'), 'IP Address'])
                                 self._add_result('threatgrid_http'.format(tg_id), result.pop('host'), result)
             self._notify()
             #IP/Other
@@ -269,8 +276,29 @@ class ThreatGRIDService(Service):
                             'bytes':        item.get('bytes'),
                             'packets':      item.get('packets'),
                             }
+                    indicators.append([result.get('dst'), 'IP Address'])
                     self._add_result('threatgrid_ip'.format(tg_id), result.pop('transport'), result)
             self._notify()
+
+            #Add unique indicators
+            added  = []
+            for item in indicators:
+                if item[0]:
+                    indicator = item[0].lower()
+                    if indicator not in added:
+                        added.append(indicator)
+                        tdict = {}
+                        if item[1] == 'Domain':
+                            tdict = {'Type': 'Domain'}
+                            id_ = Indicator.objects(value=indicator).only('id').first()
+                            if id_:
+                                tdict['exists'] = str(id_.id)
+                        elif item[1] == 'IP Address':
+                            tdict = {'Type': "IP Address"}
+                            id_ = Indicator.objects(value=indicator).only('id').first()
+                            if id_:
+                                tdict['exists'] = str(id_.id)
+                        self._add_result('add_threatgrid_indicators', indicator, tdict)
 
     def sample_submit(self, filename, crits_id, data):
         """
