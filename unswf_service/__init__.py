@@ -127,8 +127,6 @@ class unswfService(Service):
                 if os.path.isfile(tfile):
                     data.seek(0)
                     self._warning("data md5: %s "% md5(data.read()).hexdigest())
-                    self._warning(filename)
-                    self._warning(rfile)
                     args = [flare_path, filename]
                     # Flare does not generate a lot of output, so we should not have to
                     # worry about this hanging because the buffer is full
@@ -137,7 +135,7 @@ class unswfService(Service):
                     # Note that we are redirecting STDERR to STDOUT, so we can ignore
                     # the second element of the tuple returned by communicate().
                     output = proc.communicate()[0]
-                    self._warning("heh: %s" % output)
+                    self._warning("Flare output: %s" % output)
                     if proc.returncode:
                         msg = ("Flare could not process the file.")
                         self._warning(msg)
@@ -148,7 +146,7 @@ class unswfService(Service):
                     # clean up the temp files and folders  
                     if os.path.isdir(self.directory):
                         shutil.rmtree(self.directory)
-                    res = handle_raw_data_file(ac3, self.obj.sources, self.current_task.username,
+                    res = handle_raw_data_file(ac3, self.obj.source, self.current_task.username,
                         title="Flare", data_type='text',
                         tool_name='Flare', tool_version='0.6', tool_details='http://www.nowrap.de/flare.html',
                         method=self.name, 
