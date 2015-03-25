@@ -1,0 +1,3 @@
+CHMInfo will parse an ITSF/Microsoft Compiled HTML help file and
+generate rich metadata about the document and provide basic
+malware detection capabilities.

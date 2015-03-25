@@ -1,0 +1,6 @@
+This plugin depends on the following packages:
+- pychm
+- libchm1
+
+Installation intructions:
+apt-get install python-chm libchm1
