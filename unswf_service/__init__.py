@@ -7,7 +7,7 @@ import tempfile
 import shutil
 import zlib
 import pylzma
-
+from datetime import datetime
 
 import subprocess
 
@@ -18,6 +18,8 @@ from hashlib import md5
 from crits.samples.handlers import handle_file
 # for adding the actionscript
 from crits.raw_data.handlers import handle_raw_data_file
+
+from crits.core.class_mapper import class_from_id
 
 from django.conf import settings
 from django.template.loader import render_to_string
@@ -33,7 +35,7 @@ class unswfService(Service):
     """
      
     name = "unswf"
-    version = '0.0.5'
+    version = '0.0.6'
     supported_types = ['Sample']
     description = "Uncompress flash files."
 
@@ -150,9 +152,20 @@ class unswfService(Service):
                         title="Flare", data_type='text',
                         tool_name='Flare', tool_version='0.6', tool_details='http://www.nowrap.de/flare.html',
                         method=self.name, 
-                        copy_rels=True) 
+                        copy_rels=True)
+                    raw_obj = class_from_id("RawData", res["_id"]) 
+                    self._warning("obj.id: %s, raw_id:%s, suc: %s" % (str(obj.id), str(raw_obj.id), repr(res['success']) ) )
+                    # update relationship if a related top-level object is supplied
+                    rel_type = "Related_To"
+                    if obj.id != raw_obj.id: #don't form relationship to itself
+                        resy = obj.add_relationship(rel_item=raw_obj,
+                                        rel_type=rel_type,
+                                        rel_date=datetime.now(),
+                                        analyst=self.current_task.username)
+                        obj.save(username=self.current_task.username) 
+                        raw_obj.save(username=self.current_task.username) 
+                        self._warning("resy: %s" % (str(resy)) )
                     self._add_result("file_added", rfile, {'md5': h3})
-                    self._warning(res)
         except Exception as exc:
                 self._error("unswf: (%s)." % exc)
                 return
