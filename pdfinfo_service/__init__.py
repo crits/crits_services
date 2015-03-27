@@ -26,12 +26,33 @@ class PDFInfoService(Service):
     version = '1.2.0'
     description = "Extract information from PDF files."
     supported_types = ['Sample']
+    added_files = []
 
     @staticmethod
     def valid_for(obj):
         # Only run on PDF files
         if not obj.is_pdf():
             raise ServiceConfigError("Not a valid PDF.")
+
+    @staticmethod
+    def bind_runtime_form(analyst, config):
+        if 'pdf_objects' not in config:
+            config['pdf_objects'] = False
+        return forms.PDFInfoRunForm(config)
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        return render_to_string('services_run_form.html',
+                                {'name': self.name,
+                                 'form': forms.PDFInfoRunForm(),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
+
+    @staticmethod
+    def get_config(existing_config):
+        # There are no config options for this service, blow away any existing
+        # configs.
+        return {}
 
     def H(self, data):
         """
