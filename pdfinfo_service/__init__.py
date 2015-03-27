@@ -6,6 +6,8 @@ import json
 import pdfparser
 import pdfid
 
+from django.template.loader import render_to_string
+
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
 
@@ -123,7 +125,7 @@ class PDFInfoService(Service):
                         (r'js', '/JS\n'),
                         (r'js', '/JS\r\n'),
                         (r'file', '/F\n'),
-                        (r'file', '/F\r\n')]
+                        (r'file', '/F\r\n'),]
 
         #Walk the PDF objects
         while done == False:
@@ -156,9 +158,48 @@ class PDFInfoService(Service):
                                 objects[item[0]].append(str(pdf_object.id))
                             else:
                                 objects[item[0]] = [str(pdf_object.id)]
+                    #Check object type
+                    if pdf_object.GetType() == '/EmbeddedFile':
+                        if objects.get('file'):
+                            objects['file'].append(str(pdf_object.id))
+                        else:
+                            objects['file'] = [str(pdf_object.id)]
+                    
             else:
                 done = True
         return objects
+
+    def add_objects(self, obj_id, reason, data):
+        """
+        Manage the insertion of child objects
+        - Use signatures to filter/inspect embedded files
+            - Fields: title, header, search window size
+        """
+        file_sigs = [('Flash', 'CWS', 50),
+                    ('Flash', 'FWS', 50)]
+        file_sigs_found = False
+
+        #Filter/extract embedded files that are being submitted
+        if reason == 'EmbeddedFile':
+            for sig in file_sigs:
+                search_header = sig[1]
+                search_window = sig[2]
+                offset = stream[:search_window].find(search_header)
+                if offset >= 0:
+                    file_sigs_found = True
+                    reason = '{} ({})'.format(reason, sig[0])
+                    data = data[offset:]
+                    break
+            if file_sigs_found == False:
+                return
+
+        #Add object to addded_files list
+        md5_digest = hashlib.md5(data).hexdigest()
+        self.added_files.append([md5_digest,
+                                obj_id,
+                                len(data),
+                                reason,
+                                data])
 
     def run_pdfparser(self, data):
         """
@@ -223,9 +264,27 @@ class PDFInfoService(Service):
                     if found_objects.get('js'):
                         if str(pdf_object.id) in found_objects.get('js'):
                             object_content.append('JavaScript')
+                            #Submit JavaScript objects to CRITS
+                            if object_stream:
+                                self.add_objects('{} (stream)'.format(pdf_object.id),
+                                                   'JavaScript',
+                                                   streamContent)
+                            else:
+                                self.add_objects('{}'.format(pdf_object.id),
+                                                   'JavaScript',
+                                                   rawContent)
                     if found_objects.get('file'):
                         if str(pdf_object.id) in found_objects.get('file'):
                             object_content.append('EmbeddedFile')
+                            #Submit (some) embedded files to CRITS
+                            if object_stream:
+                                self.add_objects('{} (stream)'.format(pdf_object.id),
+                                                   'EmbeddedFile',
+                                                   streamContent)
+                            else:
+                                self.add_objects('{}'.format(pdf_object.id),
+                                                   'EmbeddedFile',
+                                                   rawContent)
 
                     result = {
                             "obj_id":           pdf_object.id,
@@ -258,6 +317,21 @@ class PDFInfoService(Service):
         self.run_pdfid(data)
         self._notify()
         self.run_pdfparser(data)
+        self._notify()
+
+        #Add child objects
+        if config['pdf_objects']:
+            for f in self.added_files:
+                self._info('{} {} {} {}'.format(f[0], f[1], f[2], f[3]))
+                """
+                handle_file(f[0], f[4], obj.source,
+                            related_id=str(obj.id),
+                            campaign=obj.campaign,
+                            method=self.name,
+                            relationship='Extracted_From',
+                            user=self.current_task.username)
+                self._add_result("pdf_objects_added", f[0], {'obj_id':f[1],'size': f[1],'reason': f[3]})
+                """
 
     def _parse_error(self, item, e):
         self._error("Error parsing %s (%s): %s" % (item, e.__class__.__name__, e))
