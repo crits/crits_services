@@ -184,7 +184,7 @@ class PDFInfoService(Service):
             for sig in file_sigs:
                 search_header = sig[1]
                 search_window = sig[2]
-                offset = stream[:search_window].find(search_header)
+                offset = data[:search_window].find(search_header)
                 if offset >= 0:
                     file_sigs_found = True
                     reason = '{} ({})'.format(reason, sig[0])
