@@ -96,12 +96,14 @@ class PDFInfoService(Service):
         
         if xml_json_success:
             try:
-                for item in pdfid_dict['pdfid']['keywords']['keyword']:
+                pdf_summary = pdfid_dict['pdfid']['keywords']['keyword']
+                for item in sorted(pdf_summary, key=lambda x: int(x['count']), reverse=True):
                     self._add_result('pdfid', item['name'], {'count':item['count']})
             except KeyError:
                 pass
         else:
-            for count, item in re.findall(r'<Keyword\sCount="([^\"]+)"[^>]+Name=\"([^\"]+)\"',xml_data.toxml()):
+            pdf_summary = re.findall(r'<Keyword\sCount="([^\"]+)"[^>]+Name=\"([^\"]+)\"',xml_data.toxml())
+            for count, item in sorted(pdf_summary, key=lambda x: int(x[0]), reverse=True):
                 self._add_result('pdfid', item, {'count':count})
 
     def object_search(self, data, search_size=100):
