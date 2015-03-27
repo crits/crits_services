@@ -1,13 +1,15 @@
 import hashlib
 import logging
-
-from crits.services.core import Service, ServiceConfigError
-
-import pdfparser
-import pdfid
 import math
 import re
 import json
+import pdfparser
+import pdfid
+
+from crits.services.core import Service, ServiceConfigError
+from crits.samples.handlers import handle_file
+
+from . import forms
 
 logger = logging.getLogger(__name__)
 
