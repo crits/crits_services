@@ -29,6 +29,7 @@ class PDFInfoService(Service):
     description = "Extract information from PDF files."
     supported_types = ['Sample']
     added_files = []
+    detection = {}
 
     @staticmethod
     def valid_for(obj):
@@ -80,12 +81,29 @@ class PDFInfoService(Service):
         else:
             return "0.0"
 
+    def add_detection(self, tag, reason, obj_id=''):
+        """
+        Add a new items to the list of detection results
+        """
+        if tag in self.detection.keys():
+            if not obj_id in self.detection[tag][1]:
+                self.detection[tag][1].append(obj_id)
+        else:
+            self.detection[tag] = [reason, [obj_id]]
+
     def run_pdfid(self, data):
         """
         Uses PDFid to generate stats for the PDF
         - Display keyword matches
         """
         xml_json_success = True
+        javascript = False
+        encrypted = False
+        open_action = False
+        start_obj = 0
+        end_obj = 0
+        results_list = []
+        
 
         xml_data = pdfid.PDFiD(data)
         try:
@@ -98,13 +116,39 @@ class PDFInfoService(Service):
             try:
                 pdf_summary = pdfid_dict['pdfid']['keywords']['keyword']
                 for item in sorted(pdf_summary, key=lambda x: int(x['count']), reverse=True):
-                    self._add_result('pdfid', item['name'], {'count':item['count']})
+                    results_list.append([item['count'], item['name']])
+                    self._add_result('pdfid', item['name'], {'count': item['count']})
             except KeyError:
                 pass
         else:
             pdf_summary = re.findall(r'<Keyword\sCount="([^\"]+)"[^>]+Name=\"([^\"]+)\"',xml_data.toxml())
+            results_list = pdf_summary
             for count, item in sorted(pdf_summary, key=lambda x: int(x[0]), reverse=True):
-                self._add_result('pdfid', item, {'count':count})
+                self._add_result('pdfid', item, {'count': count})
+
+        #Detection rules using PDFid
+        for count, item in results_list:
+            if int(count) > 0:
+                if item == 'obj':
+                    start_obj = count
+                elif item == 'endobj':
+                    end_obj = count
+                elif item == '/JS':
+                    javascript = True
+                elif item == '/JavaScript':
+                    javascript = True
+                elif item == '/Encrypt':
+                    encrypted = True
+                elif item == "/OpenAction":
+                    open_action = True
+        if javascript:
+            self.add_detection('/JavaScript, /JS', 'PDF contains JavaScript.')
+        if encrypted:
+            self.add_detection('/Encrypted', 'PDF contains encrypted content.')
+        if open_action:
+            self.add_detection('/OpenAction', 'PDF performs defined actions when opened.')
+        if not start_obj == end_obj:
+            self.add_detection('obj, endobj', 'PDF contains uneven number of "obj" and "endobj" statements.') 
 
     def object_search(self, data, search_size=100):
         """
@@ -332,8 +376,11 @@ class PDFInfoService(Service):
                             method=self.name,
                             relationship='Extracted_From',
                             user=self.current_task.username)
-                self._add_result("pdf_objects_added", f[0], {'obj_id':f[1],'size': f[1],'reason': f[3]})
+                self._add_result("pdf_objects_added", f[0], {'obj_id': f[1], 'size': f[1], 'reason': f[3]})
                 """
+        #Add detection items
+        for key, value in self.detection.items():
+            self._add_result("pdf_detection", key, {'description': value[0], 'obj_id(s)': ', '.join(value[1])})
 
     def _parse_error(self, item, e):
         self._error("Error parsing %s (%s): %s" % (item, e.__class__.__name__, e))

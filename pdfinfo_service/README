@@ -22,6 +22,7 @@ TODO:
         - Raw content: << /Names [ (a) 36 0 R (b) 37 0 R (c) 16 0 R (c) 55 0 R ] >>
     - Example sample: 2a7b8180da2906c9889f13fa912df6a0
         - Raw content: << /Names [ t 17 0 R ] >>
+    - Typically these objects contain one line, the reference.
 - Handle encrypted PDF objects
     - Example sample: 1e46c60e65ae9f9c9c8850372d8da491
 - Look for multiple PDF files concatenated together (PDF/EOF headers)
