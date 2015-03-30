@@ -5,6 +5,7 @@ import re
 import json
 import pdfparser
 import pdfid
+import jsbeautifier
 
 from django.template.loader import render_to_string
 
@@ -90,6 +91,39 @@ class PDFInfoService(Service):
                 self.detection[tag][1].append(obj_id)
         else:
             self.detection[tag] = [reason, [obj_id]]
+
+    def js_beautify(self, stream):
+        """
+        Beautify Javascript output
+        """
+        if stream:
+            return str(jsbeautifier.beautify(stream))
+        return
+
+    def js_minimize(self,data):
+        """
+        Very simple JavaScript minimization
+        - Attempt to simplify embedded JavaScript
+            - Remove comments
+            - Remove string escapes (\x20)
+            - Replace formatting
+            - Minimize string logic
+            - Replace dict style references (abc["xyz"] for abc.xyz)
+        """
+        result = None
+        try:
+            result = re.sub(r'//*(.+?)/*/','',data)
+            result = result.decode('string_escape','ignore')
+            result = urllib2.unquote(result)
+            result = result.replace('\\n', '\n')
+            result = result.replace('\\r', '\r')
+            result = result.replace('\\t', '\t')
+            result = result.replace('"+"', '')
+            result = result.replace('\'+\'','')
+            result = re.sub(r'(\w+)\[\"([^\"]+)\"\]', r'\1.\2', result)
+        except Exception:
+            pass
+        return result
 
     def run_pdfid(self, data):
         """
