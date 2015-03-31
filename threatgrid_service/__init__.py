@@ -12,6 +12,7 @@ from . import forms
 
 logger = logging.getLogger(__name__)
 
+
 class ThreatGRIDService(Service):
     """
     ThreatGRID interoperability with CRITS.
@@ -19,10 +20,10 @@ class ThreatGRIDService(Service):
     Requires an API key from the specified ThreatGRID applicance.
     """
 
-    name = "threatgrid"
+    name = 'threatgrid'
     version = '1.0.0'
     supported_types = ['Sample']
-    template = "tg_service_template.html"
+    template = 'tg_service_template.html'
     description = 'Submit a sample to ThreatGRID'
 
     host = ''
@@ -36,7 +37,7 @@ class ThreatGRIDService(Service):
     @staticmethod
     def parse_config(config):
         if not config['api_key']:
-            raise ServiceConfigError("API key required.")
+            raise ServiceConfigError('API key required.')
 
     @staticmethod
     def get_config(existing_config):
@@ -48,7 +49,7 @@ class ThreatGRIDService(Service):
         for name, field in fields.iteritems():
             config[name] = field.initial
 
-        #If there is a config in the database, use values from that.
+        # If there is a config in the database, use values from that.
         if existing_config:
             for key, value in existing_config.iteritems():
                 config[key] = value
@@ -96,9 +97,9 @@ class ThreatGRIDService(Service):
         """
         return render_to_string('services_run_form.html',
                                 {'name': self.name,
-                                'form': forms.ThreatGRIDRunForm(),
-                                'crits_type': crits_type,
-                                'identifier': identifier})
+                                 'form': forms.ThreatGRIDRunForm(),
+                                 'crits_type': crits_type,
+                                 'identifier': identifier})
 
     def api_request(self, path, req_params, req_type='get'):
         """
@@ -107,17 +108,17 @@ class ThreatGRIDService(Service):
         """
         url = urlparse.urljoin(self.host, path)
         req_params['api_key'] = self.api_key
-        req_verify = False  #SSL CERT verification
+        req_verify = False  # SSL CERT verification
 
         if req_type == 'get':
             response = requests.get(url, params=req_params, verify=req_verify)
-            #Response handling
+            # Response handling
             if response.status_code == 200:
-                #Success
+                # Success
                 result = json.loads(response.content)
                 return result
             else:
-                #Error reporting
+                # Error reporting
                 error = json.loads(response.content)
                 for item in error.get('error').get('errors'):
                     code = item.get('code')
@@ -126,37 +127,37 @@ class ThreatGRIDService(Service):
                 return
         elif req_type == 'post':
             if 'sample' in req_params:
-                #Submit attached samples
+                # Submit attached samples
                 data = req_params.pop('sample')
                 response = requests.post(url,
-                                 params=req_params,
-                                 files={'sample':(req_params.get('filename'), data)},
-                                 verify=req_verify)
+                                         params=req_params,
+                                         files={'sample': (req_params.get('filename'), data)},
+                                         verify=req_verify)
             else:
                 response = requests.post(url,
-                                 params=req_params,
-                                 verify=req_verify)
-            #Response handling
+                                         params=req_params,
+                                         verify=req_verify)
+            # Response handling
             if response.status_code == 200:
-                #Success
+                # Success
                 result = json.loads(response.content)
                 return result
             else:
-                #Error reporting
+                # Error reporting
                 error = json.loads(response.content)
                 for item in error.get('error').get('errors'):
                     code = item.get('code')
                     message = item.get('message')
                     self._info(response.get('HTTP Response {}: {}'.format(code, message)))
                 return
-        return        
+        return
 
     def md5_search(self, md5):
         """
         Search for results by MD5
         - Only 1 page of results are displayed.
         """
-        #Set API query parameters and conduct query
+        # Set API query parameters and conduct query
         recent_id = 0
         params = {'md5': md5}
         response = self.api_request('/api/v2/samples', params, 'get')
@@ -164,11 +165,11 @@ class ThreatGRIDService(Service):
             result_count = response.get('data', {}).get('current_item_count', 0)
             self._info('{} results returned from ThreatGRID MD5 search ({}).'.format(result_count, md5))
             if result_count > 0:
-                for item in response.get('data',{}).get('items'):
+                for item in response.get('data', {}).get('items'):
                     result = {
                             'id':               item.get('id'),
                             'submitted_at':     item.get('submitted_at'),
-                            'tags':             ''.join(item.get('tags',[])),
+                            'tags':             ''.join(item.get('tags', [])),
                             'login':            item.get('login'),
                             'state':            item.get('state'),
                             'status':           item.get('status'),
@@ -176,7 +177,7 @@ class ThreatGRIDService(Service):
                     self._add_result('threatgrid_search', item.get('filename'), result)
                     recent_id = item.get('id')
                 self._notify()
-                #Return one of the analysis IDs
+                # Return one of the analysis IDs
                 return recent_id
         else:
             self._error('An error occured while looking for sample: {}.'.format(md5))
@@ -186,7 +187,7 @@ class ThreatGRIDService(Service):
         """
         Sort IOCs by severity, confidence
         """
-        for item in sorted(iocs, key=lambda x: (x.get('severity',0),x.get('confidence',0)), reverse=True):
+        for item in sorted(iocs, key=lambda x: (x.get('severity', 0), x.get('confidence', 0)), reverse=True):
             yield item
         return
 
@@ -203,7 +204,7 @@ class ThreatGRIDService(Service):
                         'hits':         item.get('hits'),
                         'severity':     item.get('severity'),
                         'confidence':   item.get('confidence'),
-                        'categories':   ', '.join(item.get('category',[])),
+                        'categories':   ', '.join(item.get('category', [])),
                         }
                 self._add_result('threatgrid_ioc', item.get('title'), result)
             self._notify()
@@ -220,42 +221,42 @@ class ThreatGRIDService(Service):
         url = '/api/v2/samples/' + tg_id + '/analysis/network_streams'
         response = self.api_request(url, {}, 'get')
         if response.get('data'):
-            #DNS
-            for num in response.get('data',{}).get('items'):
+            # DNS
+            for num in response.get('data', {}).get('items'):
                 item = response['data']['items'][num]
                 if item.get('protocol') == 'DNS':
-                    #Process DNS lookups
+                    # Process DNS lookups
                     dns_objects = item.get('decoded')
                     for obj in dns_objects:
                         result = {
-                            'dns_query':    dns_objects[obj].get('query',{}).get('query_data'),
-                            'dns_type':     dns_objects[obj].get('query',{}).get('query_type'),
+                            'dns_query':    dns_objects[obj].get('query', {}).get('query_data'),
+                            'dns_type':     dns_objects[obj].get('query', {}).get('query_type'),
                             }
-                        dns_qid = dns_objects[obj].get('query',{}).get('query_id')
-                        #Find the answer for each DNS query by id, type
-                        for answer in  dns_objects[obj].get('answers',[]):
-                            if answer.get('answer_id',0) == dns_qid:
-                                if answer.get('answer_type','') == result['dns_type']:
+                        dns_qid = dns_objects[obj].get('query', {}).get('query_id')
+                        # Find the answer for each DNS query by id, type
+                        for answer in dns_objects[obj].get('answers', []):
+                            if answer.get('answer_id', 0) == dns_qid:
+                                if answer.get('answer_type', '') == result['dns_type']:
                                     result['dns_answer'] = answer.get('answer_data')
                                     break
                         indicators.append([result.get('dns_query'), 'Domain'])
                         indicators.append([result.get('dns_answer'), 'IP Address'])
                         self._add_result('threatgrid_dns'.format(tg_id), result.pop('dns_query'), result)
             self._notify()
-            #HTTP
-            for num in response.get('data',{}).get('items'):
+            # HTTP
+            for num in response.get('data', {}).get('items'):
                 item = response['data']['items'][num]
                 if item.get('protocol') == 'HTTP':
                     for decode in item.get('decoded'):
                         for entry in decode:
-                            #Only show HTTP requests
+                            # Only show HTTP requests
                             if entry.get('type') == 'request':
                                 result = {
                                     'host':         entry.get('host'),
                                     'method':       entry.get('method'),
                                     'url':          entry.get('url'),
-                                    'ua':           entry.get('headers',{}).get('user-agent'),
-                                    'referer':      entry.get('headers',{}).get('referer'),
+                                    'ua':           entry.get('headers', {}).get('user-agent'),
+                                    'referer':      entry.get('headers', {}).get('referer'),
                                     'dst':          item.get('dst'),
                                     'dst_port':     item.get('dst_port'),
                                     }
@@ -263,8 +264,8 @@ class ThreatGRIDService(Service):
                                 indicators.append([result.get('dst'), 'IP Address'])
                                 self._add_result('threatgrid_http'.format(tg_id), result.pop('host'), result)
             self._notify()
-            #IP/Other
-            for num in response.get('data',{}).get('items'):
+            # IP/Other
+            for num in response.get('data', {}).get('items'):
                 item = response['data']['items'][num]
                 if item.get('protocol') == None:
                     result = {
@@ -280,8 +281,8 @@ class ThreatGRIDService(Service):
                     self._add_result('threatgrid_ip'.format(tg_id), result.pop('transport'), result)
             self._notify()
 
-            #Add unique indicators
-            added  = []
+            # Add unique indicators
+            added = []
             for item in indicators:
                 if item[0]:
                     indicator = item[0].lower()
@@ -304,13 +305,13 @@ class ThreatGRIDService(Service):
         """
         Submit a sample to ThreatGRID
         """
-        #Set API query parameters and submit sample
+        # Set API query parameters and submit sample
         params = {'tags': 'CRITS',
-                    'filename': filename,
-                    'os': '',
-                    'osver': '',
-                    'source': 'CRITS:{}'.format(crits_id),
-                    'sample': data}
+                  'filename': filename,
+                  'os': '',
+                  'osver': '',
+                  'source': 'CRITS:{}'.format(crits_id),
+                  'sample': data}
         response = self.api_request('/api/v2/samples', params, 'post')
 
         if response:
@@ -320,7 +321,7 @@ class ThreatGRIDService(Service):
                 result = {
                         'id':               submitted.get('id'),
                         'submitted_at':     submitted.get('submitted_at'),
-                        'tags':             ''.join(submitted.get('tags',[])),
+                        'tags':             ''.join(submitted.get('tags', [])),
                         'submission_id':    submitted.get('submission_id'),
                         'state':            submitted.get('state'),
                         'status':           submitted.get('status'),
@@ -334,7 +335,6 @@ class ThreatGRIDService(Service):
         self._error("ThreatGRID sample submission failed.")
         return False
 
-
     def run(self, obj, config):
         """
         Begin ThreatGRID service
@@ -344,7 +344,7 @@ class ThreatGRIDService(Service):
         self.md5 = obj.md5
 
         if obj._meta['crits_type'] == 'Sample':
-            #Search for existing results or submit the sample
+            # Search for existing results or submit the sample
             found = self.md5_search(self.md5)
             if found:
                 self._info('Showing details for ThreatGRID id {}'.format(found))
@@ -359,4 +359,4 @@ class ThreatGRIDService(Service):
             return
 
     def _parse_error(self, item, e):
-        self._error("Error parsing %s (%s): %s" % (item, e.__class__.__name__, e))
+        self._error('Error parsing %s (%s): %s' % (item, e.__class__.__name__, e))
