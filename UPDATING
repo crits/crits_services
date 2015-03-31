@@ -1,0 +1,11 @@
+This file will document large changes that anyone tracking development branches
+should be aware of. This will also include things like dependency changes or
+references to changes in other repositories. Updates are sorted by commit date
+descending.
+
+Author: wxs
+Date:   2015-03-31
+
+    The relationship_service received an update which allows it to assign
+    campaigns to nodes on the graph. Part of this change required an update
+    to core CRITs code, so please make sure you update that too.
