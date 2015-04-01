@@ -2,6 +2,7 @@ import urlparse
 import logging
 import requests
 import json
+import time
 
 from django.template.loader import render_to_string
 
@@ -152,18 +153,16 @@ class ThreatGRIDService(Service):
                 return
         return
 
-    def md5_search(self, md5):
+    def sample_search(self, params):
         """
-        Search for results by MD5
+        Search for results using provided parameter(s)
         - Only 1 page of results are displayed.
         """
         # Set API query parameters and conduct query
         recent_id = 0
-        params = {'md5': md5}
         response = self.api_request('/api/v2/samples', params, 'get')
         if response:
             result_count = response.get('data', {}).get('current_item_count', 0)
-            self._info('{} results returned from ThreatGRID MD5 search ({}).'.format(result_count, md5))
             if result_count > 0:
                 for item in response.get('data', {}).get('items'):
                     result = {
@@ -174,14 +173,15 @@ class ThreatGRIDService(Service):
                             'state':            item.get('state'),
                             'status':           item.get('status'),
                             }
-                    self._add_result('threatgrid_search', item.get('filename'), result)
+                    self._add_result('threatgrid_job', item.get('filename'), result)
                     recent_id = item.get('id')
                 self._notify()
-                # Return one of the analysis IDs
+                self._info('{} results returned from ThreatGRID search.'.format(result_count))
+                # Return one of the analysis IDs (used to show further results)
                 return recent_id
         else:
-            self._error('An error occured while looking for sample: {}.'.format(md5))
-        return False
+            self._error('An error occured while looking for sample.')
+        return
 
     def sort_iocs(self, iocs):
         """
@@ -281,7 +281,7 @@ class ThreatGRIDService(Service):
                     self._add_result('threatgrid_ip'.format(tg_id), result.pop('transport'), result)
             self._notify()
 
-            # Add unique indicators
+            # Enable user to add unique indicators for this sample
             added = []
             for item in indicators:
                 if item[0]:
@@ -315,7 +315,7 @@ class ThreatGRIDService(Service):
         response = self.api_request('/api/v2/samples', params, 'post')
 
         if response:
-            self._info("Sample submitted to ThreatGRID.")
+            self._info("Sample submitted to ThreatGRID (run time is 5 mins).")
             if response.get('data'):
                 submitted = response.get('data')
                 result = {
@@ -326,14 +326,13 @@ class ThreatGRIDService(Service):
                         'state':            submitted.get('state'),
                         'status':           submitted.get('status'),
                         }
-                self._add_result('threatgrid_submitted (md5:{})'.format(submitted.get('md5')), submitted.get('filename'), result)
+                self._add_result('threatgrid_submitted', submitted.get('filename'), result)
                 self._notify()
-                if self.md5 == submitted.get('md5').lower():
-                    return True
-                else:
+                if not self.md5 == submitted.get('md5').lower():
                     self._error("MD5 mismatch between ThreatGRID and CRITS.")
+                return submitted.get('id')
         self._error("ThreatGRID sample submission failed.")
-        return False
+        return
 
     def run(self, obj, config):
         """
@@ -342,21 +341,39 @@ class ThreatGRIDService(Service):
         self.host = config.get('host', '')
         self.api_key = config.get('api_key', '')
         self.md5 = obj.md5
+        delay = 60
+        count = 0
+        max_delays = 5
 
         if obj._meta['crits_type'] == 'Sample':
             # Search for existing results or submit the sample
-            found = self.md5_search(self.md5)
+            found = self.sample_search({'md5': self.md5})
             if found:
                 self._info('Showing details for ThreatGRID id {}'.format(found))
                 self.sample_iocs(found)
                 self.sample_network(found)
             else:
                 if config.get('submit'):
+                    # Submit the sample
                     data = obj.filedata.read()
-                    self.sample_submit(obj.filename, obj.id, data)
+                    sample_id = self.sample_submit(obj.filename, obj.id, data)
+                    # Wait for results (default analysis time is 5 mins)
+                    if sample_id:
+                        time.sleep(240)
+                        while count <= max_delays and not found:
+                            time.sleep(delay)
+                            count += 1
+                            found = self.sample_search({'md5': self.md5})
+                        # Render results
+                        if found:
+                            self._info('Showing details for ThreatGRID id {}'.format(found))
+                            self.sample_iocs(found)
+                            self.sample_network(found)
+                            self._notify()
+                        else:
+                            self._error('ThreatGRID did not complete before timeout.')
+                    else:
+                        self._error('ThreatGRID sample submission did not return a valid id.')
         else:
             self._error("Invalid type passed to ThreatGRID service plugin.")
-            return
 
-    def _parse_error(self, item, e):
-        self._error('Error parsing %s (%s): %s' % (item, e.__class__.__name__, e))
