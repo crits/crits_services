@@ -376,4 +376,3 @@ class ThreatGRIDService(Service):
                         self._error('ThreatGRID sample submission did not return a valid id.')
         else:
             self._error("Invalid type passed to ThreatGRID service plugin.")
-
