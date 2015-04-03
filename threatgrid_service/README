@@ -1,0 +1,3 @@
+A service to support the submission of files to ThreatGRID. The
+service will return and display a subset of ThreatGRID results
+and allow network indicators to be easily added to the sample.
