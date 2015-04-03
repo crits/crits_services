@@ -350,7 +350,8 @@ class PDFInfoService(Service):
             - Fields: title, header, search window size
         """
         file_sigs = [('Flash', 'CWS', 50),
-                     ('Flash', 'FWS', 50)]
+                     ('Flash', 'FWS', 50),
+                     ('Flash', 'ZWS', 50)]
         file_sigs_found = False
 
         # Filter/extract embedded files that are being submitted
