@@ -119,11 +119,16 @@ class VirusTotalService(Service):
         network_url = self.config.get('vt_network_url', '')
         params = {'apikey': self.config.get('vt_api_key', ''), 'hash': md5}
 
+        if settings.HTTP_PROXY:
+            proxies = { 'http': settings.HTTP_PROXY,
+                        'https': settings.HTTP_PROXY }
         try:
-            response = requests.get(network_url, params=params)
+            response = requests.get(network_url, params=params, proxies=proxies)
         except Exception as e:
-            logger.error("Virustotal: network connection error for PCAP (%s)" % e)
-            self._error("Network connection error checking virustotal for PCAP (%s)" % e)
+            key = self.config.get('vt_api_key', '')
+            error = str(e).replace(key, 'REDACTED')
+            logger.error("Virustotal: network connection error for PCAP (%s)" % error)
+            self._error("Network connection error checking virustotal for PCAP (%s)" % error)
             return None
 
         if response.headers['content-type'] == 'application/cap':
