@@ -12,6 +12,10 @@ class ThreatGRIDConfigForm(forms.Form):
                                 label="ThreatGRID URL",
                                 widget=forms.TextInput(),
                                 initial='https://threatgrid.com/')
+    auto_submit = forms.BooleanField(required=False,
+                                label="Auto Submit",
+                                initial=False,
+                                help_text="Automatically submit samples during triage.")
     def __init__(self, *args, **kwargs):
         super(ThreatGRIDConfigForm, self).__init__(*args, **kwargs)
 
