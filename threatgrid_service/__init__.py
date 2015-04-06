@@ -88,7 +88,10 @@ class ThreatGRIDService(Service):
         Set service runtime information
         """
         if 'submit' not in config:
-            config['submit'] = False
+            if 'auto_submit' not in config:
+                config['submit'] = False
+            else:
+                config['submit'] = config['auto_submit']
         return forms.ThreatGRIDRunForm(config)
 
     @classmethod
@@ -374,5 +377,7 @@ class ThreatGRIDService(Service):
                             self._error('ThreatGRID did not complete before timeout.')
                     else:
                         self._error('ThreatGRID sample submission did not return a valid id.')
+                else:
+                    self._info('Sample not found in ThreatGRID.')
         else:
             self._error("Invalid type passed to ThreatGRID service plugin.")
