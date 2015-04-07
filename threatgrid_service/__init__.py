@@ -127,7 +127,7 @@ class ThreatGRIDService(Service):
                 for item in error.get('error').get('errors'):
                     code = item.get('code')
                     message = item.get('message')
-                    self._info(response.get('HTTP Response {}: {}'.format(code, message)))
+                    self._info('HTTP Response {}: {}'.format(code, message))
                 return
         elif req_type == 'post':
             if 'sample' in req_params:
@@ -152,7 +152,7 @@ class ThreatGRIDService(Service):
                 for item in error.get('error').get('errors'):
                     code = item.get('code')
                     message = item.get('message')
-                    self._info(response.get('HTTP Response {}: {}'.format(code, message)))
+                    self._info('HTTP Response {}: {}'.format(code, message))
                 return
         return
 
@@ -167,21 +167,61 @@ class ThreatGRIDService(Service):
         if response:
             result_count = response.get('data', {}).get('current_item_count', 0)
             if result_count > 0:
-                for item in response.get('data', {}).get('items'):
-                    result = {
-                            'id':               item.get('id'),
-                            'submitted_at':     item.get('submitted_at'),
-                            'tags':             ''.join(item.get('tags', [])),
-                            'login':            item.get('login'),
-                            'state':            item.get('state'),
-                            'status':           item.get('status'),
-                            }
-                    self._add_result('threatgrid_job', item.get('filename'), result)
-                    recent_id = item.get('id')
-                self._notify()
-                self._info('{} results returned from ThreatGRID search.'.format(result_count))
-                # Return one of the analysis IDs (used to show further results)
-                return recent_id
+                # Handle search by ID
+                if 'id' in params.keys():
+                    item = response.get('data', {}).get('items')
+                    if len(item) == 1:
+                        # Detect analysis state
+                        state = item[0].get('state', '')
+                        if state in ['pending', 'running', 'proc', 'wait', 'prep']:
+                            return
+                        elif state in ['job_done', 'succ']:
+                            result = {
+                                    'id':               item[0].get('id'),
+                                    'submitted_at':     item[0].get('submitted_at'),
+                                    'tags':             ''.join(item[0].get('tags', [])),
+                                    'login':            item[0].get('login'),
+                                    'state':            item[0].get('state'),
+                                    'status':           item[0].get('status'),
+                                    }
+                            self._add_result('threatgrid_job', item[0].get('filename', ''), result)
+                            self._notify()
+                            return item[0].get('id')
+                        elif state == 'fail':
+                            result = {
+                                    'id':               item[0].get('id'),
+                                    'submitted_at':     item[0].get('submitted_at'),
+                                    'tags':             ''.join(item[0].get('tags', [])),
+                                    'login':            item[0].get('login'),
+                                    'state':            item[0].get('state'),
+                                    'status':           item[0].get('status'),
+                                    }
+                            self._add_result('threatgrid_job', 'Failed', result)
+                            self._notify()
+                            self._info('ThreatGRID analysis failed ({}).'.format(item[0].get('status', '')))
+                            return -1
+                        else:
+                            self._info('ThreatGRID returned unknown state type ({}).'.format(item[0].get('state', '')))
+                            return
+                    else:
+                        self._error('ThreatGRID returned unexpeced number of results for the sample ID.')
+                else:
+                    # Handle other search types (MD5 etc.)
+                    for item in response.get('data', {}).get('items'):
+                        result = {
+                                'id':               item.get('id'),
+                                'submitted_at':     item.get('submitted_at'),
+                                'tags':             ''.join(item.get('tags', [])),
+                                'login':            item.get('login'),
+                                'state':            item.get('state'),
+                                'status':           item.get('status'),
+                                }
+                        self._add_result('threatgrid_job', item.get('filename', ''), result)
+                        recent_id = item.get('id')
+                    self._notify()
+                    self._info('{} results returned from ThreatGRID search.'.format(result_count))
+                    # Return one of the analysis IDs (used to show further results)
+                    return recent_id
         else:
             self._error('An error occured while looking for sample.')
         return
@@ -200,21 +240,22 @@ class ThreatGRIDService(Service):
         """
         url = '/api/v2/samples/' + tg_id + '/analysis/iocs'
         response = self.api_request(url, {}, 'get')
-        if response.get('data'):
-            iocs = response.get('data', {}).get('items')
-            for item in self.sort_iocs(iocs):
-                result = {
-                        'hits':         item.get('hits'),
-                        'severity':     item.get('severity'),
-                        'confidence':   item.get('confidence'),
-                        'categories':   ', '.join(item.get('category', [])),
-                        }
-                self._add_result('threatgrid_ioc', item.get('title'), result)
-            self._notify()
-        elif reponse.get('error'):
-            self._info('No IOCs were found for ThreatGRID id:{}'.format(tg_id))
-        else:
-            self._error('An error occured when attempting to get IOCs for id:{}'.format(tg_id))
+        if response:
+            if response.get('data'):
+                iocs = response.get('data', {}).get('items')
+                for item in self.sort_iocs(iocs):
+                    result = {
+                            'hits':         item.get('hits'),
+                            'severity':     item.get('severity'),
+                            'confidence':   item.get('confidence'),
+                            'categories':   ', '.join(item.get('category', [])),
+                            }
+                    self._add_result('threatgrid_ioc', item.get('title', ''), result)
+                self._notify()
+            elif reponse.get('error'):
+                self._info('No IOCs were found for ThreatGRID id:{}'.format(tg_id))
+            else:
+                self._error('An error occured when attempting to get IOCs for id:{}'.format(tg_id))
 
     def sample_network(self, tg_id):
         """
@@ -223,86 +264,87 @@ class ThreatGRIDService(Service):
         indicators = []
         url = '/api/v2/samples/' + tg_id + '/analysis/network_streams'
         response = self.api_request(url, {}, 'get')
-        if response.get('data'):
-            # DNS
-            for num in response.get('data', {}).get('items'):
-                item = response['data']['items'][num]
-                if item.get('protocol') == 'DNS':
-                    # Process DNS lookups
-                    dns_objects = item.get('decoded')
-                    for obj in dns_objects:
+        if response:
+            if response.get('data'):
+                # DNS
+                for num in response.get('data', {}).get('items'):
+                    item = response['data']['items'][num]
+                    if item.get('protocol') == 'DNS':
+                        # Process DNS lookups
+                        dns_objects = item.get('decoded')
+                        for obj in dns_objects:
+                            result = {
+                                'dns_query':    dns_objects[obj].get('query', {}).get('query_data'),
+                                'dns_type':     dns_objects[obj].get('query', {}).get('query_type'),
+                                }
+                            dns_qid = dns_objects[obj].get('query', {}).get('query_id')
+                            # Find the answer for each DNS query by id, type
+                            for answer in dns_objects[obj].get('answers', []):
+                                if answer.get('answer_id', 0) == dns_qid:
+                                    if answer.get('answer_type', '') == result['dns_type']:
+                                        result['dns_answer'] = answer.get('answer_data')
+                                        break
+                            indicators.append([result.get('dns_query'), 'Domain'])
+                            indicators.append([result.get('dns_answer'), 'IP Address'])
+                            self._add_result('threatgrid_dns'.format(tg_id), result.pop('dns_query'), result)
+                self._notify()
+                # HTTP
+                for num in response.get('data', {}).get('items'):
+                    item = response['data']['items'][num]
+                    if item.get('protocol') == 'HTTP':
+                        for decode in item.get('decoded'):
+                            for entry in decode:
+                                # Only show HTTP requests
+                                if entry.get('type') == 'request':
+                                    result = {
+                                        'host':         entry.get('host'),
+                                        'method':       entry.get('method'),
+                                        'url':          entry.get('url'),
+                                        'ua':           entry.get('headers', {}).get('user-agent'),
+                                        'referer':      entry.get('headers', {}).get('referer'),
+                                        'dst':          item.get('dst'),
+                                        'dst_port':     item.get('dst_port'),
+                                        }
+                                    indicators.append([result.get('host'), 'Domain'])
+                                    indicators.append([result.get('dst'), 'IP Address'])
+                                    self._add_result('threatgrid_http'.format(tg_id), result.pop('host'), result)
+                self._notify()
+                # IP/Other
+                for num in response.get('data', {}).get('items'):
+                    item = response['data']['items'][num]
+                    if item.get('protocol') == None:
                         result = {
-                            'dns_query':    dns_objects[obj].get('query', {}).get('query_data'),
-                            'dns_type':     dns_objects[obj].get('query', {}).get('query_type'),
-                            }
-                        dns_qid = dns_objects[obj].get('query', {}).get('query_id')
-                        # Find the answer for each DNS query by id, type
-                        for answer in dns_objects[obj].get('answers', []):
-                            if answer.get('answer_id', 0) == dns_qid:
-                                if answer.get('answer_type', '') == result['dns_type']:
-                                    result['dns_answer'] = answer.get('answer_data')
-                                    break
-                        indicators.append([result.get('dns_query'), 'Domain'])
-                        indicators.append([result.get('dns_answer'), 'IP Address'])
-                        self._add_result('threatgrid_dns'.format(tg_id), result.pop('dns_query'), result)
-            self._notify()
-            # HTTP
-            for num in response.get('data', {}).get('items'):
-                item = response['data']['items'][num]
-                if item.get('protocol') == 'HTTP':
-                    for decode in item.get('decoded'):
-                        for entry in decode:
-                            # Only show HTTP requests
-                            if entry.get('type') == 'request':
-                                result = {
-                                    'host':         entry.get('host'),
-                                    'method':       entry.get('method'),
-                                    'url':          entry.get('url'),
-                                    'ua':           entry.get('headers', {}).get('user-agent'),
-                                    'referer':      entry.get('headers', {}).get('referer'),
-                                    'dst':          item.get('dst'),
-                                    'dst_port':     item.get('dst_port'),
-                                    }
-                                indicators.append([result.get('host'), 'Domain'])
-                                indicators.append([result.get('dst'), 'IP Address'])
-                                self._add_result('threatgrid_http'.format(tg_id), result.pop('host'), result)
-            self._notify()
-            # IP/Other
-            for num in response.get('data', {}).get('items'):
-                item = response['data']['items'][num]
-                if item.get('protocol') == None:
-                    result = {
-                            'transport':    item.get('transport'),
-                            'src':          item.get('src'),
-                            'src_port':     item.get('src_port'),
-                            'dst':          item.get('dst'),
-                            'dst_port':     item.get('dst_port'),
-                            'bytes':        item.get('bytes'),
-                            'packets':      item.get('packets'),
-                            }
-                    indicators.append([result.get('dst'), 'IP Address'])
-                    self._add_result('threatgrid_ip'.format(tg_id), result.pop('transport'), result)
-            self._notify()
+                                'transport':    item.get('transport'),
+                                'src':          item.get('src'),
+                                'src_port':     item.get('src_port'),
+                                'dst':          item.get('dst'),
+                                'dst_port':     item.get('dst_port'),
+                                'bytes':        item.get('bytes'),
+                                'packets':      item.get('packets'),
+                                }
+                        indicators.append([result.get('dst'), 'IP Address'])
+                        self._add_result('threatgrid_ip'.format(tg_id), result.pop('transport'), result)
+                self._notify()
 
-            # Enable user to add unique indicators for this sample
-            added = []
-            for item in indicators:
-                if item[0]:
-                    indicator = item[0].lower()
-                    if indicator not in added:
-                        added.append(indicator)
-                        tdict = {}
-                        if item[1] == 'Domain':
-                            tdict = {'Type': 'Domain'}
-                            id_ = Indicator.objects(value=indicator).only('id').first()
-                            if id_:
-                                tdict['exists'] = str(id_.id)
-                        elif item[1] == 'IP Address':
-                            tdict = {'Type': "IP Address"}
-                            id_ = Indicator.objects(value=indicator).only('id').first()
-                            if id_:
-                                tdict['exists'] = str(id_.id)
-                        self._add_result('add_threatgrid_indicators', indicator, tdict)
+                # Enable user to add unique indicators for this sample
+                added = []
+                for item in indicators:
+                    if item[0]:
+                        indicator = item[0].lower()
+                        if indicator not in added:
+                            added.append(indicator)
+                            tdict = {}
+                            if item[1] == 'Domain':
+                                tdict = {'Type': 'Domain'}
+                                id_ = Indicator.objects(value=indicator).only('id').first()
+                                if id_:
+                                    tdict['exists'] = str(id_.id)
+                            elif item[1] == 'IP Address':
+                                tdict = {'Type': "IP Address"}
+                                id_ = Indicator.objects(value=indicator).only('id').first()
+                                if id_:
+                                    tdict['exists'] = str(id_.id)
+                            self._add_result('add_threatgrid_indicators', indicator, tdict)
 
     def sample_submit(self, filename, crits_id, data):
         """
@@ -346,7 +388,7 @@ class ThreatGRIDService(Service):
         self.md5 = obj.md5
         delay = 60
         count = 0
-        max_delays = 5
+        max_delays = 8
 
         if obj._meta['crits_type'] == 'Sample':
             # Search for existing results or submit the sample
@@ -362,17 +404,19 @@ class ThreatGRIDService(Service):
                     sample_id = self.sample_submit(obj.filename, obj.id, data)
                     # Wait for results (default analysis time is 5 mins)
                     if sample_id:
-                        time.sleep(240)
+                        time.sleep(5)
+                        found = self.sample_search({'id': sample_id})
                         while count <= max_delays and not found:
                             time.sleep(delay)
                             count += 1
-                            found = self.sample_search({'md5': self.md5})
+                            found = self.sample_search({'id': sample_id})
                         # Render results
                         if found:
-                            self._info('Showing details for ThreatGRID id {}'.format(found))
-                            self.sample_iocs(found)
-                            self.sample_network(found)
-                            self._notify()
+                            if found > 0:
+                                self._info('Showing details for ThreatGRID id {}'.format(found))
+                                self.sample_iocs(found)
+                                self.sample_network(found)
+                                self._notify()
                         else:
                             self._error('ThreatGRID did not complete before timeout.')
                     else:
