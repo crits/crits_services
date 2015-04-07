@@ -122,6 +122,9 @@ class VirusTotalService(Service):
         if settings.HTTP_PROXY:
             proxies = { 'http': settings.HTTP_PROXY,
                         'https': settings.HTTP_PROXY }
+        else:
+            proxies = {}
+
         try:
             response = requests.get(network_url, params=params, proxies=proxies)
         except Exception as e:
