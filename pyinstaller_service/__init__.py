@@ -76,54 +76,76 @@ class pyinstallerService(Service):
                          'RawData': ""
                     }
                     if t[4] == 's' and t[5] not in safe:
-                        block = self.get_data(t[5], arch).decode('utf-8')
-                        bmd5 = md5(block).hexdigest()
-                        bsha1 = sha1(block).hexdigest()
-                        bsha256 = sha256(block).hexdigest()
-                        block = block.replace('http', 'hxxp')
-                        description = '"%s" pulled from Sample\n\n' % t[5]
-                        description += 'MD5: %s\n' % bmd5
-                        description += 'SHA1: %s\n' % bsha1
-                        description += 'SHA256: %s\n' % bsha256
-                        title = t[5]
-                        data_type = "Python"
-                        tool_name = "pyinstaller_service"
-                        result = handle_raw_data_file(
-                            block,
-                            obj.source,
-                            user=self.current_task.username,
-                            description=description,
-                            title=title,
-                            data_type=data_type,
-                            tool_name=tool_name,
-                        )
-                        if result['success']:
-                            self._info("RawData added for %s" % t[5])
-                            res = obj.add_relationship(
-                                rel_item=result['object'],
-                                rel_type="Extracted_From",
-                                rel_confidence="high",
-                                analyst=self.current_task.username
+                        try:
+                            block = self.get_data(t[5], arch).encode('utf-8',
+                                                                     "ignore")
+                        except:
+                            self._info("%s: Block not valid utf-8. Trying utf-16." % t[5])
+                        try:
+                            block = self.get_data(t[5], arch).encode('utf-16',
+                                                                     "ignore")
+                        except:
+                            self._info("%s: Block not valid utf-16. Trying utf-32." % t[5])
+                        try:
+                            block = self.get_data(t[5], arch).encode('utf-32',
+                                                                     "ignore")
+                        except:
+                            self._info("%s: Block not valid utf-32. Trying latin-1." % t[5])
+                        try:
+                            block = self.get_data(t[5], arch).encode('latin-1',
+                                                                     'ignore')
+                        except:
+                            self._info("%s: Block not valid latin-1. Done trying." % t[5])
+                            block = None
+                        if block is not None:
+                            bmd5 = md5(block).hexdigest()
+                            bsha1 = sha1(block).hexdigest()
+                            bsha256 = sha256(block).hexdigest()
+                            block = block.replace('http', 'hxxp')
+                            description = '"%s" pulled from Sample\n\n' % t[5]
+                            description += 'MD5: %s\n' % bmd5
+                            description += 'SHA1: %s\n' % bsha1
+                            description += 'SHA256: %s\n' % bsha256
+                            title = t[5]
+                            data_type = "Python"
+                            tool_name = "pyinstaller_service"
+                            result = handle_raw_data_file(
+                                block,
+                                obj.source,
+                                user=self.current_task.username,
+                                description=description,
+                                title=title,
+                                data_type=data_type,
+                                tool_name=tool_name,
                             )
-                            if res['success']:
-                                obj.save(username=self.current_task.username)
-                                result['object'].save(username=self.current_task.username)
-                                url = reverse('crits.core.views.details',
-                                              args=('RawData',
-                                                    result['_id']))
-                                url = '<a href="%s">View Raw Data</a>' % url
-                                d['RawData'] = url
-                                self._info("Relationship added for %s" % t[5])
+                            if result['success']:
+                                self._info("RawData added for %s" % t[5])
+                                res = obj.add_relationship(
+                                    rel_item=result['object'],
+                                    rel_type="Extracted_From",
+                                    rel_confidence="high",
+                                    analyst=self.current_task.username
+                                )
+                                if res['success']:
+                                    obj.save(username=self.current_task.username)
+                                    result['object'].save(username=self.current_task.username)
+                                    url = reverse('crits.core.views.details',
+                                                args=('RawData',
+                                                        result['_id']))
+                                    url = '<a href="%s">View Raw Data</a>' % url
+                                    d['RawData'] = url
+                                    self._info("Relationship added for %s" % t[5])
+                                else:
+                                    self._info("Error adding relationship: %s" % res['message'])
                             else:
-                                self._info("Error adding relationship: %s" % res['message'])
-                        else:
-                            self._info(
-                                "RawData addition failed for %s:%s" % (t[5],
-                                                                       result['message'])
-                            )
+                                self._info(
+                                    "RawData addition failed for %s:%s" % (t[5],
+                                                                        result['message'])
+                                )
                     self._add_result("Info", t[5], d)
             except Exception, e:
                 self._info("Error: %s" % str(e))
+
     def run(self, obj, config):
         """
         Run pyinstaller service
