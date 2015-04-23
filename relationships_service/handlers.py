@@ -18,21 +18,39 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
     if not sources:
         return { 'nodes': nodes, 'links': links }
 
+#    field_dict = {
+#        'Actor': 'name',
+#        'Campaign': 'name',
+#        'Certificate': 'md5',
+#        'Comment': 'object_id',
+#        'Domain': 'domain',
+#        'Email': 'date',
+#        'Event': 'title',
+#        'Indicator': 'value',
+#        'IP': 'ip',
+#        'PCAP': 'md5',
+#        'RawData': 'title',
+#        'Sample': 'md5',
+#        'Target': 'email_address'
+#    }
+
+#Modified by NMD for better output - 2015-04-13
     field_dict = {
         'Actor': 'name',
         'Campaign': 'name',
         'Certificate': 'md5',
         'Comment': 'object_id',
         'Domain': 'domain',
-        'Email': 'date',
+        'Email': 'message_id',
         'Event': 'title',
         'Indicator': 'value',
         'IP': 'ip',
-        'PCAP': 'md5',
+        'PCAP': 'filename',
         'RawData': 'title',
-        'Sample': 'md5',
+        'Sample': 'filename',
         'Target': 'email_address'
     }
+
 
     # color scheme:
     # http://colorschemedesigner.com/#00426p4O9CCPc

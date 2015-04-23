@@ -115,7 +115,7 @@ $(document).ready(function() {
                     .links(links)
                     .size([w, h])
                     .gravity(1)
-                    .linkDistance(100)
+                    .linkDistance(500)
                     .charge(-4000)
                     .linkStrength(function(x) {
                         return x.weight * 10;
@@ -135,8 +135,18 @@ $(document).ready(function() {
                    .enter()
                    .append("g")
                    .attr("class", "node")
-                   .on("mouseover", mouseover)
-                   .on("mouseout", mouseout)
+                // .on("mouseover", mouseover)
+                // .on("mouseout", mouseout)
+		   .on("mouseover", function(d){
+			link.style('stroke', function(l){
+				if (d === l.source || d === l.target)
+					return "#FF0000";
+				else
+					return "#CCC";
+					//return "#00FF26";
+			})
+		   })
+		   .on("mouseout", function(d){link.style('stroke', "#CCC")})
                    .call(force.drag);
 
         node.append("circle")
@@ -191,12 +201,32 @@ $(document).ready(function() {
           d3.select(this).select("circle").transition()
               .duration(350)
               .attr("r", 16);
+	  //NMD
+	  //d3.select(this).select("line").transition()
+	  //   .duration(350)
+	  //    .style('stroke', '#FF3333');
+	  //NMD
+	  //function(d) {
+	 //	function(l){
+	//	if (d === l.source || d === l.target)
+	//	  return link.style('stroke', '#FF3333');
+	//	else
+	//	  return link.style('stroke', '#CCC');
+	//   	 })
+	//    }
         }
 
         function mouseout() {
           d3.select(this).select("circle").transition()
               .duration(350)
               .attr("r", 8);
+	  
+	  //NMD
+	  //d3.select(this).select("line").transition()
+	  //    .duration(350)
+	  //    .style('stroke', '#CCC');
+	  //NMD
+	    link.style('stroke', '#CCC');
         }
 
         $('#draggable').show()
