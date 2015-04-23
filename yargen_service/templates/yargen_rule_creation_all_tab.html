@@ -1,0 +1,83 @@
+{% load url from future %}
+
+
+<script>
+$(document).ready(function() {
+
+
+    
+    data = {depth: 1,}
+    $.ajax({
+        type: "GET",
+        url: "{% url 'yargen_service.views.get_yargen_result' subscription.type subscription.id %}",
+        dataType: "json",
+        data: data,
+        success: function(data) {
+            var output = "";
+            window.relationResponse = data.message;
+            $.each(data.message, function(i, item){
+				output += data.message[i].label+", ";
+			});
+            $('#yargen_samples_field').val(output);
+        }
+    });
+    
+    $("#run_yargen").click(function() {
+		data = {'message': window.relationResponse};
+		$('yargen_result_field').html("Please wait while YarGen processes your files on the server...");
+		
+        $.ajax({
+            type: "POST",
+            url: "{% url 'yargen_service.views.run_yargen' %}",
+            data: data,
+            dataType: "json",
+            success: function(data) {
+              if (data) {
+                  $('#yargen_result_field').val(data.message['message']);
+              }
+            }
+        });
+		
+	});
+    
+});
+</script>
+
+
+<style>
+    .yara_textarea {
+        width: 100%;
+        height: 300px;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+    }
+</style>
+
+<div id="yargen_rule_creation">
+
+    <table width="100%" style="width: 100%;">
+        <tr>
+            <td width="50%">
+                <div id="rule" class='content_box' style="width: 100%;min-height:300px;">
+                    <h3 class="titleheader" with="100%">
+                        <span>Related Samples</span>
+                    </h3>
+                    <textarea id="yargen_samples_field" class="yara_textarea">
+This will be replaced with a list and checkboxes determining which files to run yargen against.
+                    </textarea>
+                </div>
+            </td>
+            <td width="50%">
+                <div id="result" class='content_box' style="width: 100%;min-height:300px;">
+                    <h3 class="titleheader" with="100%">
+                        <span>YarGen Results</span>
+                    </h3>
+                    <textarea id="yargen_result_field" class="yara_textarea"></textarea>
+                </div>
+            </td>
+        </tr>
+    </table>
+    <button id="run_yargen" class="mini_button" style="float: left;">Run YarGen</button>
+    <br />
+</div>
