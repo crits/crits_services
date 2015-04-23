@@ -23,7 +23,7 @@ class YarGenService(Service):
     version = '0.0.1'
     description = "Generate Yara signatures from multiple samples."
 
-     def run(self, obj, config):
+    def run(self, obj, config):
         pass
         
 
