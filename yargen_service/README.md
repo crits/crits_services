@@ -17,6 +17,8 @@ many samples were submitted, it could take several minutes to generate
 the yarGen rules.
 
 CRITs - https://github.com/crits
+
 yarGen - https://github.com/Neo23x0/yarGen
+
 GibberishDetector - https://github.com/rrenaud/Gibberish-Detector
 
