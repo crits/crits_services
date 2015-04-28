@@ -9,7 +9,7 @@
             'ind_type': 'Address - email-addr',
             'obj_type': 'Domain'
         };
-        url = "{% url 'crits.indicators.views.indicator_from_obj' %}";
+        url = "{% url 'crits.indicators.views.indicator_from_tlo' %}";
         $.ajax({
             type: "POST",
             url: url,
