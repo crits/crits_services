@@ -1,0 +1,15 @@
+bitstring
+libtaxii
+lxml
+m2crypto
+mod_pywebsocket
+numpy
+pefile
+pexpect
+pychm
+pyclamd
+pyinstaller
+pylzma
+pythonwhois
+shodan
+stix-validator
