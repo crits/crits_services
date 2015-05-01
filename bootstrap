@@ -39,9 +39,9 @@ VER="$(echo "$VER" | tr "[:upper:]" "[:lower:]")"
 if [ "$OS" = 'ubuntu' ]
 then
   echo "Installing dependencies with apt-get"
+  sudo apt-add-repository universe
   sudo apt-get update
-  sudo apt-get install -y --fix-missing libchm1 clamav clamd freshclam wireshark
-  upx
+  sudo apt-get install -y --fix-missing libchm1 clamav upx wireshark
   sudo ldconfig
 
 # Redhat: Install as many dependencies as we can using yum.
