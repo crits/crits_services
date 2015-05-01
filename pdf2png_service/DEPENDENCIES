@@ -1,0 +1,4 @@
+Dependencies for pdf2png (is/are):
+
+poppler-utils - you need pdftoppm binary in /usr/bin/
+
