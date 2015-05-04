@@ -20,12 +20,14 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
 
     field_dict = {
         'Actor': 'name',
+        'Backdoor': 'name',
         'Campaign': 'name',
         'Certificate': 'md5',
         'Comment': 'object_id',
         'Domain': 'domain',
         'Email': 'date',
         'Event': 'title',
+        'Exploit': 'name',
         'Indicator': 'value',
         'IP': 'ip',
         'PCAP': 'md5',
@@ -38,12 +40,14 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
     # http://colorschemedesigner.com/#00426p4O9CCPc
     color_dict = {
         'Actor': '#900C0C',
+        'Backdoor': '#5A2C75',
         'Campaign': '#FF3737',
         'Certificate': '#FFA837',
         'Comment': '#3A98DA',
         'Domain': '#33EB33',
         'Email': '#FF8989',
         'Event': '#B05151',
+        'Exploit': '#8CA336',
         'Indicator': '#B08751',
         'IP': '#90570C',
         'PCAP': '#FFCC89',
