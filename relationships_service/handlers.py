@@ -135,6 +135,12 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
 
         obj_type = obj._meta['crits_type']
         value = getattr(obj, field_dict[obj_type], '')
+        if obj_type == 'Backdoor':
+            # Append a version or family
+            if obj.version == '':
+                value += " (family)"
+            else:
+                value += " (v:%s)" % obj.version
         href = reverse('crits.core.views.details', args=(obj_type, obj_id))
 
         if len(types) != 0 and obj_type not in types:
