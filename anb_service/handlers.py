@@ -2,6 +2,7 @@ from django.conf import settings
 from crits.core.mongo_tools import mongo_connector
 from crits.core.class_mapper import class_from_id
 from crits.core.handlers import collect_objects
+from crits.backdoors.backdoor import Backdoor
 from crits.emails.email import Email
 from crits.samples.sample import Sample
 from crits.indicators.indicator import Indicator
@@ -54,11 +55,16 @@ def get_sample_rels(rel, eid, sources):
                 continue
 
             obj_list = get_md5_objects(r.object_id, sources)
-            backdoor = s.backdoor
-            if backdoor:
-                backdoor_name = s.backdoor.name
-            else:
-                backdoor_name = "None"
+            # Walk the relationships on this sample, see if it is related to
+            # a backdoor. Take the first backdoor that comes up, it may or
+            # may not be the versioned one.
+            backdoor_name = "None"
+            for sample_r in s.relationships:
+                if sample_r.rel_type == 'Backdoor':
+                    backdoor = Backdoor.objects(id=sample_r.object_id).first()
+                    if backdoor and source_match(backdoor.source, sources):
+                        backdoor_name = backdoor.name
+                        break
             s_list.append({
                 'md5': s.md5,
                 'email_id': eid,
