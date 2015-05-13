@@ -60,7 +60,7 @@ then
     echo "Installation for OSX requires Homebrew. Please visit http://brew.sh/."
     exit
   }
-  brew install chmlib clamav wireshark upx
+  brew install chmlib clamav wireshark upx yara
 elif [ "$OS" = 'freebsd' ]
 then
   echo "Installing ports"
