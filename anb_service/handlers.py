@@ -2,6 +2,7 @@ from django.conf import settings
 from crits.core.mongo_tools import mongo_connector
 from crits.core.class_mapper import class_from_id
 from crits.core.handlers import collect_objects
+from crits.backdoors.backdoor import Backdoor
 from crits.emails.email import Email
 from crits.samples.sample import Sample
 from crits.indicators.indicator import Indicator
@@ -54,11 +55,16 @@ def get_sample_rels(rel, eid, sources):
                 continue
 
             obj_list = get_md5_objects(r.object_id, sources)
-            backdoor = s.backdoor
-            if backdoor:
-                backdoor_name = s.backdoor.name
-            else:
-                backdoor_name = "None"
+            # Walk the relationships on this sample, see if it is related to
+            # a backdoor. Take the first backdoor that comes up, it may or
+            # may not be the versioned one.
+            backdoor_name = "None"
+            for sample_r in s.relationships:
+                if sample_r.rel_type == 'Backdoor':
+                    backdoor = Backdoor.objects(id=sample_r.object_id).first()
+                    if backdoor and source_match(backdoor.source, sources):
+                        backdoor_name = backdoor.name
+                        break
             s_list.append({
                 'md5': s.md5,
                 'email_id': eid,
@@ -70,24 +76,19 @@ def get_sample_rels(rel, eid, sources):
     return s_list
 
 # Given an event ID grab all related objects and generate CSV output for
-# them. For each related object, repeat the process. Keep track of things
-# we have seen before so we don't generate duplicate CSV entries.
-def generate_anb_event_data(type_, cid, data, sources, r=0):
-    related_objects = collect_objects(type_, cid, sources, depth=1)
+# them. Do not recurse any deeper than that in collect_objects.
+def generate_anb_event_data(type_, cid, data, sources):
+    types = ['Email', 'Sample', 'Indicator', 'IP', 'Domain', 'Event']
+    related_objects = collect_objects(type_,
+                                      cid,
+                                      1, # Depth limit
+                                      250, # Total limit
+                                      100, # Rel limit
+                                      types,
+                                      sources,
+                                      need_filedata=False)
 
-    # Remove current object from the collected objects. The first time
-    # through this function we will have already put the event in and
-    # each subsequent run we will have just put another object in before
-    # recursing back into this function.
-    del related_objects[str(cid)]
-
-    for (obj_id, (obj_type, level, obj)) in related_objects.iteritems():
-        # If we've seen this object before, don't bother dealing with it.
-        if obj_id in data['seen_objects']:
-            continue
-
-        data['seen_objects'][obj_id] = obj
-
+    for (obj_id, (obj_type, obj)) in related_objects.iteritems():
         if obj_type == 'Email':
             data['emails'] += "%s,%s,%s,%s,%s,%s,%s\r\n" % (
                 cid,
@@ -98,11 +99,16 @@ def generate_anb_event_data(type_, cid, data, sources, r=0):
                 obj.x_originating_ip,
                 obj.x_mailer)
         elif obj_type == 'Sample':
-            backdoor = obj.backdoor
-            if backdoor:
-                backdoor_name = obj.backdoor.name
-            else:
-                backdoor_name = "None"
+            # Walk the relationships on this sample, see if it is related to
+            # a backdoor. Take the first backdoor that comes up, it may or
+            # may not be the versioned one.
+            backdoor_name = "None"
+            for rel in obj.relationships:
+                if rel.rel_type == 'Backdoor':
+                    backdoor = Backdoor.objects(id=rel.object_id).first()
+                    if backdoor and source_match(backdoor.source, sources):
+                        backdoor_name = backdoor.name
+                        break
             data['samples'] += "%s,%s,%s,%s,%s,%s\r\n" % (
                 cid,
                 obj_id,
@@ -138,16 +144,10 @@ def generate_anb_event_data(type_, cid, data, sources, r=0):
                 cid,
                 obj_id,
                 obj.title)
-        # Recurse one more level, but go no further.
-        if r < 1:
-            generate_anb_event_data(obj_type, obj_id, data, sources, r=r + 1)
     return data
 
 def execute_anb_event(cid, sources):
-    # The inner dictionary is for keeping track of object IDs we have
-    # already seen. The strings are for holding the CSV data.
     data = {
-             'seen_objects': {},
              'emails': '',
              'samples': '',
              'objects': '',
@@ -161,17 +161,7 @@ def execute_anb_event(cid, sources):
     if not crits_event:
         return data
 
-    # Pre-populate with our event.
-    data['seen_objects'][str(crits_event.id)] = crits_event
-    data['events'] += "%s,%s,%s\r\n" % (
-        'None',
-        crits_event.id,
-        crits_event.title)
-
     generate_anb_event_data('Event', crits_event.id, data, sources)
-
-    # No need to pass this back to the view.
-    del data['seen_objects']
 
     return data
 
