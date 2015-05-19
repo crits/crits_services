@@ -46,5 +46,5 @@ def test_yara_rule(id_, rule):
                 yara_results.append("No matches!")
             message = pprint.pformat(yara_results)
         except SyntaxError, e:
-            message = "Syntax error in rule: %s" % e
+            message = "Syntax error in YARA rule: %s" % e
     return {"success": success, "message": message}
