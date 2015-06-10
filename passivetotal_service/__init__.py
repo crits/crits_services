@@ -87,10 +87,10 @@ class PassiveTotalService(Service):
 
         loaded = response.json()
 
-        #if not loaded['success']:
-        #    logger.error("PassiveTotal: query error (%s)" % loaded['error'])
-        #    self._error("PassiveTotal: query error (%s)" % loaded['error'])
-        #    return
+        if not loaded['success']:
+            logger.error("PassiveTotal: query error (%s)" % loaded['error'])
+            self._error("PassiveTotal: query error (%s)" % loaded['error'])
+            return
 
         if loaded['result_count'] == 0:
             return
