@@ -13,6 +13,8 @@ from crits.core.mongo_tools import get_file_gridfs, put_file_gridfs
 from crits.core.user_tools import get_user_organization
 from crits.services.handlers import get_config
 
+from crits.vocabulary.objects import ObjectTypes
+
 
 def pcap_tcpdump(pcap_md5, form, analyst):
     flag_list = []
@@ -195,8 +197,7 @@ def pcap_pdml_html(pcap_md5, analyst):
                     m = hashlib.md5()
                     m.update(pdml_html)
                     md5 = m.hexdigest()
-                    pcap.add_object("Artifact",
-                                    "File",
+                    pcap.add_object(ObjectTypes.FILE_UPLOAD,
                                     md5,
                                     get_user_organization(analyst),
                                     "MetaCap",
