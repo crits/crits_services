@@ -38,6 +38,8 @@ from crits.core.class_mapper import class_from_id, class_from_type
 from crits.core.crits_mongoengine import Releasability
 from crits.services.handlers import get_config
 
+from crits.vocabulary.ips import IPTypes
+
 logger = logging.getLogger(__name__)
 
 def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
@@ -304,43 +306,20 @@ def to_cybox_observable(obj, exclude=None, bin_fmt="raw"):
         return (observables, obj.releasability)
     elif type_ == 'Indicator':
         observables = []
-
-        parts = obj.ind_type.split(' - ')
-        if len(parts) == 2:
-            (type_, name) = parts
-        else:
-            type_ = parts[0]
-            name = None
-        obje = make_cybox_object(type_, name, obj.value)
-
+        obje = make_cybox_object(obj.ind_type, obj.value)
         observables.append(Observable(obje))
         return (observables, obj.releasability)
     elif type_ == 'IP':
         obje = Address()
         obje.address_value = obj.ip
-
-        temp_type = obj.ip_type.replace("-", "")
-        if temp_type.find(Address.CAT_ASN.replace("-", "")) >= 0:
-            obje.category = Address.CAT_ASN
-        elif temp_type.find(Address.CAT_ATM.replace("-", "")) >= 0:
-            obje.category = Address.CAT_ATM
-        elif temp_type.find(Address.CAT_CIDR.replace("-", "")) >= 0:
-            obje.category = Address.CAT_CIDR
-        elif temp_type.find(Address.CAT_MAC.replace("-", "")) >= 0:
-            obje.category = Address.CAT_MAC
-        elif temp_type.find(Address.CAT_IPV4_NETMASK.replace("-", "")) >= 0:
-            obje.category = Address.CAT_IPV4_NETMASK
-        elif temp_type.find(Address.CAT_IPV4_NET.replace("-", "")) >= 0:
-            obje.category = Address.CAT_IPV4_NET
-        elif temp_type.find(Address.CAT_IPV4.replace("-", "")) >= 0:
-            obje.category = Address.CAT_IPV4
-        elif temp_type.find(Address.CAT_IPV6_NETMASK.replace("-", "")) >= 0:
-            obje.category = Address.CAT_IPV6_NETMASK
-        elif temp_type.find(Address.CAT_IPV6_NET.replace("-", "")) >= 0:
-            obje.category = Address.CAT_IPV6_NET
-        elif temp_type.find(Address.CAT_IPV6.replace("-", "")) >= 0:
-            obje.category = Address.CAT_IPV6
-
+        if obj.ip_type == IPTypes.IPv4_ADDRESS:
+            obje.category = "ipv4-addr"
+        elif obj.ip_type == IPTypes.IPv6_ADDRESS:
+            obje.category = "ipv6-addr"
+        elif obj.ip_type == IPTypes.IPv4_SUBNET:
+            obje.category = "ipv4-net"
+        elif obj.ip_type == IPTypes.IPv6_SUBNET:
+            obje.category = "ipv6-subnet"
         return ([Observable(obje)], obj.releasability)
     elif type_ == 'PCAP':
         obje = File()
