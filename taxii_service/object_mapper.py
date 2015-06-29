@@ -243,7 +243,7 @@ def make_cybox_object(type_, value=None):
         return p
     elif type_ == IndicatorTypes.URI:
         r = URI()
-        r.type_ = name
+        r.type_ = 'URL'
         r.value = value
         return r
     elif type_ in (IndicatorTypes.REGISTRY_KEY,
