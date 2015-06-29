@@ -19,6 +19,11 @@ from crits.samples.handlers import handle_file
 from crits.core.crits_mongoengine import EmbeddedSource
 from crits.core.handlers import does_source_exist
 
+from crits.vocabulary.indicators import (
+    IndicatorAttackTypes,
+    IndicatorThreatTypes
+)
+
 from cybox.objects.artifact_object import Artifact
 from cybox.objects.address_object import Address
 from cybox.objects.domain_name_object import DomainName
@@ -261,6 +266,8 @@ class STIXParser():
                             res = handle_indicator_ind(value.strip(),
                                                        self.source,
                                                        ind_type,
+                                                       IndicatorThreatTypes.UNKNOWN,
+                                                       IndicatorAttackTypes.UNKNOWN,
                                                        analyst,
                                                        add_domain=True,
                                                        add_relationship=True)
@@ -431,6 +438,8 @@ class STIXParser():
                                 res = handle_indicator_ind(value.strip(),
                                                         self.source,
                                                         ind_type,
+                                                        IndicatorThreatTypes.UNKNOWN,
+                                                        IndicatorAttackTypes.UNKNOWN,
                                                         analyst,
                                                         add_domain=True,
                                                         add_relationship=True)
