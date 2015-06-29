@@ -2,7 +2,12 @@ import datetime
 
 from StringIO import StringIO
 
-from .object_mapper import make_crits_object
+from .object_mapper import (
+    make_crits_object,
+    get_crits_actor_tags,
+    get_crits_ip_type,
+    get_crits_event_type
+)
 
 from crits.actors.actor import Actor
 from crits.actors.handlers import add_new_actor, update_actor_tags
@@ -19,6 +24,7 @@ from crits.samples.handlers import handle_file
 from crits.core.crits_mongoengine import EmbeddedSource
 from crits.core.handlers import does_source_exist
 
+from crits.vocabulary.events import EventTypes
 from crits.vocabulary.indicators import (
     IndicatorAttackTypes,
     IndicatorThreatTypes
@@ -123,7 +129,7 @@ class STIXParser():
 
         if make_event:
             title = "STIX Document %s" % self.package.id_
-            event_type = "Collective Threat Intelligence"
+            event_type = EventTypes.INTEL_SHARING
             date = datetime.datetime.now()
             description = str(date)
             header = self.package.stix_header
@@ -131,7 +137,8 @@ class STIXParser():
                 if header.title:
                     title = header.title
                 if hasattr(header, 'package_intents'):
-                    event_type = str(header.package_intents[0])
+                    stix_type = str(header.package_intents[0])
+                    event_type = get_crits_event_type(stix_type)
                 if header.description:
                     description = header.description
                     if isinstance(description, StructuredText):
@@ -192,25 +199,33 @@ class STIXParser():
                     if res['success']:
                         sl = ml = tl = il = []
                         for s in threat_actor.sophistications:
-                            sl.append(str(s.value))
+                            v = get_crits_actor_tags(str(s.value))
+                            if v:
+                                sl.append(v)
                         update_actor_tags(res['id'],
                                             'ActorSophistication',
                                             sl,
                                             analyst)
                         for m in threat_actor.motivations:
-                            ml.append(str(m.value))
+                            v = get_crits_actor_tags(str(m.value))
+                            if v:
+                                ml.append(v)
                         update_actor_tags(res['id'],
                                             'ActorMotivation',
                                             ml,
                                             analyst)
                         for t in threat_actor.types:
-                            tl.append(str(t.value))
+                            v = get_crits_actor_tags(str(t.value))
+                            if v:
+                                tl.append(v)
                         update_actor_tags(res['id'],
                                             'ActorThreatType',
                                             tl,
                                             analyst)
                         for i in threat_actor.intended_effects:
-                            il.append(str(i.value))
+                            v = get_crits_actor_tags(str(i.value))
+                            if v:
+                                il.append(v)
                         update_actor_tags(res['id'],
                                             'ActorIntendedEffect',
                                             il,
@@ -257,10 +272,7 @@ class STIXParser():
                 try: # create CRITs Indicator from observable
                     item = observable.object_.properties
                     obj = make_crits_object(item)
-                    if obj.name and obj.name != obj.object_type:
-                        ind_type = "%s - %s" % (obj.object_type, obj.name)
-                    else:
-                        ind_type = obj.object_type
+                    ind_type = obj.object_type
                     for value in obj.value:
                         if value and ind_type:
                             res = handle_indicator_ind(value.strip(),
@@ -305,13 +317,14 @@ class STIXParser():
                         imp_type = "IP"
                         for value in item.address_value.values:
                             ip = str(value).strip()
-                            iptype = "Address - %s" % item.category
-                            res = ip_add_update(ip,
-                                                iptype,
-                                                [self.source],
-                                                analyst=analyst,
-                                                is_add_indicator=True)
-                            self.parse_res(imp_type, obs, res)
+                            iptype = get_crits_ip_type(item.category)
+                            if iptype:
+                                res = ip_add_update(ip,
+                                                    iptype,
+                                                    [self.source],
+                                                    analyst=analyst,
+                                                    is_add_indicator=True)
+                                self.parse_res(imp_type, obs, res)
                 if isinstance(item, DomainName):
                     imp_type = "Domain"
                     for value in item.value.values:
@@ -422,17 +435,11 @@ class STIXParser():
                 else: # try to parse all other possibilities as Indicator
                     imp_type = "Indicator"
                     obj = make_crits_object(item)
-                    if (obj.object_type == 'Address' and
-                        obj.name in ('cidr', 'ipv4-addr', 'ipv4-net',
-                                     'ipv4-netmask', 'ipv6-addr',
-                                     'ipv6-net', 'ipv6-netmask')):
+                    if obj.object_type == 'Address':
                         # This was already caught above
                         continue
                     else:
-                        if obj.name and obj.name != obj.object_type:
-                            ind_type = "%s - %s" % (obj.object_type, obj.name)
-                        else:
-                            ind_type = obj.object_type
+                        ind_type = obj.object_type
                         for value in obj.value:
                             if value and ind_type:
                                 res = handle_indicator_ind(value.strip(),
