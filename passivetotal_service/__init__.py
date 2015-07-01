@@ -1,7 +1,7 @@
 import logging
-import json
 import requests
 
+from django.conf import settings
 from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
@@ -66,25 +66,15 @@ class PassiveTotalService(Service):
     def save_runtime_config(config):
         del config['pt_api_key']
 
-    def run(self, obj, config):
-        headers = {'Content-type': 'application/json', 'Accept': 'text/plain'}
-        apikey = config.get('pt_api_key', '')
-        queryUrl = config.get('pt_query_url', '')
-
-        if not apikey:
-            self._error("PassiveTotal API key is invalid or blank")
-
-        if obj._meta['crits_type'] == 'Domain':
-            params = { 'value': obj.domain, 'apikey': apikey }
-        elif obj._meta['crits_type'] == 'IP':
-            params = { 'value': obj.ip, 'apikey': apikey }
+    def make_request(self, url, params):
+        if settings.HTTP_PROXY:
+            proxies = { 'http': settings.HTTP_PROXY,
+                        'https': settings.HTTP_PROXY }
         else:
-            logger.error("PassiveTotal: Invalid type.")
-            self._error("Invalid type.")
-            return
+            proxies = {}
 
         try:
-            response = requests.post(queryUrl, params=params)
+            response = requests.get(url, params=params, proxies=proxies)
         except Exception as e:
             logger.error("PassiveTotal: network connection error (%s)" % e)
             self._error("Network connection error checking PassiveTotal (%s)" % e)
@@ -95,7 +85,7 @@ class PassiveTotalService(Service):
             self._error("Response status code: %s" % response.status_code)
             return
 
-        loaded = json.loads(response.content) # handling a valid response
+        loaded = response.json()
 
         if not loaded['success']:
             logger.error("PassiveTotal: query error (%s)" % loaded['error'])
@@ -105,35 +95,68 @@ class PassiveTotalService(Service):
         if loaded['result_count'] == 0:
             return
 
+        return loaded
+
+    def get_passive_results(self, type_):
+        loaded = self.make_request(self.url + 'passive/', params=self.params)
+        if not loaded:
+            return
+
         results = loaded['results']
+        for record in results['records']:
+            stats = { 'First Seen': record['firstSeen'],
+                      'Last Seen': record['lastSeen'],
+                      'Sources': ','.join(record['source']) }
+            self._add_result('Resolutions', record['resolve'], stats)
+
+        if type_ == 'Domain':
+            for (ip, count) in results['unique_resolutions'].iteritems():
+                # For each resolution grab some stuff from the enrichment map
+                enrichment = results['enrichment_map'][ip]
+                stats = { 'Count': count,
+                          'Sinkhole': enrichment['sinkhole'],
+                          'Network': enrichment['network'],
+                          'Country': enrichment['country'],
+                          'ISP': enrichment['isp'],
+                          'AS name': enrichment['as_name'],
+                          'ASN': enrichment['asn'] }
+                self._add_result('Unique Resolutions', ip, stats)
+        elif type_ == 'IP':
+            for (ip, count) in results['unique_resolutions'].iteritems():
+                stats = { 'Count': count }
+                self._add_result('Unique Resolutions', ip, stats)
+
+    def get_subdomain_results(self):
+        loaded = self.make_request(self.url + 'subdomains/', params=self.params)
+        if not loaded:
+            return
+
+        results = loaded['results']
+        for subdomain in results['subdomains'].keys():
+            self._add_result('Subdomains', subdomain + '.' + self.params['query'])
+
+    def run(self, obj, config):
+        apikey = config.get('pt_api_key', '')
+        self.url = config.get('pt_query_url', '')
+
+        # Check for trailing slash, because passivetotal.org/api/v1//passive/ is bad.
+        if self.url[-1] != '/':
+            self.url += '/'
+
+        if not apikey:
+            self._error("PassiveTotal API key is invalid or blank")
+
         if obj._meta['crits_type'] == 'Domain':
-            for resolve in results['resolutions']:
-                stats = {
-                    'value': results['focus'],
-                    'first_seen': resolve['firstSeen'],
-                    'last_seen': resolve['lastSeen'],
-                    'source': ','.join(resolve['source']),
-                    'as_name': resolve['as_name'],
-                    'asn': resolve['asn'],
-                    'country': resolve['country'],
-                    'network': resolve['network']
-                }
-                self._add_result('Passive DNS Data', resolve['value'], stats)
+            self.params = { 'query': obj.domain, 'api_key': apikey }
         elif obj._meta['crits_type'] == 'IP':
-            stats = {
-                'as_name': results['as_name'],
-                'asn': results['asn'],
-                'country': results['country'],
-                'firstSeen': results['firstSeen'],
-                'lastSeen': results['lastSeen'],
-                'network': results['network']
-            }
-            self._add_result('Metadata', results['focus'], stats)
-            for resolve in results['resolutions']:
-                stats = {
-                    'firstSeen': resolve['firstSeen'],
-                    'lastSeen': resolve['lastSeen'],
-                    'source': ','.join(resolve['source']),
-                    'whois': resolve.get('whois', {})
-                }
-                self._add_result('Passive DNS Data', resolve['value'], stats)
+            self.params = { 'query': obj.ip, 'api_key': apikey }
+        else:
+            logger.error("PassiveTotal: Invalid type.")
+            self._error("Invalid type.")
+            return
+
+        self.get_passive_results(obj._meta['crits_type'])
+
+        # Get subdomains if object is Domain
+        if obj._meta['crits_type'] == 'Domain':
+            self.get_subdomain_results()

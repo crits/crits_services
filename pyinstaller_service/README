@@ -1,0 +1,9 @@
+The pyinstaller service will run the archive_viewer against a binary in an
+attempt to find out more information about a binary.
+
+For each object found with a type of "s", it will attempt to extract it, decode
+it, add it as Raw Data, and relate it back to the Sample.
+
+NOTE: For this to work make sure to add a new Raw Data Type called "Python"
+      (with the capital). It uses this when adding Raw Data and will fail if
+      the DataType isn't available.
