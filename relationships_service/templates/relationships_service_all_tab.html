@@ -15,8 +15,6 @@ $(document).ready(function() {
     // default graph lists
     var nodes = [];
     var links = [];
-    //var labelAnchors = []; // used if we want to do force labels
-    //var labelAnchorLinks = []; // used if we want to do force labels
 
     $(document).on('click', '#change_graph', function(e) {
         //$('#graph_container').empty();
@@ -37,8 +35,6 @@ $(document).ready(function() {
                 if (data.success) {
                     nodes = data.message.nodes;
                     links = data.message.links;
-                    // labelAnchors = data.message.labelAnchors;
-                    // labelAnchorLinks = data.message.labelAnchorLinks;
                 }
             }
         });
@@ -108,47 +104,7 @@ $(document).ready(function() {
 
         var data_dump = "";
         var visjs_data = {nodes: new vis.DataSet(nodes), edges: new vis.DataSet(links)};
-
-        /*
-        var link = svg.selectAll("line.link")
-                   .data(links)
-                   .enter()
-                   .append("svg:line")
-                   .attr("class", "link")
-                   .style("stroke", "#CCC");
-
-        var node = svg.selectAll(".node")
-                   .data(nodes)
-                   .enter()
-                   .append("g")
-                   .attr("class", "node")
-                   .on("mouseover", mouseover)
-                   .on("mouseout", mouseout)
-                   .call(force.drag);
-
-        node.append("circle")
-            .attr("r", 8)
-            .style('stroke', '#CCC')
-            .style("fill", function(d) {
-                return d.color;
-            });
-       */
-
         var network = new vis.Network(visjs_container, visjs_data, visjs_options);
-
- /*
-        function mouseover() {
-          d3.select(this).select("circle").transition()
-              .duration(350)
-              .attr("r", 16);
-        }
-
-        function mouseout() {
-          d3.select(this).select("circle").transition()
-              .duration(350)
-              .attr("r", 8);
-        }
- */
 
         $('#draggable').show()
         .css({'position': 'absolute', 'top': 60, 'left' : 20});
