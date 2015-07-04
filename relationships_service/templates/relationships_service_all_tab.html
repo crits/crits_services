@@ -17,7 +17,7 @@ $(document).ready(function() {
     var links = [];
 
     $(document).on('click', '#change_graph', function(e) {
-        //$('#graph_container').empty();
+        $('#graph_container').empty();
         // get data from server.
         var depth = $('#node_depth').val();
         var types = $("#node_types option:selected").map(function(){return this.value}).get().join(",");
