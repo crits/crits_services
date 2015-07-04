@@ -7,12 +7,13 @@
 <script src="/js/vis.min.js"></script>
 <!-- vis.js components -->
 
-<script>
+<script type="text/javascript">
 
 $(document).ready(function() {
     $('#draggable').draggable();
     $('#graph_config').draggable();
     $('#graph_actions').draggable();
+
     // default graph lists
     var nodes = [];
     var links = [];
@@ -20,7 +21,7 @@ $(document).ready(function() {
     //var labelAnchorLinks = []; // used if we want to do force labels
 
     $(document).on('click', '#change_graph', function(e) {
-        $('#graph_container').empty();
+        //$('#graph_container').empty();
         // get data from server.
         var depth = $('#node_depth').val();
         var types = $("#node_types option:selected").map(function(){return this.value}).get().join(",");
@@ -98,37 +99,19 @@ $(document).ready(function() {
 
     function generate_graph(nodes, links) {
 
-        // define our graph and add to page
-        var w = 1000, h = 800;
+        var visjs_options = {
+            nodes: {borderWidth: 2, shadow: true},
+            edges: {width: 1,       shadow: true},
+            height: "800",
+            width: "1000"
+        }
 
-        var svg = d3.select("#svg_container > svg")
-        .attr("preserveAspectRatio", "xMidYMid meet")
-        .attr('width', w)
-        .attr('height', h)
-        .append('svg:g')
-        .call(d3.behavior.zoom().on("zoom", redraw))
-        .append('svg:g');
+        var visjs_container = document.getElementById('graph_container');
 
-        svg.append('svg:rect')
-        .attr('width', w)
-        .attr('height', h)
-        .attr('fill', 'white');
+        var data_dump = "";
+        var visjs_data = {nodes: new vis.DataSet(nodes), edges: new vis.DataSet(links)};
 
-        // define our forces
-        // force: node linking
-        var force = d3.layout.force()
-                    .nodes(nodes)
-                    .links(links)
-                    .size([w, h])
-                    .gravity(1)
-                    .linkDistance(100)
-                    .charge(-4000)
-                    .linkStrength(function(x) {
-                        return x.weight * 10;
-                    })
-                    .on("tick", tick)
-                    .start();
-
+        /*
         var link = svg.selectAll("line.link")
                    .data(links)
                    .enter()
@@ -151,48 +134,11 @@ $(document).ready(function() {
             .style("fill", function(d) {
                 return d.color;
             });
+       */
 
-        //node.append("text")
-        //    .attr("x", 12)
-        //    .attr("dy", ".35em")
-        //    .text(function(d) { return d.label; });
-        node.append("svg:a")
-        .attr("xlink:href", function(d) {
-            return d.url;
-        })
-        .append("svg:text")
-        .text(function(d) {
-            if (d.visible) {
-                if (d.campaign) {
-                    return d.label + " (" + d.campaign + ")";
-                } else {
-                    return d.label;
-                }
-            }
-        })
-        .style("fill", "#3399ff")
-        .style("font-family", "Arial")
-        .style("font-size", 12)
-        .attr("x", 12)
-        .attr("dy", ".35em");
+        var network = new vis.Network(visjs_container, visjs_data, visjs_options);
 
-        function redraw() {
-            svg.attr("transform",
-                "translate(" + d3.event.translate + ")"
-                + " scale(" + d3.event.scale + ")");
-        }
-
-        function tick() {
-          link
-              .attr("x1", function(d) { return d.source.x; })
-              .attr("y1", function(d) { return d.source.y; })
-              .attr("x2", function(d) { return d.target.x; })
-              .attr("y2", function(d) { return d.target.y; });
-
-          node
-              .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; });
-        }
-
+ /*
         function mouseover() {
           d3.select(this).select("circle").transition()
               .duration(350)
@@ -204,6 +150,7 @@ $(document).ready(function() {
               .duration(350)
               .attr("r", 8);
         }
+ */
 
         $('#draggable').show()
         .css({'position': 'absolute', 'top': 60, 'left' : 20});
@@ -232,10 +179,12 @@ $(document).ready(function() {
     z-index: 5;
     float: right;
 }
-#svg_container {
+#graph_container {
     border: 1px solid #CCCCCC;
     margin-left: 150px;
     margin-right: 150px;
+    width: 800,
+    height: 1000
 }
 #graph_legend {
     margin-left: -15px;
@@ -243,8 +192,7 @@ $(document).ready(function() {
 </style>
 
 <div id="relationships_service" width="100%">
-    <div id="svg_container">
-        <svg id="graph_container"></svg>
+    <div id="graph_container">
     </div>
     <div id="graph_config" class="ui-widget-content" style="display: none;">
         <div style="vertical-align: top; padding-top: 8px;">Depth:

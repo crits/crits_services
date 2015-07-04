@@ -186,10 +186,10 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
         n = {
               'label': '%s' % value,
               'url': href,
-              'color': color,
               'id': obj_id,
               'type': obj_type,
-              'visible': visible
+              'group': obj_type,
+              'shape': 'dot'
             }
 
         nodes.append(n)
@@ -212,9 +212,8 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             if sid not in obj_graph or (tid + sid) in link_dict:
                 continue
             link = {
-                     'source': obj_graph[sid][0],
-                     'target': tnode,
-                     'weight': 1,
+                     'from': sid,
+                     'to': tid
                    }
             links.append(link)
             link_dict[sid + tid] = True
