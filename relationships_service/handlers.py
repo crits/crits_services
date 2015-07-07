@@ -176,6 +176,9 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
                 value += " (v:%s)" % obj.version
         href = reverse('crits.core.views.details', args=(obj_type, obj_id))
 
+        if len(types) != 0 and obj_type not in types:
+            continue
+
         # For every campaign on this object, make a new node in the list.
         if hasattr(obj, 'campaign'):
             for i, campaign in enumerate(obj.campaign):
