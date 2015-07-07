@@ -16,6 +16,8 @@ $(document).ready(function() {
     var nodes = [];
     var links = [];
 
+    $('#node_types').on('change', function() { $('#change_graph').trigger('click'); });
+
     $(document).on('click', '#change_graph', function(e) {
         $('#graph_container').empty();
         // get data from server.
