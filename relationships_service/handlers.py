@@ -36,24 +36,57 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
         'Target': 'email_address'
     }
 
-    # color scheme:
-    # http://colorschemedesigner.com/#00426p4O9CCPc
-    color_dict = {
-        'Actor': '#900C0C',
-        'Backdoor': '#5A2C75',
-        'Campaign': '#FF3737',
-        'Certificate': '#FFA837',
-        'Comment': '#3A98DA',
-        'Domain': '#33EB33',
-        'Email': '#FF8989',
-        'Event': '#B05151',
-        'Exploit': '#8CA336',
-        'Indicator': '#B08751',
-        'IP': '#90570C',
-        'PCAP': '#FFCC89',
-        'RawData': '#4A7797',
-        'Sample': '#8CCBF8',
-        'Target': '#4AA24A'
+    # Define the styles for each of the data types. Absent these, the vis.js library will
+    # auto-select sensible defaults
+    tlo_styles_dict = {
+        'Indicator': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#00CCFF',
+            'color_border': '#007A99',
+            'color_highlight': '#66E0FF',
+            'color_highlight_border': '#00CCFF'
+        },
+        'Event': {
+            'shape': 'dot',
+            'size': 35,
+            'color': '#00FF00',
+            'color_border': '#009900',
+            'color_highlight': '#66FF66',
+            'color_highlight_border': '#00FF00'
+        },
+        'Sample': {
+            'shape': 'dot',
+            'size': 25,
+            'color': '#FF6666',
+            'color_border': '#993D3D',
+            'color_highlight': '#FFA3A3',
+            'color_highlight_border': '#FF6666'
+        },
+        'Email': {
+            'shape': 'dot',
+            'size': 25,
+            'color': '#CC66FF',
+            'color_border': '#7A3D99',
+            'color_highlight': '#E0A3FF',
+            'color_highlight_border': '#CC66FF'
+        },
+        'Domain': {
+            'shape': 'dot',
+            'size': 20,
+            'color': '#FF9933',
+            'color_border': '#995C1F',
+            'color_highlight': '#FFC285',
+            'color_highlight_border': '#FF9933'
+        },
+        'IP': {
+            'shape': 'dot',
+            'size': 20,
+            'color': '#FFFF66',
+            'color_border': '#99993D',
+            'color_highlight': '#FFFFA3',
+            'color_highlight_border': '#FFFF66'
+        }
     }
 
     def inner_collect(obj_type, obj_id, sources, depth):
@@ -143,13 +176,6 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
                 value += " (v:%s)" % obj.version
         href = reverse('crits.core.views.details', args=(obj_type, obj_id))
 
-        if len(types) != 0 and obj_type not in types:
-            color = "#FFFFFF"
-            visible = False
-        else:
-            color = color_dict[obj_type]
-            visible = True
-
         # For every campaign on this object, make a new node in the list.
         if hasattr(obj, 'campaign'):
             for i, campaign in enumerate(obj.campaign):
@@ -171,26 +197,29 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
                         total += count
                     campaign = name + " (" + str(total) + ")"
                     campaign_href = reverse('crits.core.views.details', args=('Campaign', campaign_id))
-                    campaign_color = color_dict['Campaign']
-                    n = {
-                          'label': campaign,
-                          'url': campaign_href,
-                          'color': campaign_color,
-                          'type': 'Campaign',
-                          'visible': True
-                        }
+                    n = tlo_styles_dict['Campaign']
+                    n['label'] = campaign
+                    n['url'] = campaign_href
+                    n['type'] = 'Campaign'
                     nodes.append(n)
                     obj_graph[campaign_id] = (node_position, [obj_id])
                     node_position += 1
 
-        n = {
-              'label': '%s' % value,
-              'url': href,
-              'id': obj_id,
-              'type': obj_type,
-              'group': obj_type,
-              'shape': 'dot'
+        # n will contain the vis.js-schema data  to load into the graph
+        n = {}
+        if obj_type in tlo_styles_dict:
+            n = dict(tlo_styles_dict[obj_type])
+            n['label'] = '%s' % value
+        else:
+            n = {
+                'label': '%s' % value,
+                'shape': 'dot'
             }
+
+        n['url'] = href
+        n['id'] = obj_id
+        n['type'] = n['group'] = obj_type
+        n['visible'] = True
 
         nodes.append(n)
         obj_graph[obj_id] = (node_position, [str(r.object_id) for r in obj.relationships])
