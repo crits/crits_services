@@ -267,7 +267,8 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
                     n = tlo_styles_dict['Campaign']
                     n['label'] = campaign
                     n['url'] = campaign_href
-                    n['type'] = 'Campaign'
+                    n['type'] = n['group'] = 'Campaign'
+                    n['crits_status'] = 'Analyzed'
                     n['id'] = campaign_id
                     nodes.append(n)
                     obj_graph[campaign_id] = (node_position, [obj_id])
