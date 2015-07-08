@@ -11,10 +11,15 @@ $(document).ready(function() {
     $('#draggable').draggable();
     $('#graph_config').draggable();
     $('#graph_actions').draggable();
+    $('#obj_details').draggable();
 
     // default graph lists
     var nodes = [];
     var links = [];
+
+    // var to hold the network graph object
+    var network = null;
+    var visjs_data = {};
 
     $('#node_types').on('change', function() { $('#change_graph').trigger('click'); });
 
@@ -105,8 +110,8 @@ $(document).ready(function() {
         var visjs_container = document.getElementById('graph_container');
 
         var data_dump = "";
-        var visjs_data = {nodes: new vis.DataSet(nodes), edges: new vis.DataSet(links)};
-        var network = new vis.Network(visjs_container, visjs_data, visjs_options);
+        visjs_data = {nodes: new vis.DataSet(nodes), edges: new vis.DataSet(links)};
+        network = new vis.Network(visjs_container, visjs_data, visjs_options);
 
         $('#draggable').show()
         .css({'position': 'absolute', 'top': 60, 'left' : 20});
@@ -114,7 +119,30 @@ $(document).ready(function() {
         .css({'position': 'absolute', 'top': 60, 'right' : 20});
         $('#graph_actions').show()
         .css({'position': 'absolute', 'top': 275, 'right' : 20});
-    }
+        $('#obj_details').show()
+        .css({'position': 'absolute', 'top': 500, 'left' : 20});
+
+        // Configure vis.js events
+        network.on('selectNode', update_details);
+    };
+
+    function update_details(obj) {
+        var selected_nodes = obj['nodes'];
+
+        // If the selection contains more than one node, or no nodes, then ignore
+        if(selected_nodes.length != 1) {
+           $('#obj_details').html('<p><b>Details:</b></p>');
+           return;
+        }
+
+        var selected_node_data = visjs_data['nodes'].get({filter: function(e, i, a) { return selected_nodes[0] == e['id']; }});
+        var html_details = "<p><b>Details:</b></p><p><ul>";
+        html_details += "<li>Type: " + selected_node_data[0]['group'] + "</li>";
+        html_details += "<li>Link: <a target=\"blank\" href=\"" + selected_node_data[0]['url'] + "\">" + selected_node_data[0]['id'] + "</a></li>";
+        html_details += "<li>Status: " + selected_node_data[0]['crits_status'] + "</li>";
+        html_details += "</ul></p>";
+        $('#obj_details').html(html_details);
+    };
 
 });
 
@@ -134,6 +162,12 @@ $(document).ready(function() {
     width: 100px;
     z-index: 5;
     float: right;
+}
+#obj_details {
+    width: 300px;
+    height: 200px;
+    z-index: 5;
+    float: left;
 }
 #graph_container {
     border: 1px solid #CCCCCC;
@@ -200,5 +234,8 @@ $(document).ready(function() {
             <li style="color: #8CCBF8;"><span style="color: #000;">Samples</span></li>
             <li style="color: #4AA24A;"><span style="color: #000;">Targets</span></li>
         </ul>
+    </div>
+    <div id="obj_details" class="ui-widget-content" style="display: none;">
+     <p><b>Details:</b></p>
     </div>
 </div>

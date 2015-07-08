@@ -220,6 +220,7 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             }
 
         n['url'] = href
+        n['crits_status'] = obj['status'];
         n['id'] = obj_id
         n['type'] = n['group'] = obj_type
         n['visible'] = True
