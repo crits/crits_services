@@ -268,6 +268,7 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
                     n['label'] = campaign
                     n['url'] = campaign_href
                     n['type'] = 'Campaign'
+                    n['id'] = campaign_id
                     nodes.append(n)
                     obj_graph[campaign_id] = (node_position, [obj_id])
                     node_position += 1
