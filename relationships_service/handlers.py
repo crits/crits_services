@@ -39,6 +39,70 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
     # Define the styles for each of the data types. Absent these, the vis.js library will
     # auto-select sensible defaults
     tlo_styles_dict = {
+        'Actor': {
+            'shape': 'dot',
+            'size': 25,
+            'color': '#900C0C',
+            'color_border': '#700C0C',
+            'color_highlight': '#90FCFC',
+            'color_highlight_border': '#900C0C'
+        },
+        'Backdoor': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#5A2C75',
+            'color_border': '#3A1C55',
+            'color_highlight': '#7040B0',
+            'color_highlight_border': '#5A2C75'
+        },
+        'Campaign': {
+            'shape': 'dot',
+            'size': 40,
+            'color': '#FF3737',
+            'color_border': '#D72020',
+            'color_highlight': '#FF6868',
+            'color_highlight_border': '#FF3737'
+        },
+        'Certificate': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#FFA837',
+            'color_border': '#D08020',
+            'color_highlight': '#FFC060',
+            'color_highlight_border': '#FFA837'
+        },
+        'Exploit': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#8CA336',
+            'color_border': '#709020',
+            'color_highlight': '#A8CC60',
+            'color_highlight_border': '#8CA336'
+        },
+        'PCAP': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#FFCC89',
+            'color_border': '#D0A860',
+            'color_highlight': '#FFE0B0',
+            'color_highlight_border': '#FFCC89'
+        },
+        'Raw Data': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#4A7797',
+            'color_border': '#306080',
+            'color_highlight': '#6090B8',
+            'color_highlight_border': '#4A7797'
+        },
+        'Target': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#4AA24A',
+            'color_border': '#308030',
+            'color_highlight': '#60C860',
+            'color_highlight_border': '#4AA24A'
+        },
         'Indicator': {
             'shape': 'dot',
             'size': 10,
