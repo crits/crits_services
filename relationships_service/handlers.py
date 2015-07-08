@@ -42,50 +42,50 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
         'Indicator': {
             'shape': 'dot',
             'size': 10,
-            'color': '#00CCFF',
-            'color_border': '#007A99',
-            'color_highlight': '#66E0FF',
-            'color_highlight_border': '#00CCFF'
+            'color': '#B08751',
+            'color_border': '#907050',
+            'color_highlight': '#CCA075',
+            'color_highlight_border': '#B08751'
         },
         'Event': {
             'shape': 'dot',
             'size': 35,
-            'color': '#00FF00',
-            'color_border': '#009900',
-            'color_highlight': '#66FF66',
-            'color_highlight_border': '#00FF00'
+            'color': '#B05151',
+            'color_border': '#904040',
+            'color_highlight': '#D07171',
+            'color_highlight_border': '#B05151'
         },
         'Sample': {
             'shape': 'dot',
             'size': 25,
-            'color': '#FF6666',
-            'color_border': '#993D3D',
-            'color_highlight': '#FFA3A3',
-            'color_highlight_border': '#FF6666'
+            'color': '#8CCBF8',
+            'color_border': '#70AADC',
+            'color_highlight': '#A0D0FF',
+            'color_highlight_border': '#8CCBF8'
         },
         'Email': {
             'shape': 'dot',
             'size': 25,
-            'color': '#CC66FF',
-            'color_border': '#7A3D99',
-            'color_highlight': '#E0A3FF',
-            'color_highlight_border': '#CC66FF'
+            'color': '#FF8989',
+            'color_border': '#CF7070',
+            'color_highlight': '#FFB0B0',
+            'color_highlight_border': '#FF8989'
         },
         'Domain': {
             'shape': 'dot',
             'size': 20,
-            'color': '#FF9933',
-            'color_border': '#995C1F',
-            'color_highlight': '#FFC285',
-            'color_highlight_border': '#FF9933'
+            'color': '#33EB33',
+            'color_border': '#25C025',
+            'color_highlight': '#55FF55',
+            'color_highlight_border': '#33EB33'
         },
         'IP': {
             'shape': 'dot',
             'size': 20,
-            'color': '#FFFF66',
-            'color_border': '#99993D',
-            'color_highlight': '#FFFFA3',
-            'color_highlight_border': '#FFFF66'
+            'color': '#90F70C',
+            'color_border': '#77C80C',
+            'color_highlight': '#B0FF37',
+            'color_highlight_border': '#90F70C'
         }
     }
 
