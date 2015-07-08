@@ -82,10 +82,10 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
         'IP': {
             'shape': 'dot',
             'size': 20,
-            'color': '#90F70C',
-            'color_border': '#77C80C',
-            'color_highlight': '#B0FF37',
-            'color_highlight_border': '#90F70C'
+            'color': '#90570C',
+            'color_border': '#77400C',
+            'color_highlight': '#B06037',
+            'color_highlight_border': '#90570C'
         }
     }
 
