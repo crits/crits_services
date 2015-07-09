@@ -124,6 +124,9 @@ $(document).ready(function() {
 
         // Configure vis.js events
         network.on('selectNode', update_details);
+
+        // Reset the "details" box
+        $('#obj_details').html('<p><b>Details:</b></p>');
     };
 
     function update_details(obj) {
