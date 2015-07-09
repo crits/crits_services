@@ -244,7 +244,7 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             continue
 
         # For every campaign on this object, make a new node in the list.
-        if hasattr(obj, 'campaign'):
+        if 'Campaign' in types and hasattr(obj, 'campaign'):
             for i, campaign in enumerate(obj.campaign):
                 name = "%s" % obj.campaign[i].name
                 if name not in campaign_cache:
