@@ -71,6 +71,30 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             'color_highlight': '#FFC060',
             'color_highlight_border': '#FFA837'
         },
+        'Domain': {
+            'shape': 'dot',
+            'size': 20,
+            'color': '#33EB33',
+            'color_border': '#25C025',
+            'color_highlight': '#55FF55',
+            'color_highlight_border': '#33EB33'
+        },
+        'Email': {
+            'shape': 'dot',
+            'size': 25,
+            'color': '#FF8989',
+            'color_border': '#CF7070',
+            'color_highlight': '#FFB0B0',
+            'color_highlight_border': '#FF8989'
+        },
+        'Event': {
+            'shape': 'dot',
+            'size': 35,
+            'color': '#B05151',
+            'color_border': '#904040',
+            'color_highlight': '#D07171',
+            'color_highlight_border': '#B05151'
+        },
         'Exploit': {
             'shape': 'dot',
             'size': 10,
@@ -78,6 +102,22 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             'color_border': '#709020',
             'color_highlight': '#A8CC60',
             'color_highlight_border': '#8CA336'
+        },
+        'Indicator': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#B08751',
+            'color_border': '#907050',
+            'color_highlight': '#CCA075',
+            'color_highlight_border': '#B08751'
+        },
+        'IP': {
+            'shape': 'dot',
+            'size': 20,
+            'color': '#90570C',
+            'color_border': '#77400C',
+            'color_highlight': '#B06037',
+            'color_highlight_border': '#90570C'
         },
         'PCAP': {
             'shape': 'dot',
@@ -95,30 +135,6 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             'color_highlight': '#6090B8',
             'color_highlight_border': '#4A7797'
         },
-        'Target': {
-            'shape': 'dot',
-            'size': 10,
-            'color': '#4AA24A',
-            'color_border': '#308030',
-            'color_highlight': '#60C860',
-            'color_highlight_border': '#4AA24A'
-        },
-        'Indicator': {
-            'shape': 'dot',
-            'size': 10,
-            'color': '#B08751',
-            'color_border': '#907050',
-            'color_highlight': '#CCA075',
-            'color_highlight_border': '#B08751'
-        },
-        'Event': {
-            'shape': 'dot',
-            'size': 35,
-            'color': '#B05151',
-            'color_border': '#904040',
-            'color_highlight': '#D07171',
-            'color_highlight_border': '#B05151'
-        },
         'Sample': {
             'shape': 'dot',
             'size': 25,
@@ -127,29 +143,13 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             'color_highlight': '#A0D0FF',
             'color_highlight_border': '#8CCBF8'
         },
-        'Email': {
+        'Target': {
             'shape': 'dot',
-            'size': 25,
-            'color': '#FF8989',
-            'color_border': '#CF7070',
-            'color_highlight': '#FFB0B0',
-            'color_highlight_border': '#FF8989'
-        },
-        'Domain': {
-            'shape': 'dot',
-            'size': 20,
-            'color': '#33EB33',
-            'color_border': '#25C025',
-            'color_highlight': '#55FF55',
-            'color_highlight_border': '#33EB33'
-        },
-        'IP': {
-            'shape': 'dot',
-            'size': 20,
-            'color': '#90570C',
-            'color_border': '#77400C',
-            'color_highlight': '#B06037',
-            'color_highlight_border': '#90570C'
+            'size': 10,
+            'color': '#4AA24A',
+            'color_border': '#308030',
+            'color_highlight': '#60C860',
+            'color_highlight_border': '#4AA24A'
         }
     }
 
