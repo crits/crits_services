@@ -141,7 +141,7 @@ class PassiveTotalService(Service):
 
         # Check for trailing slash, because passivetotal.org/api/v1//passive/ is bad.
         if self.url[-1] != '/':
-            base += '/'
+            self.url += '/'
 
         if not apikey:
             self._error("PassiveTotal API key is invalid or blank")
