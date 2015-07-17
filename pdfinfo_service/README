@@ -15,3 +15,7 @@ How to upgrade PDF tools:
             - self.infile = open(file, 'rb')
             + import StringIO
             + self.infile = StringIO.StringIO(file)
+
+TODO:
+- Handle encrypted PDF objects
+    - Example sample: 1e46c60e65ae9f9c9c8850372d8da491
