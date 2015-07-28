@@ -1,17 +1,3 @@
-{% if indicator.has_cybox_repr %}
-    {% with type="Indicator" item=indicator %}       
-        {% include "taxii_service_master_tab.html" %}
-    {% endwith %}
-{% else %}
-<div id="taxii_service" width="100%">
-    <h2>This Indicator cannot be sent via TAXII.</h2>
-    <p>CRITs currently has no way to convert this item to standards. <br/>
-	This means one of two things: 
-		<ul>
-			<li>CybOX currently does not have a representation for an indicator of this type</li>
-			<strong>OR</strong>
-			<li>CRITs doesn't have enough information to populate the minimum required
-	information for the appropriate CybOX object.</li>
-    </p>
-</div>
-{% endif%}
+{% with type="Indicator" item=indicator %}
+    {% include "taxii_service_master_tab.html" %}
+{% endwith %}
