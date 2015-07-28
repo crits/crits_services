@@ -1,6 +1,9 @@
+import logging
+import os
 import pytz
 import socket
-import os
+import uuid
+
 from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import tzutc
@@ -14,12 +17,30 @@ import libtaxii.messages_11 as tm11
 
 from django.conf import settings
 
+from cybox.common import String, DateTime, Hash, UnsignedLong
+from cybox.common.object_properties import CustomProperties, Property
+from cybox.core import Observable
+from cybox.objects.address_object import Address, EmailAddress
+from cybox.objects.artifact_object import Artifact, Base64Encoding, ZlibCompression
+from cybox.objects.domain_name_object import DomainName
+from cybox.objects.email_message_object import EmailHeader, EmailMessage, Attachments
+from cybox.objects.file_object import File
+
+from stix.threat_actor import ThreatActor
+
 from . import taxii
 from . import formats
+from .parsers import STIXParser, STIXParserException
+from .object_mapper import make_cybox_object
+
 from crits.events.event import Event
+from crits.core.class_mapper import class_from_id, class_from_type
 from crits.core.crits_mongoengine import Releasability
-from crits.standards.handlers import import_standards_doc
 from crits.services.handlers import get_config
+
+from crits.vocabulary.ips import IPTypes
+
+logger = logging.getLogger(__name__)
 
 def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
                         certfile=None, start=None, end=None, analyst=None,
@@ -193,6 +214,400 @@ def parse_content_block(content_block, privkey=None, pubkey=None):
     else:
         return None
 
+
+def to_cybox_observable(obj, exclude=None, bin_fmt="raw"):
+    """
+    Convert a CRITs TLO to a CybOX Observable.
+
+    :param obj: The TLO to convert.
+    :type obj: :class:`crits.core.crits_mongoengine.CRITsBaseAttributes`
+    :param exclude: Attributes to exclude.
+    :type exclude: list
+    :param bin_fmt: The format for the binary (if applicable).
+    :type bin_fmt: str
+    """
+
+    type_ = obj._meta['crits_type']
+    if type_ == 'Certificate':
+        custom_prop = Property() # make a custom property so CRITs import can identify Certificate exports
+        custom_prop.name = "crits_type"
+        custom_prop.description = "Indicates the CRITs type of the object this CybOX object represents"
+        custom_prop._value = "Certificate"
+        obje = File() # represent cert information as file
+        obje.md5 = obj.md5
+        obje.file_name = obj.filename
+        obje.file_format = obj.filetype
+        obje.size_in_bytes = obj.size
+        obje.custom_properties = CustomProperties()
+        obje.custom_properties.append(custom_prop)
+        obs = Observable(obje)
+        obs.description = obj.description
+        data = obj.filedata.read()
+        if data: # if cert data available
+            a = Artifact(data, Artifact.TYPE_FILE) # create artifact w/data
+            a.packaging.append(Base64Encoding())
+            obje.add_related(a, "Child_Of") # relate artifact to file
+        return ([obs], obj.releasability)
+    elif type_ == 'Domain':
+        obje = DomainName()
+        obje.value = obj.domain
+        obje.type_ = obj.record_type
+        return ([Observable(obje)], obj.releasability)
+    elif type_ == 'Email':
+        if exclude == None:
+            exclude = []
+
+        observables = []
+
+        obje = EmailMessage()
+        # Assume there is going to be at least one header
+        obje.header = EmailHeader()
+
+        if 'message_id' not in exclude:
+            obje.header.message_id = String(obj.message_id)
+
+        if 'subject' not in exclude:
+            obje.header.subject = String(obj.subject)
+
+        if 'sender' not in exclude:
+            obje.header.sender = Address(obj.sender, Address.CAT_EMAIL)
+
+        if 'reply_to' not in exclude:
+            obje.header.reply_to = Address(obj.reply_to, Address.CAT_EMAIL)
+
+        if 'x_originating_ip' not in exclude:
+            obje.header.x_originating_ip = Address(obj.x_originating_ip,
+                                                  Address.CAT_IPV4)
+
+        if 'x_mailer' not in exclude:
+            obje.header.x_mailer = String(obj.x_mailer)
+
+        if 'boundary' not in exclude:
+            obje.header.boundary = String(obj.boundary)
+
+        if 'raw_body' not in exclude:
+            obje.raw_body = obj.raw_body
+
+        if 'raw_header' not in exclude:
+            obje.raw_header = obj.raw_header
+
+        #copy fields where the names differ between objects
+        if 'helo' not in exclude and 'email_server' not in exclude:
+            obje.email_server = String(obj.helo)
+        if ('from_' not in exclude and 'from' not in exclude and
+            'from_address' not in exclude):
+            obje.header.from_ = EmailAddress(obj.from_address)
+        if 'date' not in exclude and 'isodate' not in exclude:
+            obje.header.date = DateTime(obj.isodate)
+
+        obje.attachments = Attachments()
+
+        observables.append(Observable(obje))
+        return (observables, obj.releasability)
+    elif type_ == 'Indicator':
+        observables = []
+        obje = make_cybox_object(obj.ind_type, obj.value)
+        observables.append(Observable(obje))
+        return (observables, obj.releasability)
+    elif type_ == 'IP':
+        obje = Address()
+        obje.address_value = obj.ip
+        if obj.ip_type == IPTypes.IPv4_ADDRESS:
+            obje.category = "ipv4-addr"
+        elif obj.ip_type == IPTypes.IPv6_ADDRESS:
+            obje.category = "ipv6-addr"
+        elif obj.ip_type == IPTypes.IPv4_SUBNET:
+            obje.category = "ipv4-net"
+        elif obj.ip_type == IPTypes.IPv6_SUBNET:
+            obje.category = "ipv6-subnet"
+        return ([Observable(obje)], obj.releasability)
+    elif type_ == 'PCAP':
+        obje = File()
+        obje.md5 = obj.md5
+        obje.file_name = obj.filename
+        obje.file_format = obj.contentType
+        obje.size_in_bytes = obj.length
+        obs = Observable(obje)
+        obs.description = obj.description
+        art = Artifact(obj.filedata.read(), Artifact.TYPE_NETWORK)
+        art.packaging.append(Base64Encoding())
+        obje.add_related(art, "Child_Of") # relate artifact to file
+        return ([obs], obj.releasability)
+    elif type_ == 'RawData':
+        obje = Artifact(obj.data.encode('utf-8'), Artifact.TYPE_FILE)
+        obje.packaging.append(Base64Encoding())
+        obs = Observable(obje)
+        obs.description = obj.description
+        return ([obs], obj.releasability)
+    elif type_ == 'Sample':
+        if exclude == None:
+            exclude = []
+
+        observables = []
+        f = File()
+        for attr in ['md5', 'sha1', 'sha256']:
+            if attr not in exclude:
+                val = getattr(obj, attr, None)
+                if val:
+                    setattr(f, attr, val)
+        if obj.ssdeep and 'ssdeep' not in exclude:
+            f.add_hash(Hash(obj.ssdeep, Hash.TYPE_SSDEEP))
+        if 'size' not in exclude and 'size_in_bytes' not in exclude:
+            f.size_in_bytes = UnsignedLong(obj.size)
+        if 'filename' not in exclude and 'file_name' not in exclude:
+            f.file_name = obj.filename
+        # create an Artifact object for the binary if it exists
+        if 'filedata' not in exclude and bin_fmt:
+            data = obj.filedata.read()
+            if data: # if sample data available
+                a = Artifact(data, Artifact.TYPE_FILE) # create artifact w/data
+                if bin_fmt == "zlib":
+                    a.packaging.append(ZlibCompression())
+                    a.packaging.append(Base64Encoding())
+                elif bin_fmt == "base64":
+                    a.packaging.append(Base64Encoding())
+                f.add_related(a, "Child_Of") # relate artifact to file
+        if 'filetype' not in exclude and 'file_format' not in exclude:
+            #NOTE: this doesn't work because the CybOX File object does not
+            #   have any support built in for setting the filetype to a
+            #   CybOX-binding friendly object (e.g., calling .to_dict() on
+            #   the resulting CybOX object fails on this field.
+            f.file_format = obj.filetype
+        observables.append(Observable(f))
+        return (observables, obj.releasability)
+    else:
+        return (None, None)
+
+def to_stix_indicator(obj):
+    """
+    Creates a STIX Indicator object from a CybOX object.
+
+    Returns the STIX Indicator and the original CRITs object's
+    releasability list.
+    """
+    from stix.indicator import Indicator as S_Ind
+    from stix.common.identity import Identity
+    ind = S_Ind()
+    obs, releas = to_cybox_observable(obj)
+    for ob in obs:
+        ind.add_observable(ob)
+    #TODO: determine if a source wants its name shared. This will
+    #   probably have to happen on a per-source basis rather than a per-
+    #   object basis.
+    identity = Identity(name=settings.COMPANY_NAME)
+    ind.set_producer_identity(identity)
+
+    return (ind, releas)
+
+def to_stix_actor(obj):
+    """
+    Create a STIX Actor.
+    """
+
+    ta = ThreatActor()
+    ta.title = obj.name
+    ta.description = obj.description
+    for tt in obj.threat_types:
+        ta.add_type(tt)
+    for m in obj.motivations:
+        ta.add_motivation(m)
+    for ie in obj.intended_effects:
+        ta.add_intended_effect(ie)
+    for s in obj.sophistications:
+        ta.add_sophistication(s)
+    #for i in self.identifiers:
+    return (ta, obj.releasability)
+
+def to_stix_incident(obj):
+    """
+    Creates a STIX Incident object from a CRITs Event.
+
+    Returns the STIX Incident and the original CRITs Event's
+    releasability list.
+    """
+    from stix.incident import Incident
+    inc = Incident(title=obj.title, description=obj.description)
+
+    return (inc, obj.releasability)
+
+def has_cybox_repr(obj):
+    """
+    Determine if this indicator is of a type that can
+    successfully be converted to a CybOX object.
+
+    :return The CybOX representation if possible, else False.
+    """
+    try:
+        rep = make_cybox_object(obj)
+        return rep
+    except:
+        return False
+
+def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
+    """
+    Converts a CRITs object to a STIX document.
+
+    The resulting document includes standardized representations
+    of all related objects noted within items_to_convert.
+
+    :param items_to_convert: The list of items to convert to STIX/CybOX
+    :type items_to_convert: Either a list of CRITs objects OR
+                            a list of {'_type': CRITS_TYPE, '_id': CRITS_ID} dicts
+    :param loaded: Set to True if you've passed a list of CRITs objects as
+                    the value for items_to_convert, else leave False.
+    :type loaded: bool
+    :param bin_fmt: Specifies the format for Sample data encoding.
+                    Options: None (don't include binary data in STIX output),
+                                "raw" (include binary data as is),
+                                "base64" (base64 encode binary data)
+
+    :returns: A dict indicating which items mapped to STIX indicators, ['stix_indicators']
+                which items mapped to STIX observables, ['stix_observables']
+                which items are included in the resulting STIX doc, ['final_objects']
+                and the STIX doc itself ['stix_obj'].
+    """
+
+    from cybox.common import Time, ToolInformationList, ToolInformation
+    from stix.common import StructuredText, InformationSource
+    from stix.core import STIXPackage, STIXHeader
+    from stix.common.identity import Identity
+
+    # These lists are used to determine which CRITs objects
+    # go in which part of the STIX document.
+    ind_list = ['Indicator']
+    obs_list = ['Certificate',
+                'Domain',
+                'Email',
+                'IP',
+                'PCAP',
+                'RawData',
+                'Sample']
+    actor_list = ['Actor']
+
+    # Store message
+    stix_msg = {
+                    'stix_incidents': [],
+                    'stix_indicators': [],
+                    'stix_observables': [],
+                    'stix_actors': [],
+                    'final_objects': []
+                }
+
+    if not loaded: # if we have a list of object metadata, load it before processing
+        items_to_convert = [class_from_id(item['_type'], item['_id'])
+                                for item in items_to_convert]
+
+    # add self to the list of items to STIXify
+    if obj not in items_to_convert:
+        items_to_convert.append(obj)
+
+    # add any email attachments
+    attachments = []
+    for obj in items_to_convert:
+        if obj._meta['crits_type'] == 'Email':
+            for rel in obj.relationships:
+                if rel.relationship == 'Contains':
+                    atch = class_from_id('Sample', rel.object_id)
+                    if atch not in items_to_convert:
+                        attachments.append(atch)
+    items_to_convert.extend(attachments)
+
+    # grab ObjectId of items
+    refObjs = {key.id: 0 for key in items_to_convert}
+
+    relationships = {}
+    stix = []
+    from stix.indicator import Indicator as S_Ind
+    for obj in items_to_convert:
+        obj_type = obj._meta['crits_type']
+        if obj_type == class_from_type('Event')._meta['crits_type']:
+            stx, release = to_stix_incident(obj)
+            stix_msg['stix_incidents'].append(stx)
+        elif obj_type in ind_list: # convert to STIX indicators
+            stx, releas = to_stix_indicator(obj)
+            stix_msg['stix_indicators'].append(stx)
+            refObjs[obj.id] = S_Ind(idref=stx.id_)
+        elif obj_type in obs_list: # convert to CybOX observable
+            if obj_type == class_from_type('Sample')._meta['crits_type']:
+                stx, releas = to_cybox_observable(obj, bin_fmt=bin_fmt)
+            else:
+                stx, releas = to_cybox_observable(obj)
+
+            # wrap in stix Indicator
+            ind = S_Ind()
+            for ob in stx:
+                ind.add_observable(ob)
+            ind.title = "CRITs %s Top-Level Object" % obj_type
+            ind.description = ("This is simply a CRITs %s top-level "
+                                "object, not actually an Indicator. "
+                                "The Observable is wrapped in an Indicator"
+                                " to facilitate documentation of the "
+                                "relationship." % obj_type)
+            ind.confidence = 'None'
+            stx = ind
+            stix_msg['stix_indicators'].append(stx)
+            refObjs[obj.id] = S_Ind(idref=stx.id_)
+        elif obj_type in actor_list: # convert to STIX actor
+            stx, releas = to_stix_actor(obj)
+            stix_msg['stix_actors'].append(stx)
+
+        # get relationships from CRITs objects
+        for rel in obj.relationships:
+            if rel.object_id in refObjs:
+                relationships.setdefault(stx.id_, {})
+                relationships[stx.id_][rel.object_id] = (rel.relationship,
+                                                            rel.rel_confidence.capitalize(),
+                                                            rel.rel_type)
+
+        stix_msg['final_objects'].append(obj)
+        stix.append(stx)
+
+    # set relationships on STIX objects
+    for stix_obj in stix:
+        for rel in relationships.get(stix_obj.id_, {}):
+            if isinstance(refObjs.get(rel), S_Ind): # if is STIX Indicator
+                stix_obj.related_indicators.append(refObjs[rel])
+                rel_meta = relationships.get(stix_obj.id_)[rel]
+                stix_obj.related_indicators[-1].relationship = rel_meta[0]
+                stix_obj.related_indicators[-1].confidence = rel_meta[1]
+
+                # Add any Email Attachments to CybOX EmailMessage Objects
+                if isinstance(stix_obj, S_Ind):
+                    if 'EmailMessage' in stix_obj.observable.object_.id_:
+                        if rel_meta[0] == 'Contains' and rel_meta[2] == 'Sample':
+                            email = stix_obj.observable.object_.properties
+                            email.attachments.append(refObjs[rel].idref)
+
+    tool_list = ToolInformationList()
+    tool = ToolInformation("CRITs", "MITRE")
+    tool.version = settings.CRITS_VERSION
+    tool_list.append(tool)
+    i_s = InformationSource(
+        time=Time(produced_time= datetime.now()),
+        identity=Identity(name=settings.COMPANY_NAME),
+        tools=tool_list)
+
+    if obj._meta['crits_type'] == "Event":
+        stix_desc = obj.description()
+        stix_int = obj.event_type()
+        stix_title = obj.title()
+    else:
+        stix_desc = "STIX from %s" % settings.COMPANY_NAME
+        stix_int = "Collective Threat Intelligence"
+        stix_title = "Threat Intelligence Sharing"
+    header = STIXHeader(information_source=i_s,
+                        description=StructuredText(value=stix_desc),
+                        package_intents=[stix_int],
+                        title=stix_title)
+
+    stix_msg['stix_obj'] = STIXPackage(incidents=stix_msg['stix_incidents'],
+                    indicators=stix_msg['stix_indicators'],
+                    threat_actors=stix_msg['stix_actors'],
+                    stix_header=header,
+                    id_=uuid.uuid4())
+
+    return stix_msg
+
 def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirmed=False):
     """
     :param analyst The analyst triggering this TAXII service call
@@ -252,7 +667,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
     # each/any recipient feed successfully.
 
     # Convert object and chosen related items to STIX/CybOX
-    stix_msg = obj.to_stix(relation_choices, bin_fmt="base64")
+    stix_msg = to_stix(obj, relation_choices, bin_fmt="base64")
     stix_doc = stix_msg['stix_obj']
 
     # if doing a preview of content, return content now
@@ -480,3 +895,53 @@ def encrypt_block(blob, pubkey):
     s.write(temp_buff, p7)
     x = temp_buff.read()
     return x
+
+def import_standards_doc(data, analyst, method, ref=None, make_event=False,
+                         source=None):
+    """
+    Import a standards document into CRITs.
+
+    :param data: The document data to feed into
+                 :class:`crits.standards.parsers.STIXParser`
+    :type data: str
+    :param analyst: The user importing the document.
+    :type analyst: str
+    :param method: The method of acquiring this document.
+    :type method: str
+    :param ref: The reference to this document.
+    :type ref: str
+    :param make_event: Whether or not we should make an Event for this document.
+    :type make_event: bool
+    :param source: The name of the source who provided this document.
+    :type source: str
+    :returns: dict with keys:
+              "success" (boolean),
+              "reason" (str),
+              "imported" (list),
+              "failed" (list)
+    """
+
+    ret = {
+            'success': False,
+            'reason': '',
+            'imported': [],
+            'failed': []
+          }
+
+    try:
+        parser = STIXParser(data, analyst, method)
+        parser.parse_stix(reference=ref, make_event=make_event, source=source)
+        parser.relate_objects()
+    except STIXParserException, e:
+        logger.exception(e)
+        ret['reason'] = str(e.message)
+        return ret
+    except Exception, e:
+        logger.exception(e)
+        ret['reason'] = str(e)
+        return ret
+
+    ret['imported'] = parser.imported
+    ret['failed'] = parser.failed
+    ret['success'] = True
+    return ret
