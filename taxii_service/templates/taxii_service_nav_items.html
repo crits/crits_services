@@ -2,3 +2,14 @@
 <li class='mmenu_item'>
     <a href="{% url 'taxii_service.views.taxii_agent' %}">TAXII Agent</a>
 </li>
+<li class='mmenu_item'>
+    <a href id="new-standards" class="dialogClick" dialog="new-standards" persona="new" title="Import STIX Document">STIX Import</a>
+</li>
+
+<script>
+    $(document).ready(function() {
+        stdDialog("new-standards", {title: "STIX Document"}, {
+            new: { open: file_upload_dialog, submit: defaultSubmit }
+        });
+    });
+</script>
