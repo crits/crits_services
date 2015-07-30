@@ -164,9 +164,9 @@ class YaraService(Service):
                 logger.exception("File cannot be opened: %s" % sigfile)
                 raise ServiceConfigError(str(e))
             try:
-                rules = yara.compile(source=data)
-            except yara.SyntaxError:
-                message = "Not a valid yara rules file: %s" % sigfile
+                rules = yara.compile(source=data, error_on_warning=False)
+            except yara.SyntaxError, e:
+                message = "Yara rules file: %s: %s" % (sigfile, str(e))
                 logger.exception(message)
                 raise ServiceConfigError(message)
             sigsets.append({'name': filename, 'rules': rules})
