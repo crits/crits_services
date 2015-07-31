@@ -1,6 +1,6 @@
 import binascii
 import logging
-import os.path
+import os
 import yara
 
 from django.conf import settings
@@ -157,20 +157,23 @@ class YaraService(Service):
             sigfile = os.path.abspath(os.path.join(sigdir, sigfile.strip()))
             logger.debug("Full path to file file: %s" % sigfile)
             filename = os.path.basename(sigfile)
+            dirname = os.path.dirname(sigfile)
+            old = os.getcwd()
             try:
                 with open(sigfile, "rt") as f:
                     data = f.read()
+                    os.chdir(dirname)
             except Exception as e:
                 logger.exception("File cannot be opened: %s" % sigfile)
                 raise ServiceConfigError(str(e))
             try:
                 rules = yara.compile(source=data, error_on_warning=False)
-            except yara.SyntaxError, e:
+            except yara.SyntaxError as e:
                 message = "Yara rules file: %s: %s" % (sigfile, str(e))
                 logger.exception(message)
                 raise ServiceConfigError(message)
             sigsets.append({'name': filename, 'rules': rules})
-
+            os.chdir(old) 
         logger.debug(str(sigsets))
         return sigsets
 
