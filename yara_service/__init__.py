@@ -171,6 +171,7 @@ class YaraService(Service):
             except yara.SyntaxError as e:
                 message = "Yara rules file: %s: %s" % (sigfile, str(e))
                 logger.exception(message)
+                os.chdir(old)
                 raise ServiceConfigError(message)
             sigsets.append({'name': filename, 'rules': rules})
             os.chdir(old) 
