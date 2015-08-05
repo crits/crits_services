@@ -3,7 +3,7 @@
 import os
 import datetime
 import argparse
-from io import BytesIO
+from io import StringIO
 
 from lxml import etree
 from crits.core.basescript import CRITsBaseScript
@@ -204,8 +204,8 @@ class CRITsScript(CRITsBaseScript):
         api_packages = []
         for package in packages:
             xml = etree.tostring(package)
-            bytesio = BytesIO(xml)
-            stix_package = STIXPackage.from_xml(bytesio)
+            stringio = StringIO(xml)
+            stix_package = STIXPackage.from_xml(stringio)
             api_packages.append(stix_package[0])
             
         return api_packages
