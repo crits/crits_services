@@ -1,5 +1,4 @@
 from distutils.version import StrictVersion
-import cStringIO
 import logging
 import os
 import sys
