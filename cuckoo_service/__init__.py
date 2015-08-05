@@ -1,4 +1,4 @@
-from cStringIO import StringIO
+from io import BytesIO
 import fnmatch
 from hashlib import md5
 import os
@@ -475,7 +475,7 @@ class CuckooService(Service):
         self._notify()
 
         # TODO: Error handling
-        t = tarfile.open(mode='r:bz2', fileobj=StringIO(dropped))
+        t = tarfile.open(mode='r:bz2', fileobj=BytesIO(dropped))
 
         ignored = self.config.get('ignored_files', '').split('\r\n')
         for f in t.getmembers():
