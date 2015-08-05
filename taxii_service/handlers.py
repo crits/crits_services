@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 from dateutil.parser import parse
 from dateutil.tz import tzutc
-from StringIO import StringIO
+from io import BytesIO
 from M2Crypto import BIO, SMIME, X509, Rand
 
 import libtaxii as t
@@ -194,7 +194,7 @@ def parse_content_block(content_block, privkey=None, pubkey=None):
         if not privkey and not pubkey:
             return None
 
-        inbuf = BIO.MemoryBuffer(StringIO(content_block.content).read())
+        inbuf = BIO.MemoryBuffer(BytesIO(content_block.content).read())
         s = SMIME.SMIME()
         try:
             s.load_key(privkey, pubkey)
@@ -202,12 +202,12 @@ def parse_content_block(content_block, privkey=None, pubkey=None):
             buf = s.decrypt(p7)
         except SMIME.PKCS7_Error:
             return None
-        f = StringIO(buf)
+        f = BytesIO(buf)
         new_block = f.read()
         f.close()
         return parse_content_block(tm.ContentBlock.from_xml(new_block), privkey, pubkey)
     elif content_block.content_binding == t.CB_STIX_XML_111:
-        f = StringIO(content_block.content)
+        f = BytesIO(content_block.content)
         data = f.read()
         f.close()
         return data
