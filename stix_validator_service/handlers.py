@@ -1,6 +1,6 @@
 import sdv
 
-from io import BytesIO
+from io import StringIO
 
 def validate_stix(xml):
     """
@@ -18,7 +18,7 @@ def validate_stix(xml):
             #'profile': None,
              }
     xml = xml.encode('utf-8').strip()
-    f = BytesIO(xml)
+    f = StringIO(xml)
     try:
         result = sdv.validate_xml(f, schemaloc=True)
         rdict['xml'] = result.as_dict()
