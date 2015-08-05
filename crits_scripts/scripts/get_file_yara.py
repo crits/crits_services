@@ -1,7 +1,7 @@
 import sys
 import time
 import tarfile
-from StringIO import StringIO
+from io import BytesIO
 from optparse import OptionParser
 
 from crits.core.mongo_tools import *
@@ -44,7 +44,7 @@ class CRITsScript(CRITsBaseScript):
                 else:
                     info.size = 0
                 try:
-                    tar.addfile(info, StringIO(s))
+                    tar.addfile(info, BytesIO(s))
                 except Exception, e:
                     "Error attempting to add %s to the tarfile: %s" % (f, e)
                     pass
