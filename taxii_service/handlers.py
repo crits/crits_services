@@ -182,7 +182,7 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
 
         for k in objs['imported']:
             ret['successes'] += 1
-            ret[k[0]].append(k[1])
+            ret[objs['imported'][k][0]].append(objs['imported'][k][1])
         for k in objs['failed']:
             ret['failures'].append(k)
 
