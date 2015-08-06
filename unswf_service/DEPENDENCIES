@@ -1,3 +1,4 @@
 Dependencies for unswf (is/are):
 
 pylzma (https://pypi.python.org/pypi/pylzma)
+Flare (http://www.nowrap.de/flare.html) - you need to put the flare binary in /usr/local/bin/

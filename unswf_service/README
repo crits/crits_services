@@ -1,7 +1,7 @@
-unswf_service 0.0.2
+unswf_service 0.0.5
 -------------
 
-Decompress Flash files.
+Decompress Flash files and estract some ActionScript with Flare.
 
 
 
