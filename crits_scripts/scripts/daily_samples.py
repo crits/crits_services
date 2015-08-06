@@ -26,3 +26,4 @@ class CRITsScript(CRITsBaseScript):
             info.size = len(s)
             tar.addfile(info, BytesIO(s))
         tar.close()
+    
