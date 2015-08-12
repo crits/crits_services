@@ -7,6 +7,7 @@ from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
+from crits.vocabulary.relationships import RelationshipTypes
 
 from . import forms
 
@@ -102,7 +103,7 @@ class UpxService(Service):
                         related_id=str(obj.id),
                         campaign=obj.campaign,
                         method=self.name,
-                        relationship='Packed_From',
+                        relationship=RelationshipTypes.PACKED_FROM,
                         user=self.current_task.username)
             # Filename is just the md5 of the data...
             self._add_result("file_added", filename, {'md5': filename})
