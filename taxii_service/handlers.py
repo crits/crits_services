@@ -39,6 +39,7 @@ from crits.core.crits_mongoengine import Releasability
 from crits.services.handlers import get_config
 
 from crits.vocabulary.ips import IPTypes
+from crits.vocabulary.relationships import RelationshipTypes
 
 logger = logging.getLogger(__name__)
 
@@ -506,7 +507,7 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
     for obj in items_to_convert:
         if obj._meta['crits_type'] == 'Email':
             for rel in obj.relationships:
-                if rel.relationship == 'Contains':
+                if rel.relationship == RelationshipTypes.CONTAINS:
                     atch = class_from_id('Sample', rel.object_id)
                     if atch not in items_to_convert:
                         attachments.append(atch)

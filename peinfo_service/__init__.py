@@ -21,6 +21,7 @@ from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
+from crits.vocabulary.relationships import RelationshipTypes
 
 from . import forms
 
@@ -166,7 +167,7 @@ class PEInfoService(Service):
                             related_id=str(obj.id),
                             campaign=obj.campaign,
                             method=self.name,
-                            relationship='Extracted_From',
+                            relationship=RelationshipTypes.CONTAINED_WITHIN,
                             user=self.current_task.username)
                 rsrc_md5 = hashlib.md5(f[1]).hexdigest()
                 self._add_result("file_added", f[0], {'md5': rsrc_md5})
