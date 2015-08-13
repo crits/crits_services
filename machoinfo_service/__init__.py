@@ -104,7 +104,7 @@ class MachOInfoService(Service):
                                              related_id=str(obj.id),
                                              related_type=obj._meta['crits_type'],
                                              method=self.name,
-                                             relationship=RelationshipTypes.RELATED_TO,
+                                             relationship=RelationshipTypes.CONTAINED_WITHIN,
                                              user=self.current_task.username)
                             self._add_result("cert_added", filename, {'md5': filename})
 
