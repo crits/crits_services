@@ -16,6 +16,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from crits.services.core import Service, ServiceConfigError
 
+from crits.vocabulary.relationships import RelationshipTypes
 #from . import forms
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,7 @@ class unswfService(Service):
                 related_id=str(self.obj.id),
                 campaign=self.obj.campaign,
                 method=self.name,
-                relationship='Related_To',
+                relationship=RelationshipTypes.RELATED_TO,
                 user=self.current_task.username)
             self._add_result("file_added", name, {'md5': h})
 

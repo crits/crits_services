@@ -13,6 +13,7 @@ from crits.samples.handlers import handle_file
 from crits.pcaps.handlers import handle_pcap_file
 from crits.core.user_tools import get_user_organization
 from crits.services.core import Service, ServiceConfigError
+from crits.vocabulary.relationships import RelationshipTypes
 
 from . import forms
 
@@ -494,7 +495,7 @@ class CuckooService(Service):
                         related_id=str(self.obj.id),
                         campaign=self.obj.campaign,
                         method=self.name,
-                        relationship='Related_To',
+                        relationship=RelationshipTypes.RELATED_TO,
                         user=self.current_task.username)
             self._add_result("file_added", name, {'md5': h})
 
