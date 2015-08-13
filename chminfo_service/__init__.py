@@ -237,7 +237,7 @@ class CHMInfoService(Service):
                             related_id=str(obj.id),
                             campaign=obj.campaign,
                             method=self.name,
-                            relationship=RelationshipTypes.RELATED_TO,
+                            relationship=RelationshipTypes.CONTAINED_WITHIN,
                             user=self.current_task.username)
                 self._add_result("chm_items_added", f[0], {'size': f[1],'md5': f[2]})
         else:
