@@ -41,7 +41,7 @@ def generate_timeline(obj_type, obj_id, user):
                             and a reference of <b>'%s'</b>" % (name,
                                                             obj_type,
                                                             cgi.escape(instance.method),
-                                                            cgi.escape(instance.reference))
+                                                            cgi.escape(str(instance.reference)))
                     append_to_timeline(timeline, instance.date, i)
 
     # releasability
