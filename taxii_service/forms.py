@@ -125,6 +125,18 @@ class TAXIIServiceConfigForm(forms.Form):
                                 widget=forms.TextInput(),
                                 help_text="Your TAXII data feed name.")
 
+    namespace = forms.CharField(required=True,
+                                label="Namespace (URI)",
+                                initial='http://example.com',
+                                widget=forms.TextInput(),
+                                help_text="The XML namespace to use in STIX documents.")
+
+    ns_prefix = forms.CharField(required=True,
+                                label="Namespace Prefix",
+                                initial='example',
+                                widget=forms.TextInput(),
+                                help_text="The XML namespace prefix to use in STIX IDs.")
+
     create_events = forms.BooleanField(required=False,
                                        label="Events",
                                        initial=False,
