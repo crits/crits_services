@@ -14,6 +14,7 @@ import libtaxii as t
 import libtaxii.clients as tc
 import libtaxii.messages as tm
 import libtaxii.messages_11 as tm11
+from stix.utils import set_id_namespace
 
 from django.conf import settings
 
@@ -645,6 +646,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
     keyfile = sc['keyfile']
     certfile = sc['certfile']
     certfiles = sc['certfiles']
+    namespace = {sc['namespace']: sc['ns_prefix']}
 
     # collect the list of destination data feeds for the message
     destination_feeds = []
@@ -658,6 +660,9 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
         # TAXII form ensures that this shouldn't happen, but just in case...
         ret['reason'] = "Misconfigured TAXII service -- contact an administrator."
         return ret
+
+    # Set the XML namespace for STIX documents
+    set_id_namespace(namespace)
 
     # The minimum required info has been provided by user via the TAXII form.
     # Form configuration and validation ensures the form is valid.
