@@ -36,8 +36,10 @@ class TAXIIForm(forms.Form):
 
         # populate all of the multi choice fields with valid options
         # from the context CRITs object's related items.
-        for _type in get_supported_types(): # TODO the hardcoded args to collect_objects should be revisited
-            collected = collect_objects(item._meta['crits_type'], item.id, 1, 100, 100, [_type], user_srcs)
+        for _type in get_supported_types():
+            collected = collect_objects(item._meta['crits_type'], item.id,
+                                        1, sc['max_rels'], sc['max_rels'],
+                                        [_type], user_srcs)
             field = forms.MultipleChoiceField(required=False, label=_type)
             field.choices = filter_and_format_choices(collected, item, _type)
             self.fields[_type] = field
@@ -141,6 +143,16 @@ class TAXIIServiceConfigForm(forms.Form):
                                        label="Events",
                                        initial=False,
                                        help_text="Create events for all STIX documents.")
+
+    max_rels = forms.IntegerField(required=True,
+                                  label="Maximum Related",
+                                  initial=200,
+                                  min_value=0,
+                                  max_value=5000,
+                                  widget=forms.TextInput(),
+                                  help_text="The maximum number of related "
+                                            "items, of each type, that can "
+                                            "be selected for a TAXII message.")
 
     certfiles = forms.CharField(required=True,
                                 label="Configuration",
