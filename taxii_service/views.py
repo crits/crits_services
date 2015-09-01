@@ -48,11 +48,11 @@ def preview_taxii_service(request, crits_type, crits_id):
     :param crits_type The type of the crits object that will be converted
     :param crits_id The ID of the crits object that will be converted
     """
-    if request.method == "GET":
+    if request.method == "POST":
         return get_taxii_result(request, crits_type, crits_id, True)
     else:
         return render_to_response('error.html',
-                                  {'error': "Must be GET request."},
+                                  {'error': "Must be POST request."},
                                   RequestContext(request))
 
 @user_passes_test(user_can_view_data)
@@ -91,7 +91,7 @@ def get_taxii_result(request, crits_type, crits_id, preview):
     # did user accept responsibility for potential releasability updates?
     confirm_rel = True if "updates_confirmed" in request.POST else False
 
-    form = forms.TAXIIForm(request.user.username, obj, request.GET if preview else request.POST)
+    form = forms.TAXIIForm(request.user.username, obj, request.POST)
     if form.is_valid(): # is_valid seems to ensure that multiselect data was all in original form
         rcpts = form.cleaned_data.get('rcpts', [])
         relation_choices = form.get_chosen_relations()
