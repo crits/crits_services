@@ -17,6 +17,7 @@ class ThreatGRIDConfigForm(forms.Form):
                                 initial=False,
                                 help_text="Automatically submit samples during triage.")
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(ThreatGRIDConfigForm, self).__init__(*args, **kwargs)
 
 class ThreatGRIDRunForm(forms.Form):
@@ -28,4 +29,5 @@ class ThreatGRIDRunForm(forms.Form):
                                   initial=True)
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(ThreatGRIDRunForm, self).__init__(*args, **kwargs)

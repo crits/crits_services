@@ -15,4 +15,5 @@ class FarsightConfigForm(forms.Form):
                                        initial='https://api.dnsdb.info')
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(FarsightConfigForm, self).__init__(*args, **kwargs)

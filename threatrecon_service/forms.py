@@ -14,4 +14,5 @@ class ThreatreconConfigForm(forms.Form):
                                    initial='https://api.threatrecon.co/api/v1/search')
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(ThreatreconConfigForm, self).__init__(*args, **kwargs)

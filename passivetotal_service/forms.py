@@ -14,4 +14,5 @@ class PassiveTotalConfigForm(forms.Form):
                                    initial='https://www.passivetotal.org/api/v1')
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(PassiveTotalConfigForm, self).__init__(*args, **kwargs)
