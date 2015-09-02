@@ -24,6 +24,7 @@ class TAXIIForm(forms.Form):
         The way the form fields are populated ensures that only STIXifyable / CybOXable
         options are provided.
         """
+        kwargs.setdefault('label_suffix', ':')
         super(TAXIIForm, self).__init__(*args, **kwargs)
         sc = get_config('taxii_service')
 
@@ -140,6 +141,7 @@ class TAXIIServiceConfigForm(forms.Form):
                                           " source.")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(TAXIIServiceConfigForm, self).__init__(*args, **kwargs)
 
 
@@ -156,6 +158,7 @@ class UploadStandardsForm(forms.Form):
     make_event = forms.BooleanField(required=False, label="Create event", initial=True)
 
     def __init__(self, username, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(UploadStandardsForm, self).__init__(*args, **kwargs)
         self.fields['source'].choices = [(c.name,
                                           c.name) for c in get_source_names(True,

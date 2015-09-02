@@ -18,4 +18,5 @@ class TotalHashConfigForm(forms.Form):
                                    initial='https://api.totalhash.com/')
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(TotalHashConfigForm, self).__init__(*args, **kwargs)

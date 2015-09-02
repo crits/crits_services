@@ -27,6 +27,7 @@ class TCPDumpForm(forms.Form):
                                help_text="Save resulting PCAP to the database.")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(TCPDumpForm, self).__init__(*args, **kwargs)
         self.fields['timestamp'].choices = [("", ""),
                                             ("-t", "(-t) Don't print"),
@@ -65,4 +66,5 @@ class MetaCapConfigForm(forms.Form):
                               initial='')
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(MetaCapConfigForm, self).__init__(*args, **kwargs)
