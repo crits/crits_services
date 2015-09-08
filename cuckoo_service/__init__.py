@@ -215,6 +215,8 @@ class CuckooService(Service):
             self._debug(r.text)
             return None
         response = dict(r.json())
+        # Compatibility with Optiv fork of Cuckoo.
+        # See https://github.com/crits/crits_services/pull/147
         if 'task_ids' in response:
             task_id = response['task_ids'][0]
         else:
