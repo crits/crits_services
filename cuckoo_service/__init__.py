@@ -214,8 +214,11 @@ class CuckooService(Service):
             self._error(msg)
             self._debug(r.text)
             return None
-
-        task_id = dict(r.json())['task_id']
+        response = dict(r.json())
+        if 'task_ids' in response:
+            task_id = response['task_ids'][0]
+        else:
+            task_id = response['task_id']
         self._info("Submitted Task ID %s for machine %s" % (task_id, machine))
 
         return task_id
