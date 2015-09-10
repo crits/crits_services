@@ -8,10 +8,10 @@ How to upgrade PDF tools:
         Requires script to be renamed from pdf-parser.py to pdfparser.py
         cPDFDocument class needs to support StringIO:
             - self.infile = open(file, 'rb')
-            + import StringIO
-            + self.infile = StringIO.StringIO(file)
+            + import io
+            + self.infile = io.BytesIO(file)
     PDFid
         cBinaryFile class needs to support StringIO:
             - self.infile = open(file, 'rb')
-            + import StringIO
-            + self.infile = StringIO.StringIO(file)
+            + import io
+            + self.infile = io.BytesIO(file)
