@@ -54,13 +54,13 @@ def get_object_values(obj):
 
 def get_crits_ip_type(type_):
     if type_ == 'ipv4-addr':
-        return IPTypes.IPv4_ADDRESS
+        return IPTypes.IPV4_ADDRESS
     elif type_ == 'ipv6-addr':
-        return IPTypes.IPv6_ADDRESS
+        return IPTypes.IPV6_ADDRESS
     elif type_ == 'ipv4-net':
-        return IPTypes.IPv4_SUBNET
+        return IPTypes.IPV4_SUBNET
     elif type_ == 'ipv6-net':
-        return IPTypes.IPv6_SUBNET
+        return IPTypes.IPV6_SUBNET
     else:
         return None
 
@@ -204,13 +204,13 @@ def make_cybox_object(type_, value=None):
         acct.description = value
         return acct
     elif type_ in IPTypes.values():
-        if type_ == IPTypes.IPv4_ADDRESS:
+        if type_ == IPTypes.IPV4_ADDRESS:
             name = 'ipv4-addr'
-        elif type_ == IPTypes.IPv6_ADDRESS:
+        elif type_ == IPTypes.IPV6_ADDRESS:
             name = 'ipv6-addr'
-        elif type_ == IPTypes.IPv4_SUBNET:
+        elif type_ == IPTypes.IPV4_SUBNET:
             name = 'ipv4-net'
-        elif type_ == IPTypes.IPv6_SUBNET:
+        elif type_ == IPTypes.IPV6_SUBNET:
             name = 'ipv6-net'
         return Address(category=name, address_value=value)
     elif type_ == IndicatorTypes.API_KEY:
@@ -319,13 +319,13 @@ def make_crits_object(cybox_obj):
     elif isinstance(cybox_obj, Address):
         name = str(cybox_obj.category)
         if name == 'ipv4-addr':
-            o.object_type = IPTypes.IPv4_ADDRESS
+            o.object_type = IPTypes.IPV4_ADDRESS
         elif name == 'ipv6-addr':
-            o.object_type = IPTypes.IPv6_ADDRESS
+            o.object_type = IPTypes.IPV6_ADDRESS
         elif name == 'ipv4-net':
-            o.object_type = IPTypes.IPv4_SUBNET
+            o.object_type = IPTypes.IPV4_SUBNET
         elif name == 'ipv6-net':
-            o.object_type = IPTypes.IPv6_SUBNET
+            o.object_type = IPTypes.IPV6_SUBNET
         o.value = get_object_values(cybox_obj.address_value)
         return o
     elif isinstance(cybox_obj, API):
