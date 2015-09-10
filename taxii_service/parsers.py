@@ -1,6 +1,6 @@
 import datetime
 
-from StringIO import StringIO
+from io import BytesIO
 
 from .object_mapper import (
     make_crits_object,
@@ -101,7 +101,7 @@ class STIXParser():
         as the true source.
         """
 
-        f = StringIO(self.data)
+        f = BytesIO(self.data)
         self.package = STIXPackage.from_xml(f)
         f.close()
         if not self.package:
