@@ -1,4 +1,4 @@
-from cStringIO import StringIO
+from io import BytesIO
 import fnmatch
 from hashlib import md5
 import os
@@ -214,8 +214,13 @@ class CuckooService(Service):
             self._error(msg)
             self._debug(r.text)
             return None
-
-        task_id = dict(r.json())['task_id']
+        response = dict(r.json())
+        # Compatibility with Optiv fork of Cuckoo.
+        # See https://github.com/crits/crits_services/pull/147
+        if 'task_ids' in response:
+            task_id = response['task_ids'][0]
+        else:
+            task_id = response['task_id']
         self._info("Submitted Task ID %s for machine %s" % (task_id, machine))
 
         return task_id
@@ -476,7 +481,7 @@ class CuckooService(Service):
         self._notify()
 
         # TODO: Error handling
-        t = tarfile.open(mode='r:bz2', fileobj=StringIO(dropped))
+        t = tarfile.open(mode='r:bz2', fileobj=BytesIO(dropped))
 
         ignored = self.config.get('ignored_files', '').split('\r\n')
         for f in t.getmembers():
