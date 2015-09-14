@@ -6,6 +6,8 @@ import os
 from datetime import datetime
 import subprocess
 
+#vocab stuff
+from crits.vocabulary.relationships import RelationshipTypes
 # for computing the MD5
 from hashlib import md5
 
@@ -118,7 +120,7 @@ class pdf2txtService(Service):
             raw_obj = class_from_id("RawData", res["_id"])
             self._warning("obj.id: %s, raw_id:%s, suc: %s" % (str(obj.id), str(raw_obj.id), repr(res['success']) ) )
             # update relationship if a related top-level object is supplied
-            rel_type = "Related_To"
+            rel_type = RelationshipTypes.RELATED_TO
             if obj.id != raw_obj.id: #don't form relationship to itself
                 resy = obj.add_relationship(rel_item=raw_obj,
                                         rel_type=rel_type,
