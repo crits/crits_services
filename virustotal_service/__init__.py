@@ -14,7 +14,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 from crits.services.core import Service, ServiceConfigError
 from crits.pcaps.handlers import handle_pcap_file
-from crits.domains.handlers import get_domain, upsert_domain
+from crits.domains.handlers import upsert_domain
 from crits.domains.domain import Domain
 from crits.core.user_tools import get_user_organization
 
@@ -863,15 +863,13 @@ class VirusTotalService(Service):
 
         self._add_result("pcap added", h, {'md5': h})
 
-    def _process_domain(self, domain, ip, scandate):
+def _process_domain(self, domain, ip, scandate):
         """
         Add domain to CRITs.
-
         Args:
             domain (str): pcap data
             scandate (str): scan date from when domain is believed to be
             collected.
-
         TODO:
             handle IP
         """
@@ -879,43 +877,31 @@ class VirusTotalService(Service):
         self._info("Adding domain %s and creating relationship to %s" % (str(domain), str(self.obj.id)))
         self._notify()
 
-        url_contains_ip = False
-        #domain_host = urlparse.urlparse(domain).hostname
-        (sdomain, fqdn) = get_domain(domain)
-        if sdomain == "no_tld_found_error":
-            try:
-                validate_ipv46_address(domain_or_ip)
-                url_contains_ip = True
-            except DjangoValidationError:
-                pass
-        if not url_contains_ip:
-            result = None
-            result = upsert_domain(sdomain,
-                                   fqdn,
-                                   self.obj.source,
-                                   username=self.current_task.username,
-                                   campaign=None,
-                                   confidence=None,
-                                   bucket_list=None,
-                                   ticket=None)
+        result = upsert_domain(domain,
+                               self.obj.source,
+                               username=self.current_task.username,
+                               campaign=None,
+                               confidence=None,
+                               bucket_list=None,
+                               ticket=None)
 
-            # If domain was added, create relationship.
-            if not result['success']:
-                self._info("Cannot add domain %s. reason: %s" % (str(domain), str(result['message'])))
-            else:
-                # add relationshiop
-                dmain = result['object']
+        # If domain was added, create relationship.
+        if not result['success']:
+            self._info("Cannot add domain %s. reason: %s" % (str(domain), str(result['message'])))
+        else:
+            # add relationshiop
+            dmain = result['object']
 
-                msg = dmain.add_relationship(rel_item=self.obj,
-                                             rel_type='Related_To',
-                                             rel_date=scandate,
-                                             analyst=self.current_task.username,
-                                             rel_confidence='unknown',
-                                             rel_reason='Provided by VirusTotal. Date is from when vt analysis was performed',
-                                             get_rels=False)
+            msg = dmain.add_relationship(rel_item=self.obj,
+                                         rel_type='Related_To',
+                                         rel_date=scandate,
+                                         analyst=self.current_task.username,
+                                         rel_confidence='unknown',
+                                         rel_reason='Provided by VirusTotal. Date is from when vt analysis was performed',
+                                         get_rels=False)
 
-                if not msg['success']:
-                    self._info("Cannot add relationship because %s" % (str(msg['message'])))
+            if not msg['success']:
+                self._info("Cannot add relationship because %s" % (str(msg['message'])))
 
-                dmain.save(username=self.current_task.username)
-                self.obj.save(username=self.current_task.username)
+            dmain.save(username=self.current_task.username)
+            self.obj.save(username=self.current_task.username)
