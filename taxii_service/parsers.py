@@ -29,6 +29,7 @@ from crits.vocabulary.indicators import (
     IndicatorAttackTypes,
     IndicatorThreatTypes
 )
+from crits.vocabulary.relationships import RelationshipTypes
 
 from cybox.objects.artifact_object import Artifact
 from cybox.objects.address_object import Address
@@ -512,7 +513,7 @@ class STIXParser():
                                          analyst=analyst)
                 elif self.imported[id_][0] != 'Event':
                     evt.add_relationship(self.imported[id_][1],
-                                         rel_type='Related_To',
+                                         rel_type=RelationshipTypes.RELATED_TO,
                                          rel_confidence='Unknown',
                                          analyst=analyst)
             evt.save(username=analyst)
