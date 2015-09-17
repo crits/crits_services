@@ -180,12 +180,14 @@ class VirusTotalService(Service):
         if response_code != 1:
 
             if response_code == -2: # sample is already queued for analysis - just wait a bit!
+                self._info("Waiting {} minutes for VT processing".format(wait_for_processing))
                 time.sleep(float(60*wait_for_processing))
 
             elif response_code == 0 and upload_unknown_sample: # sample is unknown AND we want to upload it
                 if not self._upload_sample():
                     return # self._error is set by _upload_sample
 
+                self._info("Waiting {} minutes for VT processing".format(wait_for_processing))
                 time.sleep(float(60*wait_for_processing))
                 response_dict = self._get_sample_data()
 
