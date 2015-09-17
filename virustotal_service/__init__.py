@@ -175,13 +175,13 @@ class VirusTotalService(Service):
         if response_code != 1:
 
             if response_code == -2: # sample is already queued for analysis - just wait a bit!
-                time.sleep(60*wait_for_processing)
+                time.sleep(float(60*wait_for_processing))
 
             elif response_code == 0 and upload_unknown_sample: # sample is unknown AND we want to upload it
                 if not self._upload_sample():
                     return # self._error is set by _upload_sample
 
-                time.sleep(60*wait_for_processing)
+                time.sleep(float(60*wait_for_processing))
                 response_dict = self._get_sample_data()
 
             else: # sample is unknown and we DON'T want to upload it
@@ -256,7 +256,7 @@ class VirusTotalService(Service):
         key = self.config.get('vt_api_key', '')
 
         if self.obj._meta['crits_type'] == 'Sample':
-            if config.get('vt_api_key_private', False):
+            if self.config.get('vt_api_key_private', False):
                 params = {"resource": self.obj.md5, "apikey": key, 'allinfo': 1}
             else:
                 params = {"resource": self.obj.md5, "apikey": key}
@@ -301,7 +301,7 @@ class VirusTotalService(Service):
             ###
 
             params = {'apikey': key}
-            f = {'file': (obj.filename, obj.data)}
+            f = {'file': (self.obj.filename, self.obj.filedata.read())}
             response = requests.post('https://www.virustotal.com/vtapi/v2/file/scan', files=f, params=params, proxies=self.proxies)
 
         elif self.obj._meta['crits_type'] == 'Domain':
