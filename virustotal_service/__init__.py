@@ -4,6 +4,7 @@ import urllib
 import urllib2
 import urlparse
 import requests
+import time
 
 from hashlib import md5
 
@@ -13,7 +14,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 from crits.services.core import Service, ServiceConfigError
 from crits.pcaps.handlers import handle_pcap_file
-from crits.domains.handlers import upsert_domain
+from crits.domains.handlers import get_domain, upsert_domain
 from crits.domains.domain import Domain
 from crits.core.user_tools import get_user_organization
 
@@ -27,9 +28,6 @@ class VirusTotalService(Service):
     Check the VirusTotal database to see if it contains this sample, domain
     or IP.
 
-    This does not submit the file to VirusTotal, but only performs a
-    lookup of the sample's MD5.
-
     Requires an API key available from virustotal.com
 
     TODO:
@@ -38,7 +36,7 @@ class VirusTotalService(Service):
     """
 
     name = "virustotal_lookup"
-    version = '3.1.0'
+    version = '3.2.0'
     supported_types = ['Sample', 'Domain', 'IP']
     required_fields = []
     description = "Look up a Sample, Domain or IP in VirusTotal"
@@ -112,26 +110,18 @@ class VirusTotalService(Service):
 
         TODO:
             Add optional switch in the get request to store the pcap as a temp
-            file before adding it to CRITs. Switch is stream=True and CRITs
+            file before adding it to Crits. Switch is stream=True and Crits
             provides a handler for temp files.
             Make Error message uniform like the rest
         """
         network_url = self.config.get('vt_network_url', '')
         params = {'apikey': self.config.get('vt_api_key', ''), 'hash': md5}
 
-        if settings.HTTP_PROXY:
-            proxies = { 'http': settings.HTTP_PROXY,
-                        'https': settings.HTTP_PROXY }
-        else:
-            proxies = {}
-
         try:
-            response = requests.get(network_url, params=params, proxies=proxies)
+            response = requests.get(network_url, params=params, proxies=self.proxies)
         except Exception as e:
-            key = self.config.get('vt_api_key', '')
-            error = str(e).replace(key, 'REDACTED')
-            logger.error("Virustotal: network connection error for PCAP (%s)" % error)
-            self._error("Network connection error checking virustotal for PCAP (%s)" % error)
+            logger.error("Virustotal: network connection error for PCAP (%s)" % e)
+            self._error("Network connection error checking virustotal for PCAP (%s)" % e)
             return None
 
         if response.headers['content-type'] == 'application/cap':
@@ -145,10 +135,9 @@ class VirusTotalService(Service):
             return None
 
     def run(self, obj, config):
-        # We assign config and obj to self because it is referenced often
-        # outside this script
-        # This is model after the guys who wrote the cuckoo script and all
-        # credit goes to them on this cool trick
+        # We assign config and obj to self because it is referenced often outside this script
+        # This is model after the guys who wrote the cuckoo script and all credit goes to them
+        # on this cool trick
         self.config = config
         self.obj = obj
 
@@ -159,51 +148,56 @@ class VirusTotalService(Service):
         sample_url = config.get('vt_query_url', '')
         domain_url = config.get('vt_domain_url', '')
         ip_url = config.get('vt_ip_url', '')
+        upload_unknown_sample = config.get('vt_upload_unknown_sample', True)
+        wait_for_processing = config.get('vt_wait_for_processing', 5) # time in m to wait before asking vt if the processing of a new sample is done
         if not key:
             self._error("No valid VT key found")
             return
 
-        # Process parameters for a GET request for Sample, Domain, or IP adress
-        if obj._meta['crits_type'] == 'Sample':
-            if private_key:
-                parameters = {"resource": obj.md5, "apikey": key, 'allinfo': 1}
-            else:
-                parameters = {"resource": obj.md5, "apikey": key}
-            vt_data = urllib.urlencode(parameters)
-            req = urllib2.Request(sample_url, vt_data)
-        elif obj._meta['crits_type'] == 'Domain':
-            parameters = {'domain': obj.domain, 'apikey': key}
-            vt_data = urllib.urlencode(parameters)
-            req = urllib2.Request("%s?%s" % (domain_url, vt_data))
-        elif obj._meta['crits_type'] == 'IP':
-            parameters = {'ip': obj.ip, 'apikey': key}
-            vt_data = urllib.urlencode(parameters)
-            req = urllib2.Request("%s?%s" % (ip_url, vt_data))
-
-        # Execute GET request
+        # setup proxy as needed
+        self.proxies = {}
         if settings.HTTP_PROXY:
-            proxy = urllib2.ProxyHandler({'https': settings.HTTP_PROXY})
-            opener = urllib2.build_opener(proxy)
-            urllib2.install_opener(opener)
-        try:
-            response = urllib2.urlopen(req)
-            json = response.read()
-            response_dict = simplejson.loads(json)
-        except Exception as e:
-            logger.error("Virustotal: network connection error (%s)" % e)
-            self._error("Network connection error checking virustotal (%s)" % e)
+            self.proxies = {"https": settings.HTTP_PROXY} # VT only uses https
+
+
+        response_dict = self._get_sample_data()
+        if not response_dict:
+            self._error("Getting sample data from VT failed!")
             return
 
-        # Check to see if a VT provided valid results. If not throw error and
-        # exit
-        if response_dict.get('response_code', 0) != 1:
-            self._error("Exiting because Virustotal provided a negative response code.")
-            return
+        # VT response codes:
+        # 0 = unknown to vt
+        # 1 = known and ready
+        # -2 = queued for analysis
+        response_code = response_dict.get('response_code', 0)
+
+
+        if response_code != 1:
+
+            if response_code == -2: # sample is already queued for analysis - just wait a bit!
+                time.sleep(60*wait_for_processing)
+
+            elif response_code == 0 and upload_unknown_sample: # sample is unknown AND we want to upload it
+                if not self._upload_sample():
+                    return # self._error is set by _upload_sample
+
+                time.sleep(60*wait_for_processing)
+                response_dict = self._get_sample_data()
+
+            else: # sample is unknown and we DON'T want to upload it
+                self._error("Exiting because Virustotal provided a negative response code.")
+                return
+
+            response_dict = self._get_sample_data()
+            if not response_dict or response_dict.get('response_code', 0) != 1:
+                self._error("Getting sample data from VT failed at last!")
+                return
 
         # Process Results for Sample
         if obj._meta['crits_type'] == 'Sample':
             # If we are missing any hashes for this file, add them
             self._process_hashes(response_dict)
+
 
             # Process Public Key data and store scandate for later use
             response = self._process_public_sample(response_dict)
@@ -252,6 +246,82 @@ class VirusTotalService(Service):
             if not response['success']:
                 self._info(response['message'])
 
+    def _get_sample_data(self):
+        """
+        Simple get sample data
+
+        Return: False on failure, dict with json response on success
+        """
+
+        key = self.config.get('vt_api_key', '')
+
+        if self.obj._meta['crits_type'] == 'Sample':
+            if config.get('vt_api_key_private', False):
+                params = {"resource": self.obj.md5, "apikey": key, 'allinfo': 1}
+            else:
+                params = {"resource": self.obj.md5, "apikey": key}
+            url = "https://www.virustotal.com/vtapi/v2/file/report"
+
+        elif self.obj._meta['crits_type'] == 'Domain':
+            params = {'domain': self.obj.domain, 'apikey': key}
+            url = "https://www.virustotal.com/vtapi/v2/domain/report"
+
+        elif self.obj._meta['crits_type'] == 'IP':
+            params = {'ip': self.obj.ip, 'apikey': key}
+            url = "https://www.virustotal.com/vtapi/v2/ip-address/report"
+
+        else:
+            logger.error("Virustotal: Unsupported sample type for %s" % self.obj.md5)
+            return False
+
+
+        try:
+            response = requests.get(url, params=params, proxies=self.proxies)
+            response_dict = response.json()
+        except Exception as e:
+            logger.error("Virustotal: network connection error (%s)" % e)
+            return False
+
+        return response_dict
+
+
+    def _upload_sample(self):
+        """
+        see function name...
+        (supports sample / domain)
+
+        Return: Bool
+        """
+
+        key = self.config.get('vt_api_key', '')
+
+        if self.obj._meta['crits_type'] == 'Sample':
+            ###
+            #TODO: If the sample is larger than 32mb we need to go a different route
+            ###
+
+            params = {'apikey': key}
+            f = {'file': (obj.filename, obj.data)}
+            response = requests.post('https://www.virustotal.com/vtapi/v2/file/scan', files=f, params=params, proxies=self.proxies)
+
+        elif self.obj._meta['crits_type'] == 'Domain':
+            params = {'apikey': key, 'url':self.obj.domain}
+            response = requests.post('https://www.virustotal.com/vtapi/v2/url/scan', params=params, proxies=self.proxies)
+
+        else:
+            self._error("Exiting because Virustotal did not know the sample AND we currently cant upload this type of sample!")
+            return False
+
+
+        upload_response = response.json()
+
+        if upload_response.get('response_code', 0) != 1:
+            self._error("Exiting because Virustotal did not know the sample AND we couldn't upload it. Msg.: " + upload_response['verbose_msg'])
+            return False
+
+        return True
+
+
     def _process_hashes(self, report):
         """
         Process hash data from VirusTotal.
@@ -263,7 +333,7 @@ class VirusTotalService(Service):
         """
 
         save = False
-# SSDEEP stuff is not present in regular report
+
 #        if self.obj.ssdeep != report['ssdeep']:
 #            self.obj.ssdeep = report['ssdeep']
 #            save = True
@@ -276,7 +346,7 @@ class VirusTotalService(Service):
 
         if save:
             self.obj.save(username=self.current_task.username)
-        return
+        return None
 
     def _process_public_sample(self, report):
         """
@@ -325,7 +395,7 @@ class VirusTotalService(Service):
                     "detected":     scans[scan].get('detected', ''),
                     "version":      scans[scan].get('version', ''),
                 }
-                self._add_result('av result', result, detection)
+                self._add_result('av_result', result, detection)
         else:
             status['message'].append("Scan data not included in VT response.")
 
@@ -386,7 +456,7 @@ class VirusTotalService(Service):
                 'Internal Name': sigcheck_dict.get('internal name', ''),
                 'Original Name': sigcheck_dict.get('original name', ''),
                 'Product': sigcheck_dict.get('product', ''),
-                'Link Date': sigcheck_dict.get('link date', ''),
+                'Link Data': sigcheck_dict.get('link date', ''),
                 'Publisher': sigcheck_dict.get('publisher', ''),
                 'Signers': sigcheck_dict.get('signers', ''),
                 'Signing Date': sigcheck_dict.get('signing date', '')
@@ -498,11 +568,13 @@ class VirusTotalService(Service):
                 behaviour_network_dns = behaviour_network_dict.get('dns', [])
                 if behaviour_network_dns:
                     for item in behaviour_network_dns:
+#                        self._process_domain(item.get('hostname', ''), item.get('ip', ''), scandate)
                         # Add domain to CRITs
                         domain = item.get('hostname', None)
                         ip = item.get('ip', None)
                         self._add_result('VirusTotal Behaviour DNS', str(domain), {'IP_Address': str(ip)})
-                        if domain and self.config.get('vt_add_domains', False):
+# if domain and self.config.get('vt_add_domains', False)
+                        if domain:
                             self._process_domain(domain, ip, scandate)
                 else:
                     status['message'].append("DNS behaviour information not included in VT response.")
@@ -551,7 +623,7 @@ class VirusTotalService(Service):
                         'method':   item.get('method', ''),
                         'success':  item.get('success', '')
                     }
-                    self._add_result('VirusTotal Hooking Detected', item.get('type', ''), item_dict)
+                    self._add_result('Virus_Total_Hooking_Detected', item.get('type', ''), item_dict)
             else:
                 status['message'].append("Hooking behaviour information not included in VT response.")
 
@@ -705,7 +777,7 @@ class VirusTotalService(Service):
                         }
                 self._add_result('Resolutions', resolution.get('hostname', ''), stats)
         else:
-           status['message'].append("Resolution information not included in VT response.")
+            status['message'].append("Resolution information not included in VT response.")
 
         detected_communicating_samples = report.get('detected_communicating_samples', [])
         if detected_communicating_samples:
@@ -778,16 +850,17 @@ class VirusTotalService(Service):
         self._info("Adding PCAP and creating relationship to %s" % (str(self.obj.id)))
         self._notify()
         h = md5(pcap).hexdigest()
-        result = handle_pcap_file("%s.pcap" % h,
-                                  pcap,
-                                  self.obj.source,
-                                  user=self.current_task.username,
-                                  description='Created %s' % (scandate),
-                                  related_id=str(self.obj.id),
-                                  related_type="Sample",
-                                  method=self.name,
-                                  reference=None,
-                                  relationship='Related_To')
+        result = handle_pcap_file("%s.pcap" % h,                            # File Name
+                                  pcap,                                     # Pcap data
+                                  self.obj.source,                                      # Data Source
+                                  user=self.current_task.username,          # User adding the PCAP
+                                  description='Created %s' % (scandate),    # Description
+                                  related_id=str(self.obj.id),              # Top level ID of related object
+                                  related_type="Sample",                    # Top level type of the related object
+                                  method=self.name,                         # Method for aquiring the PCAP
+                                  reference=None,                           # Reference to the source of this PCAP
+                                  relationship='Related_To')                # Relationship between parent and the PCAP
+
         self._add_result("pcap added", h, {'md5': h})
 
     def _process_domain(self, domain, ip, scandate):
@@ -806,31 +879,43 @@ class VirusTotalService(Service):
         self._info("Adding domain %s and creating relationship to %s" % (str(domain), str(self.obj.id)))
         self._notify()
 
-        result = upsert_domain(domain,
-                               self.obj.source,
-                               username=self.current_task.username,
-                               campaign=None,
-                               confidence=None,
-                               bucket_list=None,
-                               ticket=None)
+        url_contains_ip = False
+        #domain_host = urlparse.urlparse(domain).hostname
+        (sdomain, fqdn) = get_domain(domain)
+        if sdomain == "no_tld_found_error":
+            try:
+                validate_ipv46_address(domain_or_ip)
+                url_contains_ip = True
+            except DjangoValidationError:
+                pass
+        if not url_contains_ip:
+            result = None
+            result = upsert_domain(sdomain,
+                                   fqdn,
+                                   self.obj.source,
+                                   username=self.current_task.username,
+                                   campaign=None,
+                                   confidence=None,
+                                   bucket_list=None,
+                                   ticket=None)
 
-        # If domain was added, create relationship.
-        if not result['success']:
-            self._info("Cannot add domain %s. reason: %s" % (str(domain), str(result['message'])))
-        else:
-            # add relationshiop
-            dmain = result['object']
+            # If domain was added, create relationship.
+            if not result['success']:
+                self._info("Cannot add domain %s. reason: %s" % (str(domain), str(result['message'])))
+            else:
+                # add relationshiop
+                dmain = result['object']
 
-            msg = dmain.add_relationship(rel_item=self.obj,
-                                         rel_type='Related_To',
-                                         rel_date=scandate,
-                                         analyst=self.current_task.username,
-                                         rel_confidence='unknown',
-                                         rel_reason='Provided by VirusTotal. Date is from when vt analysis was performed',
-                                         get_rels=False)
+                msg = dmain.add_relationship(rel_item=self.obj,
+                                             rel_type='Related_To',
+                                             rel_date=scandate,
+                                             analyst=self.current_task.username,
+                                             rel_confidence='unknown',
+                                             rel_reason='Provided by VirusTotal. Date is from when vt analysis was performed',
+                                             get_rels=False)
 
-            if not msg['success']:
-                self._info("Cannot add relationship because %s" % (str(msg['message'])))
+                if not msg['success']:
+                    self._info("Cannot add relationship because %s" % (str(msg['message'])))
 
-            dmain.save(username=self.current_task.username)
-            self.obj.save(username=self.current_task.username)
+                dmain.save(username=self.current_task.username)
+                self.obj.save(username=self.current_task.username)

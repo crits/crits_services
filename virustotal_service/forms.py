@@ -7,6 +7,14 @@ class VirusTotalConfigForm(forms.Form):
                                 initial=False,
                                 label='Private key?',
                                 help_text="Is the key a private key?")
+    vt_add_domains = forms.BooleanField(required=False,
+                                initial=False,
+                                label='Add Domains?',
+                                help_text="Should we always add domains?")
+    vt_add_pcap = forms.BooleanField(required=False,
+                                initial=False,
+                                label='Pull PCAP?',
+                                help_text="If available, should we pull the pcap file?")
     vt_api_key = forms.CharField(required=True,
                                  label="API Key",
                                  widget=forms.TextInput(),
@@ -28,10 +36,15 @@ class VirusTotalConfigForm(forms.Form):
                                 label="Network URL",
                                 widget=forms.TextInput(),
                                 initial='https://www.virustotal.com/vtapi/v2/file/network-traffic')
-
-
-    def __init__(self, *args, **kwargs):
-        super(VirusTotalConfigForm, self).__init__(*args, **kwargs)
+    vt_upload_unknown_sample = forms.BooleanField(required=False,
+                                initial=True,
+                                label='Upload unknown samples to VT?',
+                                help_text="If VT does not know a sample, should we upload it for analysis?")
+    vt_wait_for_processing = forms.CharField(required=False,
+                                label="Wait for processing",
+                                widget=forms.TextInput(),
+                                initial='10',
+                                help_text="How many minutes should we give VT to process newly uploaded samples?")
 
 class VirusTotalRunForm(forms.Form):
     error_css_class = 'error'
@@ -44,6 +57,15 @@ class VirusTotalRunForm(forms.Form):
                                         initial=False,
                                         label='Domain',
                                         help_text="Add Domains")
+    vt_upload_unknown_sample = forms.BooleanField(required=False,
+                                initial=True,
+                                label='Upload unknown samples to VT?',
+                                help_text="If VT does not know a sample, should we upload it for analysis?")
+    vt_wait_for_processing = forms.CharField(required=False,
+                                label="Wait for processing",
+                                widget=forms.TextInput(),
+                                initial='10',
+                                help_text="How many minutes should we give VT to process newly uploaded samples?")
 
     def __init__(self, *args, **kwargs):
         super(VirusTotalRunForm, self).__init__(*args, **kwargs)
