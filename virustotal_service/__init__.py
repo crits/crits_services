@@ -50,7 +50,7 @@ class VirusTotalService(Service):
         if vt_upload_unknown_sample not in config:
             config['vt_upload_unknown_sample'] = False
 
-        config['vt_wait_for_processing'] = config['vt_wait_for_processing'][0]
+        config['vt_wait_for_processing'] = str(config['vt_wait_for_processing'][0])
 
         return forms.VirusTotalRunForm(config)
 
