@@ -47,6 +47,11 @@ class VirusTotalService(Service):
             config['vt_add_pcap'] = False
         if 'vt_add_domains' not in config:
             config['vt_add_domains'] = False
+        if vt_upload_unknown_sample not in config or config['vt_upload_unknown_sample'] == False:
+            config['vt_upload_unknown_sample'] = False
+
+        config['vt_wait_for_processing'] = config['vt_wait_for_processing'][0]
+
         return forms.VirusTotalRunForm(config)
 
     @classmethod
@@ -149,7 +154,7 @@ class VirusTotalService(Service):
         domain_url = config.get('vt_domain_url', '')
         ip_url = config.get('vt_ip_url', '')
         upload_unknown_sample = config.get('vt_upload_unknown_sample', True)
-        wait_for_processing = config.get('vt_wait_for_processing', 5) # time in m to wait before asking vt if the processing of a new sample is done
+        wait_for_processing = int(config.get('vt_wait_for_processing', 5)) # time in m to wait before asking vt if the processing of a new sample is done
         if not key:
             self._error("No valid VT key found")
             return

@@ -40,9 +40,10 @@ class VirusTotalConfigForm(forms.Form):
                                 initial=True,
                                 label='Upload unknown samples to VT?',
                                 help_text="If VT does not know a sample, should we upload it for analysis?")
-    vt_wait_for_processing = forms.IntegerField(required=False,
+    vt_wait_for_processing = forms.CharField(required=False,
                                 label="Wait for processing",
-                                initial=5,
+                                initial='5',
+                                widget=forms.TextInput(),
                                 help_text="How many minutes should we give VT to process newly uploaded samples?")
 
 class VirusTotalRunForm(forms.Form):
@@ -57,12 +58,13 @@ class VirusTotalRunForm(forms.Form):
                                         label='Domain',
                                         help_text="Add Domains")
     vt_upload_unknown_sample = forms.BooleanField(required=False,
-                                initial=True,
+                                initial=False,
                                 label='Upload unknown samples to VT?',
                                 help_text="If VT does not know a sample, should we upload it for analysis?")
-    vt_wait_for_processing = forms.IntegerField(required=False,
+    vt_wait_for_processing = forms.CharField(required=False,
                                 label="Wait for processing",
-                                initial=5,
+                                initial='5',
+                                widget=forms.TextInput(),
                                 help_text="How many minutes should we give VT to process newly uploaded samples?")
 
     def __init__(self, *args, **kwargs):
