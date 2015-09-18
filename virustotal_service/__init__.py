@@ -115,7 +115,7 @@ class VirusTotalService(Service):
 
         TODO:
             Add optional switch in the get request to store the pcap as a temp
-            file before adding it to Crits. Switch is stream=True and Crits
+            file before adding it to CRITs. Switch is stream=True and CRITs
             provides a handler for temp files.
             Make Error message uniform like the rest
         """
@@ -140,9 +140,6 @@ class VirusTotalService(Service):
             return None
 
     def run(self, obj, config):
-        # We assign config and obj to self because it is referenced often outside this script
-        # This is model after the guys who wrote the cuckoo script and all credit goes to them
-        # on this cool trick
         self.config = config
         self.obj = obj
 
@@ -402,7 +399,7 @@ class VirusTotalService(Service):
                     "detected":     scans[scan].get('detected', ''),
                     "version":      scans[scan].get('version', ''),
                 }
-                self._add_result('av_result', result, detection)
+                self._add_result('av result', result, detection)
         else:
             status['message'].append("Scan data not included in VT response.")
 
@@ -463,7 +460,7 @@ class VirusTotalService(Service):
                 'Internal Name': sigcheck_dict.get('internal name', ''),
                 'Original Name': sigcheck_dict.get('original name', ''),
                 'Product': sigcheck_dict.get('product', ''),
-                'Link Data': sigcheck_dict.get('link date', ''),
+                'Link Date': sigcheck_dict.get('link date', ''),
                 'Publisher': sigcheck_dict.get('publisher', ''),
                 'Signers': sigcheck_dict.get('signers', ''),
                 'Signing Date': sigcheck_dict.get('signing date', '')
@@ -630,7 +627,7 @@ class VirusTotalService(Service):
                         'method':   item.get('method', ''),
                         'success':  item.get('success', '')
                     }
-                    self._add_result('Virus_Total_Hooking_Detected', item.get('type', ''), item_dict)
+                    self._add_result('Virus Total Hooking Detected', item.get('type', ''), item_dict)
             else:
                 status['message'].append("Hooking behaviour information not included in VT response.")
 
