@@ -138,8 +138,11 @@ class STIXParser():
                 if header.title:
                     title = header.title
                 if hasattr(header, 'package_intents'):
-                    stix_type = str(header.package_intents[0])
-                    event_type = get_crits_event_type(stix_type)
+                    try:
+                        stix_type = str(header.package_intents[0])
+                        event_type = get_crits_event_type(stix_type)
+                    except:
+                        pass
                 if header.description:
                     description = header.description
                     if isinstance(description, StructuredText):
@@ -270,6 +273,11 @@ class STIXParser():
                     continue
 
             for observable in indicator.observables: # get each observable from indicator (expecting only 1)
+                if not observable.object_ or not observable.object_.properties:
+                    self.failed.append(("No valid object_properties was found!",
+                                        type(obs).__name__,
+                                        obs.id_)) # note for display in UI
+                    continue
                 try: # create CRITs Indicator from observable
                     item = observable.object_.properties
                     obj = make_crits_object(item)
