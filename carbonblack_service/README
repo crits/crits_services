@@ -1,0 +1,8 @@
+The Carbon Black service for CRITs
+
+To configure, you'll need to enter the address of your
+Carbon Black server and an API token to authenticate
+to the server.
+
+The service workse on Samples, IPs, and Domains.
+
