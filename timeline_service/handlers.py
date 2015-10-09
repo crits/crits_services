@@ -69,24 +69,12 @@ def generate_timeline(obj_type, obj_id, user):
     for obj in main_obj.obj:
         type_ = obj.object_type
         value = obj.value
-        if hasattr(obj,'name'):
-            name = obj.name
-            if name == type_:
-                object_type = name
-            else:
-                object_type = "%s - %s" % (name, type_)
-            rev = '%s?search_type=object&otype=%s&q=%s&force_full=1' \
-                % (reverse('crits.core.views.global_search_listing'),
-                   "%s - %s" % (type_, name),
-                   urllib.quote(value))
-        else:
-            object_type = type_
-            rev = '%s?search_type=object&otype=%s&q=%s&force_full=1' \
+        rev = '%s?search_type=object&otype=%s&q=%s&force_full=1' \
                 % (reverse('crits.core.views.global_search_listing'),
                    "%s" % (type_),
                    urllib.quote(value))
         link = '<a href="%s">%s</a>' % (cgi.escape(rev), cgi.escape(value))
-        i = "<b>%s</b> object added with a value of :<br />%s" % (object_type,
+        i = "<b>%s</b> object added with a value of :<br />%s" % (type_,
                                                                   link)
         append_to_timeline(timeline, obj.date, i)
 
