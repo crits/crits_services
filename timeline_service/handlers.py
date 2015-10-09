@@ -67,7 +67,8 @@ def generate_timeline(obj_type, obj_id, user):
 
     # objects
     for obj in main_obj.obj:
-        name = obj.name
+        if hasattr(obj,'name'):
+            name = obj.name
         type_ = obj.object_type
         if name == type_:
             object_type = name
