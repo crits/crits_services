@@ -1,3 +1,4 @@
+import cgi
 import urllib
 
 from django.core.urlresolvers import reverse
@@ -39,8 +40,8 @@ def generate_timeline(obj_type, obj_id, user):
                     i = "Source <b>%s</b> provided %s with a method of <b>'%s'</b> \
                             and a reference of <b>'%s'</b>" % (name,
                                                             obj_type,
-                                                            instance.method,
-                                                            instance.reference)
+                                                            cgi.escape(instance.method),
+                                                            cgi.escape(str(instance.reference)))
                     append_to_timeline(timeline, instance.date, i)
 
     # releasability
@@ -48,7 +49,7 @@ def generate_timeline(obj_type, obj_id, user):
         if release.name in users_sources:
             name = release.name
             for instance in release.instances:
-                i = "Release to <b>%s</b> added." % name
+                i = "Release to <b>%s</b> added." % cgi.escape(name)
                 append_to_timeline(timeline, instance.date, i)
 
     # campaigns
@@ -57,26 +58,23 @@ def generate_timeline(obj_type, obj_id, user):
         confidence = campaign.confidence
         description = campaign.description
         rev = reverse('crits.campaigns.views.campaign_details', args=[name,])
-        link = '<a href="%s">%s</a>' % (rev, name)
+        link = '<a href="%s">%s</a>' % (cgi.escape(rev), cgi.escape(name))
         i = "Campaign <b>%s</b> added with a confidence of <b>%s</b> and a \
-                description of '%s'" % (link, confidence, description)
+                description of '%s'" % (link,
+                                        confidence,
+                                        cgi.escape(description))
         append_to_timeline(timeline, campaign.date, i)
 
     # objects
     for obj in main_obj.obj:
-        name = obj.name
         type_ = obj.object_type
-        if name == type_:
-            object_type = name
-        else:
-            object_type = "%s - %s" % (name, type_)
         value = obj.value
         rev = '%s?search_type=object&otype=%s&q=%s&force_full=1' \
                 % (reverse('crits.core.views.global_search_listing'),
-                   "%s - %s" % (type_, name),
+                   "%s" % (type_),
                    urllib.quote(value))
-        link = '<a href="%s">%s</a>' % (rev, value)
-        i = "<b>%s</b> object added with a value of :<br />%s" % (object_type,
+        link = '<a href="%s">%s</a>' % (cgi.escape(rev), cgi.escape(value))
+        i = "<b>%s</b> object added with a value of :<br />%s" % (type_,
                                                                   link)
         append_to_timeline(timeline, obj.date, i)
 
@@ -99,7 +97,7 @@ def generate_timeline(obj_type, obj_id, user):
     for comment in comments:
         comment.comment_to_html()
         i = "<b>%s</b> made a comment: %s" % (comment.analyst,
-                                                comment.comment)
+                                              cgi.escape(comment.comment))
         append_to_timeline(timeline, comment.created, i)
 
     analysis_results = main_obj.get_analysis_results()
@@ -111,15 +109,15 @@ def generate_timeline(obj_type, obj_id, user):
         version = analysis.version
         results = len(analysis.results)
         i = "<b>%s</b> ran <b>%s (%s)</b> and got <b>%d</b> results." % (analyst,
-                                                                          service_name,
-                                                                          version,
-                                                                          results)
+                                                                         service_name,
+                                                                         version,
+                                                                         results)
         append_to_timeline(timeline, analysis.start_date, i)
 
     # tickets
     for ticket in main_obj.tickets:
         i = "<b>%s</b> added Ticket <b>%s</b>" % (ticket.analyst,
-                                    ticket.ticket_number)
+                                                  cgi.escape(ticket.ticket_number))
         append_to_timeline(timeline, ticket.date, i)
 
     # raw data specific timeline entries
@@ -129,7 +127,7 @@ def generate_timeline(obj_type, obj_id, user):
         for inline in main_obj.inlines:
             i = "<b>%s</b> made an inline comment on line <b>%d</b>: %s" % (inline.analyst,
                                                                             inline.line,
-                                                                            inline.comment)
+                                                                            cgi.escape(inline.comment))
             append_to_timeline(timeline, inline.date, i)
 
         # highlights
@@ -162,7 +160,7 @@ def generate_timeline(obj_type, obj_id, user):
                    action.begin_date)
             i += ", set to <b>%s</b>, with a reason of: <b>%s</b>" \
                     % (action.active,
-                       action.reason)
+                       cgi.escape(action.reason))
             append_to_timeline(timeline, action.date, i)
 
         # activity
@@ -171,7 +169,7 @@ def generate_timeline(obj_type, obj_id, user):
                     and said: %s" % (activity.analyst,
                                      activity.start_date,
                                      activity.end_date,
-                                     activity.description)
+                                     cgi.escape(activity.description))
             append_to_timeline(timeline, activity.date, i)
 
     # sort timeline

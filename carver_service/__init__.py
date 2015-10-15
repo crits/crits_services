@@ -4,6 +4,7 @@ from django.template.loader import render_to_string
 
 from crits.samples.handlers import handle_file
 from crits.services.core import Service, ServiceConfigError
+from crits.vocabulary.relationships import RelationshipTypes
 
 from . import forms
 
@@ -56,7 +57,7 @@ class CarverService(Service):
                         related_id=str(obj.id),
                         campaign=obj.campaign,
                         method=self.name,
-                        relationship='Contains',
+                        relationship=RelationshipTypes.CONTAINS,
                         user=self.current_task.username)
             # Filename is just the md5 of the data...
             self._add_result("file_added", filename, {'md5': filename})

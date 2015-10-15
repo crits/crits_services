@@ -4,6 +4,14 @@ references to changes in other repositories. Updates are sorted by commit date
 descending.
 
 Author: wxs
+Date:   2015-06-09
+
+    The passivetotal_lookup service has been changed to use their new APIs.
+    Please make sure you have "https://www.passivetotal.org/api/v1" in the
+    service configuration for the query URL. Failure to do so will cause
+    the service to break once the old APIs are removed.
+
+Author: wxs
 Date:   2015-03-31
 
     The relationship_service received an update which allows it to assign

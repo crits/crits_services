@@ -20,12 +20,14 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
 
     field_dict = {
         'Actor': 'name',
+        'Backdoor': 'name',
         'Campaign': 'name',
         'Certificate': 'md5',
         'Comment': 'object_id',
         'Domain': 'domain',
         'Email': 'date',
         'Event': 'title',
+        'Exploit': 'name',
         'Indicator': 'value',
         'IP': 'ip',
         'PCAP': 'md5',
@@ -34,22 +36,121 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
         'Target': 'email_address'
     }
 
-    # color scheme:
-    # http://colorschemedesigner.com/#00426p4O9CCPc
-    color_dict = {
-        'Actor': '#900C0C',
-        'Campaign': '#FF3737',
-        'Certificate': '#FFA837',
-        'Comment': '#3A98DA',
-        'Domain': '#33EB33',
-        'Email': '#FF8989',
-        'Event': '#B05151',
-        'Indicator': '#B08751',
-        'IP': '#90570C',
-        'PCAP': '#FFCC89',
-        'RawData': '#4A7797',
-        'Sample': '#8CCBF8',
-        'Target': '#4AA24A'
+    # Define the styles for each of the data types. Absent these, the vis.js library will
+    # auto-select sensible defaults
+    tlo_styles_dict = {
+        'Actor': {
+            'shape': 'dot',
+            'size': 25,
+            'color': '#900C0C',
+            'color_border': '#700C0C',
+            'color_highlight': '#90FCFC',
+            'color_highlight_border': '#900C0C'
+        },
+        'Backdoor': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#5A2C75',
+            'color_border': '#3A1C55',
+            'color_highlight': '#7040B0',
+            'color_highlight_border': '#5A2C75'
+        },
+        'Campaign': {
+            'shape': 'dot',
+            'size': 40,
+            'color': '#FF3737',
+            'color_border': '#D72020',
+            'color_highlight': '#FF6868',
+            'color_highlight_border': '#FF3737'
+        },
+        'Certificate': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#FFA837',
+            'color_border': '#D08020',
+            'color_highlight': '#FFC060',
+            'color_highlight_border': '#FFA837'
+        },
+        'Domain': {
+            'shape': 'dot',
+            'size': 20,
+            'color': '#33EB33',
+            'color_border': '#25C025',
+            'color_highlight': '#55FF55',
+            'color_highlight_border': '#33EB33'
+        },
+        'Email': {
+            'shape': 'dot',
+            'size': 25,
+            'color': '#FF8989',
+            'color_border': '#CF7070',
+            'color_highlight': '#FFB0B0',
+            'color_highlight_border': '#FF8989'
+        },
+        'Event': {
+            'shape': 'dot',
+            'size': 35,
+            'color': '#B05151',
+            'color_border': '#904040',
+            'color_highlight': '#D07171',
+            'color_highlight_border': '#B05151'
+        },
+        'Exploit': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#8CA336',
+            'color_border': '#709020',
+            'color_highlight': '#A8CC60',
+            'color_highlight_border': '#8CA336'
+        },
+        'Indicator': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#B08751',
+            'color_border': '#907050',
+            'color_highlight': '#CCA075',
+            'color_highlight_border': '#B08751'
+        },
+        'IP': {
+            'shape': 'dot',
+            'size': 20,
+            'color': '#90570C',
+            'color_border': '#77400C',
+            'color_highlight': '#B06037',
+            'color_highlight_border': '#90570C'
+        },
+        'PCAP': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#FFCC89',
+            'color_border': '#D0A860',
+            'color_highlight': '#FFE0B0',
+            'color_highlight_border': '#FFCC89'
+        },
+        'Raw Data': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#4A7797',
+            'color_border': '#306080',
+            'color_highlight': '#6090B8',
+            'color_highlight_border': '#4A7797'
+        },
+        'Sample': {
+            'shape': 'dot',
+            'size': 25,
+            'color': '#8CCBF8',
+            'color_border': '#70AADC',
+            'color_highlight': '#A0D0FF',
+            'color_highlight_border': '#8CCBF8'
+        },
+        'Target': {
+            'shape': 'dot',
+            'size': 10,
+            'color': '#4AA24A',
+            'color_border': '#308030',
+            'color_highlight': '#60C860',
+            'color_highlight_border': '#4AA24A'
+        }
     }
 
     def inner_collect(obj_type, obj_id, sources, depth):
@@ -131,17 +232,19 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
 
         obj_type = obj._meta['crits_type']
         value = getattr(obj, field_dict[obj_type], '')
+        if obj_type == 'Backdoor':
+            # Append a version or family
+            if obj.version == '':
+                value += " (family)"
+            else:
+                value += " (v:%s)" % obj.version
         href = reverse('crits.core.views.details', args=(obj_type, obj_id))
 
         if len(types) != 0 and obj_type not in types:
-            color = "#FFFFFF"
-            visible = False
-        else:
-            color = color_dict[obj_type]
-            visible = True
+            continue
 
         # For every campaign on this object, make a new node in the list.
-        if hasattr(obj, 'campaign'):
+        if 'Campaign' in types and hasattr(obj, 'campaign'):
             for i, campaign in enumerate(obj.campaign):
                 name = "%s" % obj.campaign[i].name
                 if name not in campaign_cache:
@@ -161,26 +264,32 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
                         total += count
                     campaign = name + " (" + str(total) + ")"
                     campaign_href = reverse('crits.core.views.details', args=('Campaign', campaign_id))
-                    campaign_color = color_dict['Campaign']
-                    n = {
-                          'label': campaign,
-                          'url': campaign_href,
-                          'color': campaign_color,
-                          'type': 'Campaign',
-                          'visible': True
-                        }
+                    n = tlo_styles_dict['Campaign']
+                    n['label'] = campaign
+                    n['url'] = campaign_href
+                    n['type'] = n['group'] = 'Campaign'
+                    n['crits_status'] = 'Analyzed'
+                    n['id'] = campaign_id
                     nodes.append(n)
                     obj_graph[campaign_id] = (node_position, [obj_id])
                     node_position += 1
 
-        n = {
-              'label': '%s' % value,
-              'url': href,
-              'color': color,
-              'id': obj_id,
-              'type': obj_type,
-              'visible': visible
+        # n will contain the vis.js-schema data  to load into the graph
+        n = {}
+        if obj_type in tlo_styles_dict:
+            n = dict(tlo_styles_dict[obj_type])
+            n['label'] = '%s' % value
+        else:
+            n = {
+                'label': '%s' % value,
+                'shape': 'dot'
             }
+
+        n['url'] = href
+        n['crits_status'] = obj['status'];
+        n['id'] = obj_id
+        n['type'] = n['group'] = obj_type
+        n['visible'] = True
 
         nodes.append(n)
         obj_graph[obj_id] = (node_position, [str(r.object_id) for r in obj.relationships])
@@ -202,9 +311,8 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
             if sid not in obj_graph or (tid + sid) in link_dict:
                 continue
             link = {
-                     'source': obj_graph[sid][0],
-                     'target': tnode,
-                     'weight': 1,
+                     'from': sid,
+                     'to': tid
                    }
             links.append(link)
             link_dict[sid + tid] = True
