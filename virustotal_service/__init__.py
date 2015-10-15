@@ -47,7 +47,7 @@ class VirusTotalService(Service):
             config['vt_add_pcap'] = False
         if 'vt_add_domains' not in config:
             config['vt_add_domains'] = False
-        if vt_upload_unknown_sample not in config:
+        if 'vt_upload_unknown_sample' not in config:
             config['vt_upload_unknown_sample'] = False
 
         config['vt_wait_for_processing'] = str(config['vt_wait_for_processing'][0])
