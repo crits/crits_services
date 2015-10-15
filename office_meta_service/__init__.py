@@ -5,6 +5,7 @@ from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
+from crits.vocabulary.relationships import RelationshipTypes
 
 from office_meta import OfficeParser
 from . import forms
@@ -72,7 +73,7 @@ class OfficeMetaService(Service):
                             related_id=str(obj.id),
                             campaign=obj.campaign,
                             method=self.name,
-                            relationship='Extracted_From',
+                            relationship=RelationshipTypes.EXTRACTED_FROM,
                             user=self.current_task.username)
                 stream_md5 = hashlib.md5(curr_dir['data']).hexdigest()
                 added_files.append((name, stream_md5))

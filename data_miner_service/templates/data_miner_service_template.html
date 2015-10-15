@@ -92,7 +92,7 @@
             e.preventDefault();
             e.stopPropagation();
             var me = $(this);
-            var value = me.closest('tr').find('a').text();
+            var value = me.attr('data-val');
             var type = me.attr('data-type');
             if (type == "Domain") {
                 ind_type = 'URI - Domain Name';
@@ -106,7 +106,7 @@
         });
         $(document).on('click', '.edit_raw_indicator', function(e) {
             var me = $(this);
-            var value = me.closest('tr').find('a').text();
+            var value = me.attr('data-val');
             var type = me.attr('data-type');
             $('#raw_indicator_value').val(value);
             if (type == "Domain") {
@@ -144,8 +144,8 @@
     <tbody>
     {% endif %}
         <tr>
-            <td class="ui-icon ui-icon-plusthick create_raw_indicator" data-type="{{ result.Type }}"></td>
-            <td class="ui-icon ui-icon-pencil edit_raw_indicator" data-type="{{ result.Type }}"></td>
+            <td class="ui-icon ui-icon-plusthick create_raw_indicator" data-type="{{ result.Type }}" data-val="{{result.result}}"></td>
+            <td class="ui-icon ui-icon-pencil edit_raw_indicator" data-type="{{ result.Type }}" data-val="{{result.result}}"></td>
             <td class="potential_indicator">
                 {% if result.result %}
                 <a class="potential_link" href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&q={{result.result|urlencode}}">{{result.result}}</a>

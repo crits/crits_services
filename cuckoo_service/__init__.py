@@ -1,4 +1,4 @@
-from cStringIO import StringIO
+from io import BytesIO
 import fnmatch
 from hashlib import md5
 import os
@@ -13,6 +13,7 @@ from crits.samples.handlers import handle_file
 from crits.pcaps.handlers import handle_pcap_file
 from crits.core.user_tools import get_user_organization
 from crits.services.core import Service, ServiceConfigError
+from crits.vocabulary.relationships import RelationshipTypes
 
 from . import forms
 
@@ -213,8 +214,13 @@ class CuckooService(Service):
             self._error(msg)
             self._debug(r.text)
             return None
-
-        task_id = dict(r.json())['task_id']
+        response = dict(r.json())
+        # Compatibility with Optiv fork of Cuckoo.
+        # See https://github.com/crits/crits_services/pull/147
+        if 'task_ids' in response:
+            task_id = response['task_ids'][0]
+        else:
+            task_id = response['task_id']
         self._info("Submitted Task ID %s for machine %s" % (task_id, machine))
 
         return task_id
@@ -475,7 +481,7 @@ class CuckooService(Service):
         self._notify()
 
         # TODO: Error handling
-        t = tarfile.open(mode='r:bz2', fileobj=StringIO(dropped))
+        t = tarfile.open(mode='r:bz2', fileobj=BytesIO(dropped))
 
         ignored = self.config.get('ignored_files', '').split('\r\n')
         for f in t.getmembers():
@@ -494,7 +500,7 @@ class CuckooService(Service):
                         related_id=str(self.obj.id),
                         campaign=self.obj.campaign,
                         method=self.name,
-                        relationship='Related_To',
+                        relationship=RelationshipTypes.RELATED_TO,
                         user=self.current_task.username)
             self._add_result("file_added", name, {'md5': h})
 

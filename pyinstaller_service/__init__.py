@@ -7,6 +7,7 @@ from PyInstaller.cliutils.archive_viewer import get_archive
 
 from crits.raw_data.handlers import handle_raw_data_file
 from crits.services.core import Service
+from crits.vocabulary.relationships import RelationshipTypes
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,7 @@ class pyinstallerService(Service):
                                 self._info("RawData added for %s" % t[5])
                                 res = obj.add_relationship(
                                     rel_item=result['object'],
-                                    rel_type="Extracted_From",
+                                    rel_type=RelationshipTypes.EXTRACTED_FROM,
                                     rel_confidence="high",
                                     analyst=self.current_task.username
                                 )
