@@ -73,9 +73,9 @@ traversing_install()
     for ser in ${tpwd}/*_service ;do
       fbname=$(basename "$ser" _service)
       printf "${INFO}Installing dependencies for ${fbname}${END}\n"
-      if [ -f ${ser}/service_bootstrap ];
+      if [ -f ${ser}/bootstrap ];
       then
-        sudo ${ser}/service_bootstrap
+        sudo ${ser}/bootstrap
         if [ $? -ne 0 ]
         then
           printf "${FAIL}bootstrap failed for ${fbname}!{END}\n"
