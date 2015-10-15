@@ -55,16 +55,51 @@ verify()
 # Creates Default Database Files
 create_files()
 {
-    if [ ! -e /data ];
+    #TODO fix the fixed paths
+    #Perhaps we'll do this later
+    if [ ! -e /data/crits_services ];
     then
         printf "${HEAD}Creating Services Folder${END}\n"
         sudo mkdir -v -p /data/crits_services
     fi
-    # The original script had root remain the owner of these files but
-    # that ended up causing some difficulties
+    #It used to be /data/crits_services
     sudo chown -R $USER:$GROUP /data/crits_services
     chmod -R -v 0755 /data/crits_services
 }
+
+traversing_install()
+{
+    tpwd=$PWD
+    for ser in ${tpwd}/*_service ;do
+      fbname=$(basename "$ser" _service)
+      printf "${INFO}Installing dependencies for ${fbname}${END}\n"
+      if [ -f ${ser}/service_bootstrap ];
+      then
+        sudo ${ser}/service_bootstrap
+        if [ $? -ne 0 ]
+        then
+          printf "${FAIL}bootstrap failed for ${fbname}!{END}\n"
+          exit
+        else
+          printf "${PASS}bootstrap complete for ${fbname}${END}\n"
+        fi
+      fi
+      if [ -f ${ser}/requirements.txt ];
+      then
+        sudo ${pip} install -r ${ser}/requirements.txt
+        if [ $? -ne 0 ]
+        then
+          printf "${FAIL}pip requiremrnts installation failed for ${fbname}!{END}\n"
+          exit
+        else
+          printf "${PASS}pip requiremrnts installation complete for ${fbname}${END}\n"
+        fi
+      fi
+    done
+    #TODO remove this once all the services have their bootstraps and requirements.txt created.
+    printf "\n{INFO}Please manually install the latest version of yara and yara-python.${END}\n"
+}
+
 
 depend_crits()
 {
@@ -75,8 +110,7 @@ depend_crits()
         printf "${FAIL}Dependency installation failed!${END}\n"
         exit
     else
-        printf "${INFO}Dependency installation complete!${END}\n"
-        printf "Please manually install the latest version of yara and yara-python."
+        printf "${PASS}Dependency installation complete!${END}\n"
     fi
 }
 
@@ -178,7 +212,7 @@ else
     STEP=$1
 fi
 
-while [ $STEP -lt 5 ]
+while [ $STEP -lt 4 ]
 do
     case $STEP in
         1)
@@ -219,11 +253,9 @@ do
             fi
             ;;
         2)
-            install_mongo ||exit_restart $STEP ;;
-        3)
             create_files ||exit_restart $STEP ;;
-        4)
-            server_setup ||exit_restart $STEP ;;
+        3)
+            traversing_install ||exit_restart $STEP ;;
         *)
             exit
             ;;
