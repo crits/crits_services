@@ -6,74 +6,227 @@
 # This script is designed to install all of the necessary dependencies for the
 # services available.
 
+#=====================Message Colors=========================
+FAIL=$(tput setaf 1) #red
+PASS=$(tput setaf 2) #green
+HEAD=$(tput setaf 5) #magenta
+INFO=$(tput setaf 6) #cyan
+END=$(tput sgr0)   #ends color
+#============================================================
+PIP='pip'
+PYTH='python'
 
-# Make sure we are working with a 64-bit system.
-ARCH=$(uname -m | sed 's/x86_//;s/amd//;s/i[3-6]86/32/')
-echo "Architecture: $ARCH"
+verify()
+{
+    printf "${INFO}Testing Computer's Architecture${END}\n"
+    ARCH=$(uname -m | sed 's/x86_//;s/amd//;s/i[3-6]86/32/')
+    if [ "$ARCH" -ne '64' ];
+    then
+        printf "${FAIL}Non 64-bit system detected${END}\n"
+        exit
+    else
+        printf "${PASS}Architecure 64-bit Passed${END}\n"
+    fi
+    printf "${INFO}Testing the distro type${END}\n"
+    # Using lsb-release because os-release not available on Ubuntu 10.04
+    if [ -f /etc/redhat-release ];
+    then
+        OS=$(cat /etc/redhat-release | sed 's/ [Enterprise|release].*//')
+        VER=$(cat /etc/redhat-release | sed 's/.*release //;s/ .*$//')
+        #Redhat/CentOS release version
+        REL=$(echo $VER | sed 's/\..//')
+        if [ $REL -lt 7 ];
+        then
+            #change for RHEL/CentOS < Release 7 
+            PIP='pip2.7'
+        fi
+    elif command -v lsb_release >/dev/null 2>&1
+    then
+        OS=$(lsb_release -i| sed 's/Distributor ID:\t//')
+        VER=$(lsb_release -r| sed 's/Release:\t//')
+    else
+        OS=$(uname -s)
+        VER=$(uname -r)
+    fi
+    OS="$(echo "$OS" | tr "[:upper:]" "[:lower:]")"
+    VER="$(echo "$VER" | tr "[:upper:]" "[:lower:]")"
+}
 
-if [ $ARCH -ne '64' ]; then
-  echo "** Non 64-bit system detected **"
-  echo "These dependencies are for a 64-bit system."
-  echo "Exiting.."
-  exit
-fi
+# Creates Default Database Files
+create_files()
+{
+    if [ ! -e /data ];
+    then
+        printf "${HEAD}Creating Services Folder${END}\n"
+        sudo mkdir -v -p /data/crits_services
+    fi
+    # The original script had root remain the owner of these files but
+    # that ended up causing some difficulties
+    sudo chown -R $USER:$GROUP /data/crits_services
+    chmod -R -v 0755 /data/crits_services
+}
 
-# Determine the OS we are working with.
-# Using lsb-release because os-release not available on Ubuntu 10.04
-if [ -f /etc/lsb-release ]; then
-  . /etc/lsb-release
-  OS=$DISTRIB_ID
-  VER=$DISTRIB_RELEASE
-elif [ -f /etc/redhat-release ]; then
-  OS=$(cat /etc/redhat-release | sed 's/ Enterprise.*//')
-  VER=$(cat /etc/redhat-release | sed 's/.*release //;s/ .*$//')
-else
-  OS=$(uname -s)
-  VER=$(uname -r)
-fi
+depend_crits()
+{
+    printf "${HEAD}Installing Python Dependencies${END}\n"
+    sudo ${PIP} install -r requirements.txt
+    if [ $? -ne 0 ]
+    then
+        printf "${FAIL}Dependency installation failed!${END}\n"
+        exit
+    else
+        printf "${INFO}Dependency installation complete!${END}\n"
+        printf "Please manually install the latest version of yara and yara-python."
+    fi
+}
 
-OS="$(echo "$OS" | tr "[:upper:]" "[:lower:]")"
-VER="$(echo "$VER" | tr "[:upper:]" "[:lower:]")"
-
-# Ubuntu: Install as many dependencies as we can using apt-get.
-if [ "$OS" = 'ubuntu' ]
-then
-  echo "Installing dependencies with apt-get"
-  sudo apt-add-repository universe
-  sudo apt-get update
-  sudo apt-get install -y --fix-missing libchm1 clamav upx wireshark
-  sudo ldconfig
-
-# Redhat: Install as many dependencies as we can using yum.
-# TODO: Need to test centos dependencies
-# elif [ "$OS" == 'centos' ] || [ "$OS" == 'redhat' ]
-elif [ "$OS" = 'red hat' ]
-then
-  echo "Installing Yum Packages"
-  # Probably should run the Yum equivelent of apt-get update
-  sudo yum install upx-3.07-1 libchm1 clamav wireshark upx
-
-# OSX: Install as many dependencies as we can using Homebrew.
-elif [ "$OS" = 'darwin' ]
-then
-  command -v brew >/dev/null 2>&1 || {
-    echo "Installation for OSX requires Homebrew. Please visit http://brew.sh/."
+# Error Message
+exit_restart()
+{
+    printf "\n${HEAD}Error: To restart at this step: sh $0 $1${END}\n"
     exit
-  }
-  brew install chmlib clamav wireshark upx
-elif [ "$OS" = 'freebsd' ]
+}
+
+ubuntu_install()
+{
+    printf "${HEAD}Installing dependencies with apt-get${END}\n"
+    sudo apt-add-repository universe
+    sudo apt-get update
+    sudo apt-get install -y --fix-missing libchm1 clamav upx wireshark
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Ubuntu Install Complete${END}\n"
+    else
+      printf "${FAIL}Ubuntu Install Failed${END}\n"
+    fi
+    sudo ldconfig 
+}
+
+debian_install()
+{
+    printf "${HEAD}Installing dependencies with apt-get${END}\n"
+    sudo apt-add-repository universe
+    sudo apt-get update
+    sudo apt-get install -y --fix-missing libchm1 clamav upx wireshark
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Debian Install Complete${END}\n"
+    else
+      printf "${FAIL}Debian Install Failed${END}\n"
+    fi
+    sudo ldconfig
+}
+
+darwin_install()
+{
+    command -v brew >/dev/null 2>&1 || {
+    printf "${HEAD}Installation for OSX requires Homebrew. Please visit http://brew.sh/.${END}\n"
+    exit
+    }
+    brew install chmlib clamav wireshark upx
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Homebrew Install Complete${END}\n"
+    else
+      printf "${FAIL}Homebrew Install Failed${END}\n"
+    fi
+}
+
+freebsd_install()
+{
+    printf "${HEAD}Installing Ports${END}\n"
+    sudo pkg install libchm1 clamav wireshark upx
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Ports Install Complete${END}\n"
+    else
+      printf "${FAIL}Ports Install Failed${END}\n"
+    fi
+}
+
+red_hat_install()
+{
+    printf "${HEAD}Installing Yum Packages${END}\n"
+    sudo yum install upx-3.07-1 libchm1 clamav wireshark upx
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Yum Install Complete${END}\n"
+    else
+      printf "${FAIL}Yum Install Failed${END}\n"
+    fi
+}
+
+centos_install()
+{
+    printf "${HEAD}Installing Yum Packages${END}\n"
+    sudo yum install upx-3.07-1 libchm1 clamav wireshark upx
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Yum Install Complete${END}\n"
+    else
+      printf "${FAIL}Yum Install Failed${END}\n"
+    fi
+}
+#===============================================================
+# This is the Beginning of the Script
+#===============================================================
+# Sees if there is an argument
+if [ -z $1 ];
 then
-  echo "Installing ports"
-  sudo pkg install libchm1 clamav wireshark upx
+    STEP=1
 else
-  echo "Unknown distro!"
-  echo "Detected: $OS $VER"
-  exit
+    STEP=$1
 fi
 
-# Install the rest of our dependencies which are python libraries.
-echo "Installing Python Dependencies"
-sudo pip install -r requirements.txt
-
-echo "Dependency installations complete!"
-echo "Please manually install the latest version of yara and yara-python."
+while [ $STEP -lt 5 ]
+do
+    case $STEP in
+        1)
+            verify
+            if [ "$OS" = 'ubuntu' ]
+            then
+                printf "${PASS}ubuntu is Supported!${END}\n"
+                ubuntu_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            elif [ "$OS" = 'debian' ]
+            then
+                printf "${PASS}Debian is Supported!${END}\n"
+                debian_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            elif [ "$OS" = 'darwin' ]
+            then
+                printf "${PASS}OS X is Supported!${END}\n"
+                darwin_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            elif [ "$OS" = "centos" ]
+            then
+                printf "${PASS}CentOS is Supported!${END}\n"
+                centos_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            elif [ "$OS" = "red hat" ]
+            then
+                printf "${PASS}Red Hat is Supported!${END}\n"
+                red_hat_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            elif [ "$OS" = 'freebsd' ]
+            then
+                printf "${PASS}FreeBSD is Supported${END}\n"
+                freebsd_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            else
+                printf "${FAIL}OS: $OS, need Ubuntu, Debian, Darwin (OS X), CentOS, Red Hat, or FreeBSD${END}\n"
+                exit
+            fi
+            ;;
+        2)
+            install_mongo ||exit_restart $STEP ;;
+        3)
+            create_files ||exit_restart $STEP ;;
+        4)
+            server_setup ||exit_restart $STEP ;;
+        *)
+            exit
+            ;;
+    esac
+    STEP=$((STEP+1))
+done
