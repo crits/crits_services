@@ -20,7 +20,7 @@ class YaraService(Service):
     """
 
     name = "yara"
-    version = '2.0.1'
+    version = '2.0.2'
     distributed = True
     supported_types = ['Sample']
     required_fields = ['md5']
@@ -149,15 +149,19 @@ class YaraService(Service):
         return html
 
     @staticmethod
-    def _compile_rules(sigdir, sigfiles):
+    def _compile_rules(sigdir, sigfiles, sfpath=""):
         if not sigfiles or not sigdir:
             raise ServiceConfigError("No signature files specified.")
         sigsets = []
         for sigfile in sigfiles:
+            if sigfile[0] == '#':
+                continue
             sigfile = os.path.abspath(os.path.join(sigdir, sigfile.strip()))
             logger.debug("Full path to file file: %s" % sigfile)
             filename = os.path.basename(sigfile)
             dirname = os.path.dirname(sigfile)
+            sfname = str(os.path.basename(sfpath))
+            sfext = str(os.path.splitext(sfname))
             old = os.getcwd()
             try:
                 with open(sigfile, "rt") as f:
@@ -167,7 +171,10 @@ class YaraService(Service):
                 logger.exception("File cannot be opened: %s" % sigfile)
                 raise ServiceConfigError(str(e))
             try:
-                rules = yara.compile(source=data)
+                rules = yara.compile(source=data,
+                                        externals = {'filepath': sfpath,
+                                                        'filename': sfname,
+                                                        'extension': sfext })
             except yara.SyntaxError as e:
                 message = "Yara rules file: %s: %s" % (sigfile, str(e))
                 logger.exception(message)
@@ -240,11 +247,17 @@ class YaraService(Service):
             self._info("Submitted job to yara queue.")
         else:
             data = obj.filedata.read()
-            sigsets = self._compile_rules(config['sigdir'], config['sigfiles'])
+            sfpath= str(obj.filename)
+            sfname = str(os.path.basename(obj.filename))
+            sfext = str(os.path.splitext(sfname))
+            sigsets = self._compile_rules(config['sigdir'], config['sigfiles'], sfpath)
             for sigset in sigsets:
                 logger.debug("Signature set name: %s" % sigset['name'])
                 self._info("Scanning with %s" % sigset['name'])
-                matches = sigset['rules'].match(data=data)
+                matches = sigset['rules'].match(data=data,
+                                                 externals = {'filepath': sfpath,
+                                                                'filename': sfname,
+                                                                'extension': sfext })
                 for match in matches:
                     strings = {}
                     for s in match.strings:
