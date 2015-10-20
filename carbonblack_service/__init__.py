@@ -13,6 +13,13 @@ import requests
 import time
 import zipfile
 import traceback
+import sys
+
+try:
+    from pympler.asizeof import asizeof
+    SIZE_CONTROL = True
+except ImportError:
+    SIZE_CONTROL = False
 
 class CarbonBlackService(Service):
     name = "Carbon Black"
@@ -63,6 +70,7 @@ class CarbonBlackService(Service):
         return form, html
 
     def run(self, obj, config):
+        self.MEM_LIMIT = False
         self.obj = obj
         self.config = config
         self.completed_uids = []
@@ -74,6 +82,31 @@ class CarbonBlackService(Service):
 
         elif obj._meta['crits_type'] == 'Domain':
             self.get_carbonblack_domain_data()
+
+    def add_result_data(self, title, key, data):
+        if SIZE_CONTROL:
+            if not self.MEM_LIMIT:
+                mem_size = asizeof(self.current_task.results)
+                if mem_size < 15000000:
+                    self._add_result(title, key, data)
+                else:
+                    self.MEM_LIMIT = True
+        else:
+            self._add_result(title, key, data)
+
+
+    def add_results_data(self, results):
+        if SIZE_CONTROL:
+            if not self.MEM_LIMIT:
+                mem_size = asizeof(self.current_task.results)
+                add_size = asizeof(results)
+                if (mem_size + add_size) < 15000000:
+                    self._add_results(results)
+                else:
+                    self.MEM_LIMIT = True
+        else:
+            self._add_results(results)
+
 
     def get_carbonblack_sample_data(self):
         CB_URL = self.config['cb_server_url']
@@ -88,26 +121,36 @@ class CarbonBlackService(Service):
         found_results = False
         initial_wait_time = self.config.get('cb_initial_wait_time')
         if initial_wait_time > 0:
-            self._info('Sleeping an initial %d seconds' % initial_wait_time)
+            self._debug('Sleeping an initial %d seconds' % initial_wait_time)
             time.sleep(initial_wait_time)
 
         time_waiting = 0
         max_wait_time = self.config.get('cb_max_wait_time')
         while not found_results:
-            process_results = cb.process_search('process_md5:%s' % self.obj.md5)
+            if 'dll' in self.obj.filetype.lower():
+                modload_name = self.obj.filename
+                if modload_name[-4:] != '.dll':
+                    modload_name += '.dll'
+                process_results = cb.process_search('modload:%s' % modload_name)
+            else:
+                process_results = cb.process_search('process_md5:%s' % self.obj.md5)
+
             if process_results['total_results'] != 0:
                 found_results = True
-                self._info("Results found")
+                self._debug("Results found")
             else:
-                time.sleep(10) 
-                time_waiting += 10
-                self._info("No results found, sleeping for 10 seconds")
+                time.sleep(30)
+                time_waiting += 30
+                self._debug("No results found, sleeping for 30 seconds")
                 if time_waiting > max_wait_time:
                     self._info("Timeout hit")
                     break
 
+        process_result_data = []
         for result in process_results['results']:
             data = {}
+            data['subtype'] = 'Processes Found'
+            data['result'] = result['process_name']
             data['start time'] = result['start']
             data['hostname'] = result['hostname']
             data['username'] = result['username']
@@ -119,8 +162,11 @@ class CarbonBlackService(Service):
             data['ChildProc Count'] = result['childproc_count']
             data['CrossProc Count'] = result['crossproc_count']
 
-            self._add_result('Processes Found', result['process_name'], data)
+            process_result_data.append(data)
 
+        self.add_results_data(process_result_data)
+        if self.MEM_LIMIT:
+            return
 
         for result in process_results['results']:
             pid = result['process_pid']
@@ -133,12 +179,21 @@ class CarbonBlackService(Service):
             report = cb.process_report(result['id'], result['segment_id'])
             report_io = StringIO.StringIO(report)
             zfo = zipfile.ZipFile(report_io)
-
+            
             self.show_modloads(zfo, 'Module loads for ' + hostname + '/' + str(pid))
+            if self.MEM_LIMIT:
+                return
             self.show_filemods(zfo, 'File Modifications for ' + hostname + '/' + str(pid))
+            if self.MEM_LIMIT:
+                return
             self.show_regmods(zfo, 'Registry Modifications for ' + hostname + '/' + str(pid))
+            if self.MEM_LIMIT:
+                return
             self.show_netconns(zfo, 'Network Connections for ' + hostname + '/' + str(pid))
+            if self.MEM_LIMIT:
+                return
             self.show_childprocs(zfo, cb, 'Child Processes for ' + hostname + '/' + str(pid), hostname, pid)
+
 
     def get_carbonblack_ip_data(self):
         CB_URL = self.config['cb_server_url']
@@ -153,15 +208,21 @@ class CarbonBlackService(Service):
         if proc_count > 1:
             proc_string = "%d Processes Found" % proc_count
 
+        prd = []
         for result in process_results['results']:
             data = {}
+            data['subtype'] = proc_string
+            data['result'] = result['process_md5']
             data['start time'] = result['start']
             data['hostname'] = result['hostname']
             data['username'] = result['username']
             data['name'] = result['process_name']
             data['pid'] = result['process_pid']
+            prd.append(data)
 
-            self._add_result(proc_string, result['process_md5'], data)
+        self.add_results_data(prd)
+        if self.MEM_LIMIT:
+            return
 
         for result in process_results['results']:
             pid = result['process_pid']
@@ -175,6 +236,7 @@ class CarbonBlackService(Service):
             netconn_obj.close()
             netconn_io = StringIO.StringIO(netconn_data)
             netconn_csv = csv.reader(netconn_io)
+            nc_data = []
             try:
                 while 1:
                     netconns = netconn_csv.next()
@@ -182,16 +244,22 @@ class CarbonBlackService(Service):
                     IP = netconns[1]
                     if IP != self.obj.ip:
                         continue
+                    nc['subtype'] = 'Network Connections to %s' % self.obj.ip
+                    nc['result'] = IP
                     nc['Timestamp'] = netconns[0]
                     nc['Domain'] = netconns[4]
                     nc['Port'] = netconns[2]
                     nc['Protocol'] = netconns[3]
                     nc['Direction'] = netconns[5]
-                    self._add_result('Network Connections to %s' % self.obj.ip, IP, nc)
+                    nc_data.append(nc)
             except StopIteration as si:
                 pass
             except Exception as e:
                 self._info(traceback.format_exc())
+
+            self.add_results_data(nc_data)
+            if self.MEM_LIMIT:
+                return
 
     def get_carbonblack_domain_data(self):
         CB_URL = self.config['cb_server_url']
@@ -206,15 +274,21 @@ class CarbonBlackService(Service):
         if proc_count > 1:
             proc_string = "%d Processes Found" % proc_count
 
+        prd = []
         for result in process_results['results']:
             data = {}
+            data['subtype'] = proc_string
+            data['result'] = result['process_md5']
             data['start time'] = result['start']
             data['hostname'] = result['hostname']
             data['username'] = result['username']
             data['name'] = result['process_name']
             data['pid'] = result['process_pid']
+            prd.append(data)
 
-            self._add_result(proc_string, result['process_md5'], data)
+        self.add_results_data(prd)
+        if self.MEM_LIMIT:
+            return
 
         for result in process_results['results']:
             pid = result['process_pid']
@@ -228,6 +302,7 @@ class CarbonBlackService(Service):
             netconn_obj.close()
             netconn_io = StringIO.StringIO(netconn_data)
             netconn_csv = csv.reader(netconn_io)
+            nc_data = []
             try:
                 while 1:
                     netconns = netconn_csv.next()
@@ -235,90 +310,118 @@ class CarbonBlackService(Service):
                     domain = netconns[4]
                     if domain != self.obj.domain:
                         continue
+                    nc['subtype'] = 'Network Connections to %s' % self.obj.domain
+                    nc['result'] = domain
                     nc['Timestamp'] = netconns[0]
                     nc['IP'] = netconns[1]
                     nc['Port'] = netconns[2]
                     nc['Protocol'] = netconns[3]
                     nc['Direction'] = netconns[5]
-                    self._add_result('Network Connections to %s' % self.obj.domain, domain, nc)
+                    nc_data.append(nc)
             except StopIteration as si:
                 pass
             except Exception as e:
                 self._info(traceback.format_exc())
 
+            self.add_results_data(nc_data)
+            if self.MEM_LIMIT:
+                return
 
     def show_modloads(self, zip_file_object, title):
         modload_obj = zip_file_object.open('csv/modloads.csv')
-        modload_data = modload_obj.read()
+        modload_raw_data = modload_obj.read()
         modload_obj.close()
-        modload_io = StringIO.StringIO(modload_data)
+        modload_io = StringIO.StringIO(modload_raw_data)
         modload_csv = csv.DictReader(modload_io)
+        modload_data = []
         try:
             while 1:
                 modloads = modload_csv.next()
-                md5 = modloads['Md5']
                 ml = {}
+                ml['subtype'] = title
+                ml['result'] = modloads['Md5']
                 ml['Action'] = modloads['ActionTypeDesc']
                 ml['Timestamp'] = modloads['Timestamp']
                 ml['Path'] = modloads['Path']
-                self._add_result(title, md5, ml)
+                modload_data.append(ml)
         except Exception as e:
             pass
+        self.add_results_data(modload_data)
+        if self.MEM_LIMIT:
+            return
 
 
     def show_filemods(self, zip_file_object, title):
         filemod_obj = zip_file_object.open('csv/filemods.csv')
-        filemod_data = filemod_obj.read()
+        filemod_raw_data = filemod_obj.read()
         filemod_obj.close()
-        filemod_io = StringIO.StringIO(filemod_data)
+        filemod_io = StringIO.StringIO(filemod_raw_data)
         filemod_csv = csv.DictReader(filemod_io)
+        filemod_data = []
         try:
             while 1:
                 filemods = filemod_csv.next()
                 fm = {}
-                path = filemods['Path']
+                fm['subtype'] = title
+                fm['result'] = filemods['Path']
                 fm['Action'] = filemods['ActionTypeDesc']
                 fm['Timestamp'] = filemods['Timestamp']
-                self._add_result(title, path, fm)
+                filemod_data.append(fm)
+                #self.add_result_data(title, path, fm)
         except Exception as e:
             pass
+        self.add_results_data(filemod_data)
+        if self.MEM_LIMIT:
+            return
 
     def show_regmods(self, zip_file_object, title):
         regmod_obj = zip_file_object.open('csv/regmods.csv')
-        regmod_data = regmod_obj.read()
+        regmod_raw_data = regmod_obj.read()
         regmod_obj.close()
-        regmod_io = StringIO.StringIO(regmod_data)
+        regmod_io = StringIO.StringIO(regmod_raw_data)
         regmod_csv = csv.DictReader(regmod_io)
+        regmod_data = []
         try:
             while 1:
                 regmods = regmod_csv.next()
-                fm = {}
-                action = regmods['ActionTypeDesc']
-                fm['Timestamp'] = regmods['Timestamp']
-                fm['Path'] = regmods['Path']
-                self._add_result(title, action, fm)
+                rm = {}
+                rm['subtype'] = title
+                rm['result'] = regmods['ActionTypeDesc']
+                rm['Timestamp'] = regmods['Timestamp']
+                rm['Path'] = regmods['Path']
+                regmod_data.append(rm)
+                #self.add_result_data(title, action, fm)
         except Exception as e:
             pass
+        self.add_results_data(regmod_data)
+        if self.MEM_LIMIT:
+            return
 
     def show_netconns(self, zip_file_object, title):
         netconn_obj = zip_file_object.open('csv/netconn.csv')
-        netconn_data = netconn_obj.read()
+        netconn_raw_data = netconn_obj.read()
         netconn_obj.close()
-        netconn_io = StringIO.StringIO(netconn_data)
+        netconn_io = StringIO.StringIO(netconn_raw_data)
         netconn_csv = csv.DictReader(netconn_io)
+        netconn_data = []
         try:
             while 1:
                 netconns = netconn_csv.next()
                 nc = {}
-                IP = netconns['Ip']
+                nc['subtype'] = title
+                nc['result'] = netconns['Ip']
                 nc['Timestamp'] = netconns['Timestamp']
                 nc['Domain'] = netconns['Domain']
                 nc['Port'] = netconns['Port']
                 nc['Protocol'] = netconns['Protocol']
                 nc['Direction'] = netconns['Direction']
-                self._add_result(title, IP, nc)
+                #self.add_result_data(title, IP, nc)
+                netconn_data.append(nc)
         except Exception as e:
             pass
+        self.add_results_data(netconn_data)
+        if self.MEM_LIMIT:
+            return
 
 
     def show_childprocs(self, zip_file_object, cb, title, hostname, pid):
@@ -351,10 +454,12 @@ class CarbonBlackService(Service):
                     cp_data[child_pid]['process md5'] = cpd[2]
                     cp_data[child_pid]['process path'] = cpd[3]
 
+            final_childproc_data = []
             for child_pid, data in cp_data.iteritems():
                 cp = {}
+                cp['subtype'] = title
+                cp['result'] = data['process md5']
                 cp['pid'] = child_pid
-                child_md5 = data['process md5']
                 cp['path'] = data['process path']
                 cp['Start Time'] = data['Start Time']
                 cp['Stop Time'] = data['Stop Time']
@@ -363,13 +468,19 @@ class CarbonBlackService(Service):
                 #if childproc_name == cp['path']:
                 #    childproc_name = ntpath.basename(cp['path'])
                 #childproc_md5s.add((child_md5, childproc_name))
-                self._add_result(title, child_md5, cp)
+                #self.add_result_data(title, child_md5, cp)
+                #if self.MEM_LIMIT:
+                #    return
+                final_childproc_data.append(cp)
+            self.add_results_data(final_childproc_data)
+            if self.MEM_LIMIT:
+                return
 
         for child_id in child_ids:
             uid = child_id[0]
             segment_id = child_id[1]
             child_pid = child_id[2]
-            
+
             self.completed_uids.append(uid)
 
             child_proc_json = cb.process_events(uid, segment_id)
@@ -385,19 +496,29 @@ class CarbonBlackService(Service):
             child_proc_data['ChildProc Count'] = child_proc_json['process']['childproc_count']
             child_proc_data['CrossProc Count'] = child_proc_json['process']['crossproc_count']
 
-            self._add_result('Child Process Information', child_proc_json['process']['process_name'], child_proc_data)
+            self.add_result_data('Child Process Information', child_proc_json['process']['process_name'], child_proc_data)
+            if self.MEM_LIMIT:
+                return
 
             child_report = cb.process_report(uid, segment_id)
             child_report_io = StringIO.StringIO(child_report)
             child_zfo = zipfile.ZipFile(child_report_io)
 
             self.show_modloads(child_zfo, 'Module loads for child process of ' + hostname + '/' + str(pid))
+            if self.MEM_LIMIT:
+                return
             self.show_filemods(child_zfo, 'File Modifications for child process of ' + hostname + '/' + str(pid))
+            if self.MEM_LIMIT:
+                return
             self.show_regmods(child_zfo, 'Registry Modifications for child process of ' + hostname + '/' + str(pid))
+            if self.MEM_LIMIT:
+                return
             self.show_netconns(child_zfo, 'Network Connections for child process of ' + hostname + '/' + str(pid))
+            if self.MEM_LIMIT:
+                return
             self.show_childprocs(child_zfo, cb, 'Child Proesses for child process of ' + hostname + '/' + str(pid), hostname, child_pid)
 
- 
+
         #for child_md5, child_name in childproc_md5s:
         #    self._info("Child MD5: %s" % child_md5)
         #    self._info("Child Name: %s" % child_name)
