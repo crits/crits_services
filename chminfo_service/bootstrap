@@ -42,7 +42,7 @@ ubuntu_install()
     printf "${HEAD}Installing dependencies with apt-get${END}\n"
     #sudo apt-add-repository universe
     #sudo apt-get update
-    sudo apt-get install -y --fix-missing libchm1
+    sudo apt-get install -y --fix-missing libchm-dev libchm1
     if [ $? -eq 0 ]
     then
       printf "${PASS}Ubuntu Install Complete${END}\n"
@@ -57,7 +57,7 @@ debian_install()
     printf "${HEAD}Installing dependencies with apt-get${END}\n"
     #sudo apt-add-repository universe
     #sudo apt-get update
-    sudo apt-get install -y --fix-missing libchm1
+    sudo apt-get install -y --fix-missing libchm-dev libchm1
     if [ $? -eq 0 ]
     then
       printf "${PASS}Debian Install Complete${END}\n"
@@ -97,7 +97,7 @@ freebsd_install()
 red_hat_install()
 {
     #printf "${HEAD}Installing Yum Packages${END}\n"
-    sudo yum install libchm1
+    sudo yum install chmlib-devel chmlib
     if [ $? -eq 0 ]
     then
       printf "${PASS}Yum Install Complete${END}\n"
@@ -109,7 +109,7 @@ red_hat_install()
 centos_install()
 {
     #printf "${HEAD}Installing Yum Packages${END}\n"
-    sudo yum install libchm1
+    sudo yum install chmlib-devel chmlib
     if [ $? -eq 0 ]
     then
       printf "${PASS}Yum Install Complete${END}\n"
