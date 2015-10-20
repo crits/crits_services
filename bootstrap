@@ -79,17 +79,19 @@ traversing_install()
     tpwd=$PWD
     for ser in ${tpwd}/*_service ;do
       fbname=$(basename "$ser" _service)
-      printf "${INFO}Installing dependencies for ${fbname}${END}\n"
       if [ -f ${ser}/bootstrap ];
       then
-        ${ser}/bootstrap
+        printf "${INFO}Installing dependencies for ${fbname}${END}\n"
+        cd ${ser};
+        ./bootstrap
         if [ $? -ne 0 ]
         then
-          printf "${FAIL}bootstrap failed for ${fbname}!{END}\n"
+          printf "${FAIL}bootstrap failed for ${fbname}!${END}\n"
           exit
         else
           printf "${PASS}bootstrap complete for ${fbname}${END}\n"
         fi
+        cd ${tpwd}
       fi
     done
 }

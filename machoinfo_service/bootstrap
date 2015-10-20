@@ -16,9 +16,9 @@ END=$(tput sgr0)   #ends color
 
 depend_crits()
 {
-    printf "${HEAD}Installing Python Dependencies${END}\n"
     if [ -f requirements.txt ];
     then
+        printf "${HEAD}Installing Python Dependencies${END}\n"
         sudo ${PIP} install -r requirements.txt
         if [ $? -ne 0 ]
         then
@@ -84,7 +84,7 @@ darwin_install()
 
 freebsd_install()
 {
-    printf "${HEAD}Installing Ports${END}\n"
+    #printf "${HEAD}Installing Ports${END}\n"
     #sudo pkg install libchm1 clamav wireshark upx
     if [ $? -eq 0 ]
     then
@@ -96,7 +96,7 @@ freebsd_install()
 
 red_hat_install()
 {
-    printf "${HEAD}Installing Yum Packages${END}\n"
+    #printf "${HEAD}Installing Yum Packages${END}\n"
     #sudo yum install upx-3.07-1 libchm1 clamav wireshark upx
     if [ $? -eq 0 ]
     then
@@ -108,7 +108,7 @@ red_hat_install()
 
 centos_install()
 {
-    printf "${HEAD}Installing Yum Packages${END}\n"
+    #printf "${HEAD}Installing Yum Packages${END}\n"
     #sudo yum install upx-3.07-1 libchm1 clamav wireshark upx
     if [ $? -eq 0 ]
     then
@@ -134,32 +134,32 @@ do
         1)
             if [ "$OS" = 'ubuntu' ]
             then
-                printf "${PASS}ubuntu is Supported!${END}\n"
+                #printf "${PASS}ubuntu is Supported!${END}\n"
                 ubuntu_install || exit_restart $STEP
                 depend_crits ||exit_restart $STEP
             elif [ "$OS" = 'debian' ]
             then
-                printf "${PASS}Debian is Supported!${END}\n"
+                #printf "${PASS}Debian is Supported!${END}\n"
                 debian_install || exit_restart $STEP
                 depend_crits ||exit_restart $STEP
             elif [ "$OS" = 'darwin' ]
             then
-                printf "${PASS}OS X is Supported!${END}\n"
+                #printf "${PASS}OS X is Supported!${END}\n"
                 darwin_install || exit_restart $STEP
                 depend_crits ||exit_restart $STEP
             elif [ "$OS" = "centos" ]
             then
-                printf "${PASS}CentOS is Supported!${END}\n"
+                #printf "${PASS}CentOS is Supported!${END}\n"
                 centos_install || exit_restart $STEP
                 depend_crits ||exit_restart $STEP
             elif [ "$OS" = "red hat" ]
             then
-                printf "${PASS}Red Hat is Supported!${END}\n"
+                #printf "${PASS}Red Hat is Supported!${END}\n"
                 red_hat_install || exit_restart $STEP
                 depend_crits ||exit_restart $STEP
             elif [ "$OS" = 'freebsd' ]
             then
-                printf "${PASS}FreeBSD is Supported${END}\n"
+                #printf "${PASS}FreeBSD is Supported${END}\n"
                 freebsd_install || exit_restart $STEP
                 depend_crits ||exit_restart $STEP
             else
