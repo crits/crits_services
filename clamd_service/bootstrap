@@ -42,7 +42,7 @@ ubuntu_install()
     printf "${HEAD}Installing dependencies with apt-get${END}\n"
     #sudo apt-add-repository universe
     #sudo apt-get update
-    #sudo apt-get install -y --fix-missing libchm1 clamav upx wireshark
+    sudo apt-get install -y --fix-missing clamav
     if [ $? -eq 0 ]
     then
       printf "${PASS}Ubuntu Install Complete${END}\n"
@@ -57,7 +57,7 @@ debian_install()
     printf "${HEAD}Installing dependencies with apt-get${END}\n"
     #sudo apt-add-repository universe
     #sudo apt-get update
-    #sudo apt-get install -y --fix-missing libchm1 clamav upx wireshark
+    sudo apt-get install -y --fix-missing clamav
     if [ $? -eq 0 ]
     then
       printf "${PASS}Debian Install Complete${END}\n"
@@ -73,7 +73,7 @@ darwin_install()
     printf "${HEAD}Installation for OSX requires Homebrew. Please visit http://brew.sh/.${END}\n"
     exit
     }
-    #brew install chmlib clamav wireshark upx
+    brew install clamav
     if [ $? -eq 0 ]
     then
       printf "${PASS}Homebrew Install Complete${END}\n"
@@ -85,7 +85,7 @@ darwin_install()
 freebsd_install()
 {
     #printf "${HEAD}Installing Ports${END}\n"
-    #sudo pkg install libchm1 clamav wireshark upx
+    sudo pkg install clamav
     if [ $? -eq 0 ]
     then
       printf "${PASS}Ports Install Complete${END}\n"
@@ -97,7 +97,7 @@ freebsd_install()
 red_hat_install()
 {
     #printf "${HEAD}Installing Yum Packages${END}\n"
-    #sudo yum install upx-3.07-1 libchm1 clamav wireshark upx
+    sudo yum install clamav
     if [ $? -eq 0 ]
     then
       printf "${PASS}Yum Install Complete${END}\n"
@@ -109,7 +109,7 @@ red_hat_install()
 centos_install()
 {
     #printf "${HEAD}Installing Yum Packages${END}\n"
-    #sudo yum install upx-3.07-1 libchm1 clamav wireshark upx
+    sudo yum install clamav
     if [ $? -eq 0 ]
     then
       printf "${PASS}Yum Install Complete${END}\n"
