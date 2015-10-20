@@ -77,22 +77,25 @@ create_files()
 traversing_install()
 {
     tpwd=$PWD
-    for ser in ${tpwd}/*_service ;do
-      fbname=$(basename "$ser" _service)
-      if [ -f ${ser}/bootstrap ];
-      then
-        printf "${INFO}Installing dependencies for ${fbname}${END}\n"
-        cd ${ser};
-        ./bootstrap
-        if [ $? -ne 0 ]
+    for serv in ${tpwd}/* ;do
+        if [ -d "$serv" ];
         then
-          printf "${FAIL}bootstrap failed for ${fbname}!${END}\n"
-          exit
-        else
-          printf "${PASS}bootstrap complete for ${fbname}${END}\n"
+            fbname=$(basename "${serv}" _service)
+            if [ -f ${serv}/bootstrap ];
+            then
+                printf "${INFO}Installing dependencies for ${fbname}${END}\n"
+                cd ${serv};
+                ./bootstrap
+                if [ $? -ne 0 ]
+                then
+                    printf "${FAIL}bootstrap failed for ${fbname}!${END}\n"
+                    exit
+                else
+                    printf "${PASS}bootstrap complete for ${fbname}${END}\n"
+                fi
+                cd ${tpwd}
+            fi
         fi
-        cd ${tpwd}
-      fi
     done
 }
 
