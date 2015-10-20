@@ -200,6 +200,7 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
     except ValueError:
         depth = 3
 
+
     inner_collect(obj_type, str(obj_id), sources, depth)
 
     # This dictionary is used to describe the position of each object
@@ -264,7 +265,9 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
                         total += count
                     campaign = name + " (" + str(total) + ")"
                     campaign_href = reverse('crits.core.views.details', args=('Campaign', campaign_id))
-                    n = tlo_styles_dict['Campaign']
+
+                    n = dict(tlo_styles_dict['Campaign'])
+
                     n['label'] = campaign
                     n['url'] = campaign_href
                     n['type'] = n['group'] = 'Campaign'
@@ -278,6 +281,7 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
         n = {}
         if obj_type in tlo_styles_dict:
             n = dict(tlo_styles_dict[obj_type])
+
             n['label'] = '%s' % value
         else:
             n = {

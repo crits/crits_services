@@ -1,0 +1,4 @@
+The exiftool service requires exiftool to be installed.
+
+Ubuntu:
+sudo apt-get install exiftool
