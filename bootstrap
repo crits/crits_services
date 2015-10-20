@@ -14,7 +14,6 @@ INFO=$(tput setaf 6) #cyan
 END=$(tput sgr0)   #ends color
 #============================================================
 PIP='pip'
-PYTH='python'
 
 verify()
 {
@@ -28,6 +27,9 @@ verify()
         printf "${PASS}Architecure 64-bit Passed${END}\n"
     fi
     printf "${INFO}Testing the distro type${END}\n"
+    OS=''
+    VER=''
+    REL=''
     # Using lsb-release because os-release not available on Ubuntu 10.04
     if [ -f /etc/redhat-release ];
     then
@@ -50,6 +52,11 @@ verify()
     fi
     OS="$(echo "$OS" | tr "[:upper:]" "[:lower:]")"
     VER="$(echo "$VER" | tr "[:upper:]" "[:lower:]")"
+    # Let's export these, so we don't have to repeat this in every bootstrap
+    export OS
+    export REL
+    export VER
+    export PIP
 }
 
 # Creates Default Database Files
@@ -75,7 +82,7 @@ traversing_install()
       printf "${INFO}Installing dependencies for ${fbname}${END}\n"
       if [ -f ${ser}/bootstrap ];
       then
-        sudo ${ser}/bootstrap
+        ${ser}/bootstrap
         if [ $? -ne 0 ]
         then
           printf "${FAIL}bootstrap failed for ${fbname}!{END}\n"
@@ -84,34 +91,7 @@ traversing_install()
           printf "${PASS}bootstrap complete for ${fbname}${END}\n"
         fi
       fi
-      if [ -f ${ser}/requirements.txt ];
-      then
-        sudo ${pip} install -r ${ser}/requirements.txt
-        if [ $? -ne 0 ]
-        then
-          printf "${FAIL}pip requiremrnts installation failed for ${fbname}!{END}\n"
-          exit
-        else
-          printf "${PASS}pip requiremrnts installation complete for ${fbname}${END}\n"
-        fi
-      fi
     done
-    #TODO remove this once all the services have their bootstraps and requirements.txt created.
-    printf "\n{INFO}Please manually install the latest version of yara and yara-python.${END}\n"
-}
-
-
-depend_crits()
-{
-    printf "${HEAD}Installing Python Dependencies${END}\n"
-    sudo ${PIP} install -r requirements.txt
-    if [ $? -ne 0 ]
-    then
-        printf "${FAIL}Dependency installation failed!${END}\n"
-        exit
-    else
-        printf "${PASS}Dependency installation complete!${END}\n"
-    fi
 }
 
 # Error Message
@@ -121,86 +101,6 @@ exit_restart()
     exit
 }
 
-ubuntu_install()
-{
-    printf "${HEAD}Installing dependencies with apt-get${END}\n"
-    sudo apt-add-repository universe
-    sudo apt-get update
-    sudo apt-get install -y --fix-missing libchm1 clamav upx wireshark
-    if [ $? -eq 0 ]
-    then
-      printf "${PASS}Ubuntu Install Complete${END}\n"
-    else
-      printf "${FAIL}Ubuntu Install Failed${END}\n"
-    fi
-    sudo ldconfig 
-}
-
-debian_install()
-{
-    printf "${HEAD}Installing dependencies with apt-get${END}\n"
-    sudo apt-add-repository universe
-    sudo apt-get update
-    sudo apt-get install -y --fix-missing libchm1 clamav upx wireshark
-    if [ $? -eq 0 ]
-    then
-      printf "${PASS}Debian Install Complete${END}\n"
-    else
-      printf "${FAIL}Debian Install Failed${END}\n"
-    fi
-    sudo ldconfig
-}
-
-darwin_install()
-{
-    command -v brew >/dev/null 2>&1 || {
-    printf "${HEAD}Installation for OSX requires Homebrew. Please visit http://brew.sh/.${END}\n"
-    exit
-    }
-    brew install chmlib clamav wireshark upx
-    if [ $? -eq 0 ]
-    then
-      printf "${PASS}Homebrew Install Complete${END}\n"
-    else
-      printf "${FAIL}Homebrew Install Failed${END}\n"
-    fi
-}
-
-freebsd_install()
-{
-    printf "${HEAD}Installing Ports${END}\n"
-    sudo pkg install libchm1 clamav wireshark upx
-    if [ $? -eq 0 ]
-    then
-      printf "${PASS}Ports Install Complete${END}\n"
-    else
-      printf "${FAIL}Ports Install Failed${END}\n"
-    fi
-}
-
-red_hat_install()
-{
-    printf "${HEAD}Installing Yum Packages${END}\n"
-    sudo yum install upx-3.07-1 libchm1 clamav wireshark upx
-    if [ $? -eq 0 ]
-    then
-      printf "${PASS}Yum Install Complete${END}\n"
-    else
-      printf "${FAIL}Yum Install Failed${END}\n"
-    fi
-}
-
-centos_install()
-{
-    printf "${HEAD}Installing Yum Packages${END}\n"
-    sudo yum install upx-3.07-1 libchm1 clamav wireshark upx
-    if [ $? -eq 0 ]
-    then
-      printf "${PASS}Yum Install Complete${END}\n"
-    else
-      printf "${FAIL}Yum Install Failed${END}\n"
-    fi
-}
 #===============================================================
 # This is the Beginning of the Script
 #===============================================================
@@ -216,42 +116,7 @@ while [ $STEP -lt 4 ]
 do
     case $STEP in
         1)
-            verify
-            if [ "$OS" = 'ubuntu' ]
-            then
-                printf "${PASS}ubuntu is Supported!${END}\n"
-                ubuntu_install || exit_restart $STEP
-                depend_crits ||exit_restart $STEP
-            elif [ "$OS" = 'debian' ]
-            then
-                printf "${PASS}Debian is Supported!${END}\n"
-                debian_install || exit_restart $STEP
-                depend_crits ||exit_restart $STEP
-            elif [ "$OS" = 'darwin' ]
-            then
-                printf "${PASS}OS X is Supported!${END}\n"
-                darwin_install || exit_restart $STEP
-                depend_crits ||exit_restart $STEP
-            elif [ "$OS" = "centos" ]
-            then
-                printf "${PASS}CentOS is Supported!${END}\n"
-                centos_install || exit_restart $STEP
-                depend_crits ||exit_restart $STEP
-            elif [ "$OS" = "red hat" ]
-            then
-                printf "${PASS}Red Hat is Supported!${END}\n"
-                red_hat_install || exit_restart $STEP
-                depend_crits ||exit_restart $STEP
-            elif [ "$OS" = 'freebsd' ]
-            then
-                printf "${PASS}FreeBSD is Supported${END}\n"
-                freebsd_install || exit_restart $STEP
-                depend_crits ||exit_restart $STEP
-            else
-                printf "${FAIL}OS: $OS, need Ubuntu, Debian, Darwin (OS X), CentOS, Red Hat, or FreeBSD${END}\n"
-                exit
-            fi
-            ;;
+            verify ;;
         2)
             create_files ||exit_restart $STEP ;;
         3)
