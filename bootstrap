@@ -97,6 +97,8 @@ traversing_install()
             fi
         fi
     done
+    printf "${INFO}bootstrap finished!\nDependencies for the following services need some manual setup (at least until somebody fixes them):\n
+    - chopshop_service\n- metacap_service (it needs chopshop)\n- pyew\n- snugglefish_service\n- taxii_service${END}\n"
 }
 
 # Error Message
