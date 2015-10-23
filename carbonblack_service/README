@@ -1,0 +1,14 @@
+The Carbon Black service for CRITs
+
+To configure, you'll need to enter the address of your
+Carbon Black server and an API token to authenticate
+to the server.
+
+You will need to install the carbon black API.  You can
+optionally install pympler.  The Carbon Black API can
+return a lot of data, and the BSON limit is 16 MB,
+installing this package will make sure that this limit
+is not exceeded.
+
+The service works on Samples, IPs, and Domains.
+
