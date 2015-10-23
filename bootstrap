@@ -39,7 +39,7 @@ verify()
         REL=$(echo $VER | sed 's/\..//')
         if [ $REL -lt 7 ];
         then
-            #change for RHEL/CentOS < Release 7 
+            #change for RHEL/CentOS < Release 7
             PIP='pip2.7'
         fi
     elif command -v lsb_release >/dev/null 2>&1
@@ -53,13 +53,10 @@ verify()
     OS="$(echo "$OS" | tr "[:upper:]" "[:lower:]")"
     VER="$(echo "$VER" | tr "[:upper:]" "[:lower:]")"
     # Let's export these, so we don't have to repeat this in every bootstrap
-    export OS
-    export REL
-    export VER
-    export PIP
+    export OS REL VER PIP
 }
 
-# Creates Default Database Files
+# Creates Default folders 
 create_files()
 {
     #TODO fix the fixed paths
@@ -70,8 +67,9 @@ create_files()
         sudo mkdir -v -p /data/crits_services
     fi
     #It used to be /data/crits_services
-    sudo chown -R $USER:$GROUP /data/crits_services
-    chmod -R -v 0755 /data/crits_services
+    #sudo chown -R $USER:$GROUP /data/crits_services
+    #This messes with git commits
+    #chmod -R -v 0755 /data/crits_services
 }
 
 traversing_install()
@@ -97,8 +95,10 @@ traversing_install()
             fi
         fi
     done
-    printf "${INFO}bootstrap finished!\nDependencies for the following services need some manual setup (at least until somebody fixes them):\n
-    - chopshop_service\n- metacap_service (it needs chopshop)\n- pyew\n- snugglefish_service\n- taxii_service${END}\n"
+    printf "${INFO}bootstrap finished!\nDependencies for the following \
+    services need some manual setup (at least until somebody fixes them):\
+    \n- chopshop_service\n- metacap_service (it needs chopshop)\n- pyew\n\
+    - snugglefish_service\n- taxii_service${END}\n"
 }
 
 # Error Message
@@ -118,7 +118,6 @@ then
 else
     STEP=$1
 fi
-
 while [ $STEP -lt 4 ]
 do
     case $STEP in
@@ -134,3 +133,4 @@ do
     esac
     STEP=$((STEP+1))
 done
+

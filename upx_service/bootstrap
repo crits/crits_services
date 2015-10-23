@@ -4,38 +4,9 @@
 #
 # Usage: bootstrap
 # This script is designed to install all of the necessary dependencies for the
-# services available.
+# service.
 
-#=====================Message Colors=========================
-FAIL=$(tput setaf 1) #red
-PASS=$(tput setaf 2) #green
-HEAD=$(tput setaf 5) #magenta
-INFO=$(tput setaf 6) #cyan
-END=$(tput sgr0)   #ends color
-#============================================================
-
-depend_crits()
-{
-    if [ -f requirements.txt ];
-    then
-        printf "${HEAD}Installing Python Dependencies${END}\n"
-        sudo ${PIP} install -r requirements.txt
-        if [ $? -ne 0 ]
-        then
-            printf "${FAIL}Dependency installation failed!${END}\n"
-            exit
-        else
-            printf "${PASS}Dependency installation complete!${END}\n"
-        fi
-    fi
-}
-
-# Error Message
-exit_restart()
-{
-    printf "\n${HEAD}Error: To restart at this step: sh $0 $1${END}\n"
-    exit
-}
+. ../funcs.sh
 
 ubuntu_install()
 {
@@ -132,6 +103,7 @@ while [ $STEP -lt 2 ]
 do
     case $STEP in
         1)
+            verify
             if [ "$OS" = 'ubuntu' ]
             then
                 #printf "${PASS}ubuntu is Supported!${END}\n"
