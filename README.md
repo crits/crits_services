@@ -12,7 +12,7 @@ choose to leverage a service, make sure you read the DEPENDENCIES file to
 determine what you’ll need to install to use it. The README will be a good guide
 to determine what a service does, and in some cases how to set it up and use it.
 
-The bootstrap in the crits_services folder is supposed to run the bootstrap in each folder. Each service's bootstrap in turn, after installing any OS level dependencies, kicks off pip to install the python dependencies listed in requirements.txt
+The bootstrap in the crits_services folder is supposed to run the bootstrap in each services' folder. Each service's bootstrap in turn, after installing any OS level dependencies, kicks off pip to install the python dependencies listed in requirements.txt
 
 At this point there are a few services that require some additional manual installation, this might change in the future as any pull requests to fix these issues are greatly appreciated.
 
