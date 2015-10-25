@@ -95,11 +95,11 @@
             var value = me.attr('data-val');
             var type = me.attr('data-type');
             if (type == "Domain") {
-                ind_type = 'URI - Domain Name';
+                ind_type = 'Domain';
             } else if (type == "IP Address") {
-                ind_type = 'Address - ipv4-addr';
+                ind_type = 'IPv4 Address';
             } else if (type == "Email") {
-                ind_type = 'Address - email-addr';
+                ind_type = 'Email Address';
             }
             otype = "{{ subscription.type }}";
             create_indicator(otype, ind_type, value, me);
@@ -110,11 +110,11 @@
             var type = me.attr('data-type');
             $('#raw_indicator_value').val(value);
             if (type == "Domain") {
-                $('#raw_indicator_type').text('URI - Domain Name');
+                $('#raw_indicator_type').text('Domain');
             } else if (type == "IP Address") {
-                $('#raw_indicator_type').text('Address - ipv4-addr');
+                $('#raw_indicator_type').text('IPv4 Address');
             } else if (type == "Email") {
-                $('#raw_indicator_type').text('Address - email-addr');
+                $('#raw_indicator_type').text('Email Address');
             }
             $('#creation_result').text('');
             generate_dialog(me);
