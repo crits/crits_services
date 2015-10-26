@@ -8,7 +8,6 @@ from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
 from crits.indicators.indicator import Indicator
-from crits.vocabulary.indicators import IndicatorTypes
 
 from . import forms
 
@@ -285,8 +284,8 @@ class ThreatGRIDService(Service):
                                     if answer.get('answer_type', '') == result['dns_type']:
                                         result['dns_answer'] = answer.get('answer_data')
                                         break
-                            indicators.append([result.get('dns_query'), IndicatorTypes.DOMAIN])
-                            indicators.append([result.get('dns_answer'), IndicatorTypes.IPV4_ADDRESS])
+                            indicators.append([result.get('dns_query'), 'Domain'])
+                            indicators.append([result.get('dns_answer'), 'IP Address'])
                             self._add_result('threatgrid_dns'.format(tg_id), result.pop('dns_query'), result)
                 self._notify()
                 # HTTP
@@ -306,8 +305,8 @@ class ThreatGRIDService(Service):
                                         'dst':          item.get('dst'),
                                         'dst_port':     item.get('dst_port'),
                                         }
-                                    indicators.append([result.get('host'), IndicatorTypes.DOMAIN])
-                                    indicators.append([result.get('dst'), IndicatorTypes.IPV4_ADDRESS])
+                                    indicators.append([result.get('host'), 'Domain'])
+                                    indicators.append([result.get('dst'), 'IP Address'])
                                     self._add_result('threatgrid_http'.format(tg_id), result.pop('host'), result)
                 self._notify()
                 # IP/Other
@@ -323,7 +322,7 @@ class ThreatGRIDService(Service):
                                 'bytes':        item.get('bytes'),
                                 'packets':      item.get('packets'),
                                 }
-                        indicators.append([result.get('dst'), IndicatorTypes.IPV4_ADDRESS])
+                        indicators.append([result.get('dst'), 'IP Address'])
                         self._add_result('threatgrid_ip'.format(tg_id), result.pop('transport'), result)
                 self._notify()
 
@@ -335,8 +334,13 @@ class ThreatGRIDService(Service):
                         if indicator not in added:
                             added.append(indicator)
                             tdict = {}
-                            if item[1] in (IndicatorTypes.IPV4_ADDRESS, IndicatorTypes.DOMAIN):
-                                tdict = {'Type': item[1]}
+                            if item[1] == 'Domain':
+                                tdict = {'Type': 'Domain'}
+                                id_ = Indicator.objects(value=indicator).only('id').first()
+                                if id_:
+                                    tdict['exists'] = str(id_.id)
+                            elif item[1] == 'IP Address':
+                                tdict = {'Type': "IP Address"}
                                 id_ = Indicator.objects(value=indicator).only('id').first()
                                 if id_:
                                     tdict['exists'] = str(id_.id)

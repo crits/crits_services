@@ -8,7 +8,6 @@ from crits.samples.sample import Sample
 from crits.domains.domain import TLD
 from crits.indicators.indicator import Indicator
 from crits.core.data_tools import make_ascii_strings
-from crits.vocabulary.indicators import IndicatorTypes
 
 logger = logging.getLogger(__name__)
 
@@ -51,21 +50,21 @@ class DataMinerService(Service):
 
         ips = extract_ips(data)
         for ip in ips:
-            tdict = {'Type': IndicatorTypes.IPV4_ADDRESS}
+            tdict = {'Type': "IP Address"}
             id_ = Indicator.objects(value=ip).only('id').first()
             if id_:
                 tdict['exists'] = str(id_.id)
             self._add_result('Potential IP Address', ip, tdict)
         domains = extract_domains(data)
         for domain in domains:
-            tdict = {'Type': IndicatorTypes.DOMAIN}
+            tdict = {'Type': "Domain"}
             id_ =  Indicator.objects(value=domain).only('id').first()
             if id_:
                 tdict['exists'] = str(id_.id)
             self._add_result('Potential Domains', domain, tdict)
         emails = extract_emails(data)
         for email in emails:
-            tdict = {'Type': IndicatorTypes.EMAIL_ADDRESS}
+            tdict = {'Type': "Email"}
             id_ = Indicator.objects(value=email).only('id').first()
             if id_:
                 tdict['exists'] = str(id_.id)

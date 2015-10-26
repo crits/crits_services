@@ -93,7 +93,14 @@
             e.stopPropagation();
             var me = $(this);
             var value = me.attr('data-val');
-            var ind_type = me.attr('data-type');
+            var type = me.attr('data-type');
+            if (type == "Domain") {
+                ind_type = 'URI - Domain Name';
+            } else if (type == "IP Address") {
+                ind_type = 'Address - ipv4-addr';
+            } else if (type == "Email") {
+                ind_type = 'Address - email-addr';
+            }
             otype = "{{ subscription.type }}";
             create_indicator(otype, ind_type, value, me);
         });
@@ -102,7 +109,13 @@
             var value = me.attr('data-val');
             var type = me.attr('data-type');
             $('#raw_indicator_value').val(value);
-            $('#raw_indicator_type').text(type);
+            if (type == "Domain") {
+                $('#raw_indicator_type').text('URI - Domain Name');
+            } else if (type == "IP Address") {
+                $('#raw_indicator_type').text('Address - ipv4-addr');
+            } else if (type == "Email") {
+                $('#raw_indicator_type').text('Address - email-addr');
+            }
             $('#creation_result').text('');
             generate_dialog(me);
         });
