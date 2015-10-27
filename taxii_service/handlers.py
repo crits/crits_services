@@ -240,17 +240,20 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     for content_block in taxii_msg.content_blocks:
         data = parse_content_block(content_block, keyfile, certfile)
         if not data:
-            ret['failures'].append(('No data found in content block', 'Data'))
+            ret['failures'].append(('No data found in content block',
+                                    'TAXII Content Block'))
             continue
 
         objs = import_standards_doc(data, analyst, method, ref=mid,
                                     make_event=create_events, source=feed)
 
         if not objs['success']:
-            ret['failures'].append((objs['reason'], 'Data'))
+            ret['failures'].append((objs['reason'],
+                                   'STIX Package'))
         for k in objs['imported']:
             ret['successes'] += 1
-            ret[objs['imported'][k][0]].append(objs['imported'][k][1])
+            ret[objs['imported'][k][0]].append((objs['imported'][k][1],
+                                                objs['imported'][k][2]))
         for k in objs['failed']:
             ret['failures'].append(k)
 
