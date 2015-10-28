@@ -118,6 +118,7 @@ class previewService(Service):
         data8 = obj.filedata.read(8)
         obj.filedata.seek(0)
         if not obj.is_pdf() and not data8.startswith("\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"):
+            self._debug("preview image started.")
             try:
                 ofile = io.BytesIO()
                 obj.filedata.seek(0)
@@ -146,11 +147,12 @@ class previewService(Service):
                     self._warning("res-message: %s id:%s" % (res.get('message'), res.get('id') ) ) 
             except IOError as e:
                 self._error("Exception while reading: %s" % str(e))
+                return False
             self._add_result('preview', res.get('id'), {'Message': res.get('message')})
-            return
+            return True
         elif data8.startswith("\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"):
             obj.filedata.seek(0)
-            self._debug("doc preview started\n")
+            self._debug("preview DOC started.")
             pdftoppm_path = self.config.get("pdftoppm_path", "/usr/bin/pdftoppm")
             antiword_path = self.config.get("iantiword_path", "/usr/bin/antiword")
             # The _write_to_file() context manager will delete this file at the
@@ -165,11 +167,12 @@ class previewService(Service):
                     proc1 = subprocess.Popen([antiword_path, '-r', '-s', '-a', 'letter', tmp_file],env=new_env, stdout=pdf_file, stderr=subprocess.PIPE, cwd=working_dir)
                     pdf_file, serr = proc1.communicate()
                     #self._warning("antiOut:%s" % pdf_file)
-                    self._error("Antiword error: %s" % serr)
+                    if serr:
+                        self._warning("Antiword warning: %s" % serr)
                     if proc1.returncode:
                         msg = ("Antiword could not process the file.")
                         self._error(msg)
-                        return
+                        return False
                     outy = 'page'
                     args = [pdftoppm_path, '-png', pdf_fpath, outy]
                     # pdftoppm does not generate a lot of output, so we should not have to
@@ -195,18 +198,21 @@ class previewService(Service):
                             if res.get('message') and res.get('success') == True:
                                 self._warning("res-message: %s id:%s" % (res.get('message'), res.get('id') ) )
                                 self._add_result('preview', res.get('id'), {'Message': res.get('message')})
-                            self._warning("id:%s, file: %s" % (res.get('id'), os.path.join(working_dir,filen)))
+                            self._info("id:%s, file: %s" % (res.get('id'), os.path.join(working_dir,filen)))
                     # Note that we are redirecting STDERR to STDOUT, so we can ignore
                     # the second element of the tuple returned by communicate().
                     #self._warning("Out:%s" % output)
-                    self._error("Pdftoppm error: %s" % serr)
+                    if serr:
+                        self._warning("Pdftoppm warning: %s" % serr)
                     if proc.returncode:
-                        msg = ("pdftoppm could not process the file.")
+                        msg = ("Pdftoppm could not process the file.")
                         self._error(msg)
-                        return
+                        return False
+                    else:
+                        return True
         else:
             obj.filedata.seek(0)
-            self._debug("preview started\n")
+            self._debug("preview PDF started\n")
             pdftoppm_path = self.config.get("pdftoppm_path", "/usr/bin/pdftoppm")
             # The _write_to_file() context manager will delete this file at the
             # end of the "with" block.
@@ -219,7 +225,7 @@ class previewService(Service):
                 proc = subprocess.Popen(args, stdout=subprocess.PIPE,
                                         stderr=subprocess.PIPE, cwd=working_dir)
                 #stderr=subprocess.STDOUT, cwd=working_dir)
-                output = proc.communicate()[0]
+                serr, output = proc.communicate()
                 for filen in sorted(os.listdir(working_dir)):
                     if filen.endswith(".png"):
                         fileh = open(os.path.join(working_dir,filen), "rb")
@@ -238,14 +244,14 @@ class previewService(Service):
                         if res.get('message') and res.get('success') == True:
                             self._warning("res-message: %s id:%s" % (res.get('message'), res.get('id') ) )
                             self._add_result('preview', res.get('id'), {'Message': res.get('message')})
-                        self._warning("id:%s, file: %s" % (res.get('id'), os.path.join(working_dir,filen)))
+                        self._info("id:%s, file: %s" % (res.get('id'), os.path.join(working_dir,filen)))
                 # Note that we are redirecting STDERR to STDOUT, so we can ignore
                 # the second element of the tuple returned by communicate().
-                self._warning("Out:%s" % output)
-
+                if serr:
+                    self._warning("Pdftoppm warning: %s" % serr)
                 if proc.returncode:
                     msg = ("pdftoppm could not process the file.")
                     self._warning(msg)
-                    return
-        return
+                    return False
+        return True
 
