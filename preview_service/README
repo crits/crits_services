@@ -1,6 +1,6 @@
-Version 0.0.3
+Version 0.0.4
 -------------
 
-This is an attempt at integrating a crits service that generates screenshots of PDF docuemnts and other image files leveraging Pillow library and pdftoppm - a part of Poppler-utils (http://poppler.freedesktop.org).
+This is an attempt at integrating a crits service that generates screenshots of PDF, Word docuemnts and other image files leveraging Pillow library, antiword, and pdftoppm - a part of Poppler-utils (http://poppler.freedesktop.org).
  
 
