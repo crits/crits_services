@@ -9,5 +9,11 @@ class previewConfigForm(forms.Form):
                                widget=forms.TextInput(),
                                help_text="Full path to pdftoppm binary.")
 
+    antiword_path = forms.CharField(required=True,
+                               label="antiword binary",
+                               initial='/usr/bin/antiword',
+                               widget=forms.TextInput(),
+                               help_text="Full path to antiword binary.")
+
     def __init__(self, *args, **kwargs):
         super(previewConfigForm, self).__init__(*args, **kwargs)
