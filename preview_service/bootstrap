@@ -13,7 +13,7 @@ ubuntu_install()
     printf "${HEAD}Installing dependencies with apt-get${END}\n"
     #sudo apt-add-repository universe
     #sudo apt-get update
-    sudo apt-get install -y --fix-missing liblcms2-dev libfreetype6-dev libtiff-dev zlib1g-dev libwebp-dev libjpeg-dev libopenjpeg-dev poppler-utils 
+    sudo apt-get install -y --fix-missing antiword liblcms2-dev libfreetype6-dev libtiff-dev zlib1g-dev libwebp-dev libjpeg-dev libopenjpeg-dev poppler-utils 
     if [ $? -eq 0 ]
     then
       printf "${PASS}Ubuntu Install Complete${END}\n"
@@ -28,7 +28,7 @@ debian_install()
     printf "${HEAD}Installing dependencies with apt-get${END}\n"
     #sudo apt-add-repository universe
     #sudo apt-get update
-    sudo apt-get install -y --fix-missing liblcms2-dev libfreetype6-dev libtiff-dev zlib1g-dev libwebp-dev libjpeg-dev libopenjpeg-dev poppler-utils 
+    sudo apt-get install -y --fix-missing antiword liblcms2-dev libfreetype6-dev libtiff-dev zlib1g-dev libwebp-dev libjpeg-dev libopenjpeg-dev poppler-utils 
     if [ $? -eq 0 ]
     then
       printf "${PASS}Debian Install Complete${END}\n"
@@ -44,7 +44,7 @@ darwin_install()
     printf "${HEAD}Installation for OSX requires Homebrew. Please visit http://brew.sh/.${END}\n"
     exit
     }
-    brew install poppler
+    brew install antiword poppler
     if [ $? -eq 0 ]
     then
       printf "${PASS}Homebrew Install Complete${END}\n"
@@ -56,7 +56,7 @@ darwin_install()
 freebsd_install()
 {
     #printf "${HEAD}Installing Ports${END}\n"
-    sudo pkg install poppler-utils 
+    sudo pkg install antiword poppler-utils 
     if [ $? -eq 0 ]
     then
       printf "${PASS}Ports Install Complete${END}\n"
@@ -68,7 +68,7 @@ freebsd_install()
 red_hat_install()
 {
     #printf "${HEAD}Installing Yum Packages${END}\n"
-    sudo yum install poppler-utils
+    sudo yum install antiword poppler-utils
     if [ $? -eq 0 ]
     then
       printf "${PASS}Yum Install Complete${END}\n"
@@ -80,7 +80,7 @@ red_hat_install()
 centos_install()
 {
     #printf "${HEAD}Installing Yum Packages${END}\n"
-    sudo yum install poppler-utils
+    sudo yum install antiword poppler-utils
     if [ $? -eq 0 ]
     then
       printf "${PASS}Yum Install Complete${END}\n"
