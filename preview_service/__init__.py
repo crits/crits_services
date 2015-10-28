@@ -154,7 +154,7 @@ class previewService(Service):
             obj.filedata.seek(0)
             self._debug("preview DOC started.")
             pdftoppm_path = self.config.get("pdftoppm_path", "/usr/bin/pdftoppm")
-            antiword_path = self.config.get("iantiword_path", "/usr/bin/antiword")
+            antiword_path = self.config.get("antiword_path", "/usr/bin/antiword")
             # The _write_to_file() context manager will delete this file at the
             # end of the "with" block.
             with self._write_to_file() as tmp_file:
