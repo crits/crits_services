@@ -4,7 +4,7 @@ from tastypie import authorization
 from tastypie.authentication import MultiAuthentication
 from tastypie.exceptions import BadRequest
 
-from crits.standards.handlers import import_standards_doc
+from handlers import import_standards_doc
 from crits.core.api import CRITsApiKeyAuthentication, CRITsSessionAuthentication
 from crits.core.api import CRITsSerializer, CRITsAPIResource
 from crits.core.crits_mongoengine import CritsDocument
@@ -86,8 +86,8 @@ class StandardsResource(CRITsAPIResource):
         if len(result['imported']):
             for i in result['imported']:
                 d = {}
-                otype = i[0]
-                obj = i[1]
+                otype = result['imported'][i][0]
+                obj = result['imported'][i][1]
                 rname = self.resource_name_from_type(otype)
                 url = reverse('api_dispatch_detail',
                             kwargs={'resource_name': rname,
