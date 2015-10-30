@@ -57,7 +57,7 @@ def ExtractPayloads(data):
                 next_one = hash_start+12+ hash_size
                 #print("hash_size: %d" % hash_size)
                 #print ("next one: %s" % binascii.hexlify(data5a[next_one:next_one+8]))
-            sample_size_off= next_one + 15
+            	sample_size_off= next_one + 15
             #print ("sample_size_off: %s" % binascii.hexlify(data5a[sample_size_off:sample_size_off+8])) 
             sample_size = unpack('<Q',data5a[(sample_size_off):(sample_size_off+8)])[0]
             
@@ -84,8 +84,9 @@ def ExtractPayloads(data):
             if(unpack('<B',data5a[sep_off: sep_off+1])[0] == 0x09):
                 chunk_size=unpack('<L',data5a[payload_off -4: payload_off])[0]
             else:
-                raise("no chunk size!")
-            #print( "chunk size: %d" % chunk_size)
+                chunk_size=unpack('<L',data5a[payload_off -4: payload_off])[0] 
+                #raise("no chunk size!")
+            print( "chunk size: %x" % chunk_size)
             dechunked += data5a[payload_off:chunk_size + payload_off]
             if payload_off+chunk_size +1 < len(data5a):
                 if (unpack('<B',data5a[payload_off+chunk_size:chunk_size + payload_off+1])[0] == 0x09 ):

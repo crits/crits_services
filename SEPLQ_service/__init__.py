@@ -22,6 +22,8 @@ import io
 # for computing the MD5
 from hashlib import md5
 
+from crits.vocabulary.relationships import RelationshipTypes
+
 class SEPLQService(Service):
     """
     Extractor for Symantec Central Quarantine files
@@ -97,6 +99,6 @@ class SEPLQService(Service):
                 related_id=str(obj.id),
                 campaign=obj.campaign,
                 method=self.name,
-                relationship='Related_To',
+                relationship=RelationshipTypes.RELATED_TO,
                 user=self.current_task.username)
         self._add_result("file_added", name, {'md5': h})
