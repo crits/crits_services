@@ -75,7 +75,6 @@ class SSDeepService(Service):
                 if score >= threshold and candidate["md5"] != target_md5:
                     match_list.append({'md5': candidate["md5"], 'score': score})
         # finally sort the results
-        print match_list
         match_list.sort(key=lambda sample: sample["score"], reverse=True)
         for match in match_list:
             self._add_result("ssdeep_match", match["md5"], {'md5': match["md5"], 'score': match["score"]})
