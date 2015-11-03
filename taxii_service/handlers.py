@@ -117,7 +117,7 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
         proxy = settings.HTTP_PROXY
         if not proxy.startswith('http://'):
             proxy = 'http://' + proxy
-        client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
+        client.setProxy(proxy)
 
     crits_taxii = taxii.Taxii()
     crits_taxii.runtime = runtime
@@ -696,7 +696,7 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
         proxy = settings.HTTP_PROXY
         if not proxy.startswith('http://'):
             proxy = 'http://' + proxy
-        client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
+        client.setProxy(proxy)
 
     # generate and send inbox messages
     # one message per feed, with appropriate TargetFeed header specified

@@ -1,0 +1,2 @@
+The SEPLQ service has no direct dependencies outside of what's necessary for
+CRITs to run.
