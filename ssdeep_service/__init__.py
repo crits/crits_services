@@ -23,7 +23,14 @@ class SSDeepService(Service):
     @staticmethod
     def bind_runtime_form(analyst, config):
         # The values are submitted as a list for some reason.
-        data = {'threshold': config['threshold'][0]}
+        if config:
+            # The values are submitted as a list for some reason.
+            data = {'threshold': config['threshold'][0]}
+        else:     
+            data = {}
+            fields = forms.SSDeepRunForm().fields
+            for name, field in fields.iteritems():
+                data[name] = field.initial
         return forms.SSDeepRunForm(data)
 
     @staticmethod
@@ -68,6 +75,7 @@ class SSDeepService(Service):
                 if score >= threshold and candidate["md5"] != target_md5:
                     match_list.append({'md5': candidate["md5"], 'score': score})
         # finally sort the results
+        print match_list
         match_list.sort(key=lambda sample: sample["score"], reverse=True)
         for match in match_list:
             self._add_result("ssdeep_match", match["md5"], {'md5': match["md5"], 'score': match["score"]})
