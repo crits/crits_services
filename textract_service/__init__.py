@@ -22,7 +22,7 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from crits.services.core import Service, ServiceConfigError
 
-from . import forms
+#from . import forms
 
 logger = logging.getLogger(__name__)
 
@@ -41,10 +41,6 @@ class textractService(Service):
     def valid_for(obj):
         if not obj.filedata:
             return False
-        with self._write_to_file() as tmp_file:
-            output = textract.process(tmp_file)
-            if not output:
-                return False
 
     def run(self, obj, config):
         obj.filedata.seek(0)
@@ -58,7 +54,9 @@ class textractService(Service):
         with self._write_to_file() as tmp_file:
             (working_dir, filename) = os.path.split(tmp_file)
             obj.filedata.seek(0)
-            output = textract.process(tmp_file)            
+            os.rename(tmp_file, os.path.join(working_dir, obj.filename))
+            output = textract.process((os.path.join(working_dir, obj.filename)))            
+            os.rename(os.path.join(working_dir, obj.filename), tmp_file)
             if output:
                 raw_hash = md5(output).hexdigest()
                 res = handle_raw_data_file(output, self.obj.source, self.current_task.username,
