@@ -27,8 +27,14 @@ class CarverService(Service):
 
     @staticmethod
     def bind_runtime_form(analyst, config):
-        # The values are submitted as a list for some reason.
-        data = {'start': config['start'][0], 'end': config['end'][0]}
+        if config:
+            # The values are submitted as a list for some reason.
+            data = {'start': config['start'][0], 'end': config['end'][0]}
+        else:
+            data = {}
+            fields = forms.CarverRunForm().fields
+            for name, field in fields.iteritems():
+                data[name] = field.initial
         return forms.CarverRunForm(data)
 
     @classmethod
