@@ -15,6 +15,7 @@ END=$(tput sgr0)   #ends color
 
 verify()
 {
+    PIP='pip'
     if [ -z "$OS" ]
     then
         #printf "${INFO}Testing Computer's Architecture${END}\n"
@@ -53,7 +54,10 @@ verify()
         OS="$(echo "$OS" | tr "[:upper:]" "[:lower:]")"
         VER="$(echo "$VER" | tr "[:upper:]" "[:lower:]")"
         # Let's export these, so we don't have to repeat this in every bootstrap
-        export OS VER REL PIP
+        export OS
+        export PIP
+        export VER
+        export REL
     fi
 }
 
