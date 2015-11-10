@@ -73,7 +73,7 @@ class OfficeMetaService(Service):
                             related_id=str(obj.id),
                             campaign=obj.campaign,
                             method=self.name,
-                            relationship=RelationshipTypes.EXTRACTED_FROM,
+                            relationship=RelationshipTypes.CONTAINED_WITHIN,
                             user=self.current_task.username)
                 stream_md5 = hashlib.md5(curr_dir['data']).hexdigest()
                 added_files.append((name, stream_md5))
