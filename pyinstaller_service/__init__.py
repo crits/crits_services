@@ -123,7 +123,7 @@ class pyinstallerService(Service):
                                 self._info("RawData added for %s" % t[5])
                                 res = obj.add_relationship(
                                     rel_item=result['object'],
-                                    rel_type=RelationshipTypes.EXTRACTED_FROM,
+                                    rel_type=RelationshipTypes.CONTAINED_WITHIN,
                                     rel_confidence="high",
                                     analyst=self.current_task.username
                                 )
