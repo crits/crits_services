@@ -13,7 +13,7 @@ ubuntu_install()
     printf "${HEAD}Installing dependencies with apt-get${END}\n"
     #sudo apt-add-repository universe
     #sudo apt-get update
-    sudo apt-get install -y --fix-missing antiword popler-utils
+    sudo apt-get install -y --fix-missing antiword poppler-utils
     if [ $? -eq 0 ]
     then
       printf "${PASS}Ubuntu Install Complete${END}\n"
@@ -28,7 +28,7 @@ debian_install()
     printf "${HEAD}Installing dependencies with apt-get${END}\n"
     #sudo apt-add-repository universe
     #sudo apt-get update
-    sudo apt-get install -y --fix-missing antiword popler-utils
+    sudo apt-get install -y --fix-missing antiword poppler-utils
     if [ $? -eq 0 ]
     then
       printf "${PASS}Debian Install Complete${END}\n"
