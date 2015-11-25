@@ -1,5 +1,6 @@
 import hashlib
 import base64
+import io
 
 from django.template.loader import render_to_string
 
@@ -73,21 +74,20 @@ class CarverService(Service):
         if start_offset < 0 or (end_offset > 0 and start_offset > end_offset):
             self._error("Invalid offsets.")
             return
-
-        data = obj.filedata.read()[start_offset:end_offset]
+        data = bytearray(obj.filedata.read()[start_offset:end_offset])
+#        data = bytearray(obj.filedata.read()[start_offset:end_offset])
         if not data:
             self._error("No data.")
         else:
             if ops == 'B64D':
                 try:
-                    data1 = base64.b64decode(data)
-                    data = data1
+                    data = base64.urlsafe_b64decode(data)
                 except Exception as exc:
                     self._error("Error: %s" % exc)
             elif ops == 'XORB':
                 if ops_parm > 0:
                     for k in range(len(data)):
-                        data[k] ^= str(ops_parm)
+                        data[k] ^= ops_parm
             elif ops == 'ROBL':
                 if parm_sign == '+':
                     for k in range(len(data)):
@@ -116,7 +116,7 @@ class CarverService(Service):
                     for k in range(len(data)):
                         data[k] -= ops_parm
             filename = hashlib.md5(data).hexdigest()
-            handle_file(filename, data, obj.source,
+            handle_file(filename, io.BytesIO(data).read(), obj.source,
                         related_id=str(obj.id),
                         campaign=obj.campaign,
                         method=self.name,
