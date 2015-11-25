@@ -16,8 +16,8 @@ class CarverRunForm(forms.Form):
                                initial=0)
     end = forms.IntegerField(required=True,
                              label="End offset",
-                             initial=0)
-    ops = forms.CharField(choices=OPERATIONS,
+                             initial=-1)
+    ops = forms.ChoiceField(choices=OPERATIONS,
                                label="Perform an operation on carved region",
                                initial='None')
     ops_parm = forms.CharField(required=False,

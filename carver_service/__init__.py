@@ -80,14 +80,15 @@ class CarverService(Service):
         else:
             if ops == 'B64D':
                 try:
-                    data=base64.decode(data)
+                    data1 = base64.decode(data)
+                    data = data1
                 except Exception as exc:
                     self._error("Error: %s" % exc)
             elif ops == 'XORB':
                 if ops_parm > 0:
                     for k in range(len(data)):
-                        data[k] ^= ops_parm
-            elif ops == 'ROLB':
+                        data[k] ^= str(ops_parm)
+            elif ops == 'ROBL':
                 if parm_sign == '+':
                     for k in range(len(data)):
                         val = data[k]
