@@ -80,7 +80,7 @@ class CarverService(Service):
         else:
             if ops == 'B64D':
                 try:
-                    data1 = base64.decode(data)
+                    data1 = base64.b64decode(data)
                     data = data1
                 except Exception as exc:
                     self._error("Error: %s" % exc)
