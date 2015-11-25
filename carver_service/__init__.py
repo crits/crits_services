@@ -104,10 +104,10 @@ class CarverService(Service):
             elif ops == 'SHLB':
                 if parm_sign == '+':
                     for k in range(len(data)):
-                        data[k] >>= ops_parm
+                        data[k] = data[k] >> ops_parm
                 else:
                     for k in range(len(data)):
-                        data[k] <<= ops_parm
+                        data[k] = data[k] << ops_parm
             elif ops == 'ADDB':
                 if parm_sign == '+':
                     for k in range(len(data)):
