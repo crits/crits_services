@@ -6,7 +6,7 @@ class CarverRunForm(forms.Form):
     OPERATIONS = (
         ('None', 'No-op' ),
         ('B64D', 'Base64 Decode'),
-        ('XORB', 'XOR bytes')
+        ('XORB', 'XOR bytes'),
         ('ROBL', 'Rotate each carved byte'),
         ('SHBL', 'Shift each carved byte'),
         ('ADDL', 'Add/Subtract value to each carved byte'),
