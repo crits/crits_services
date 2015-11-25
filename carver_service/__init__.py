@@ -11,7 +11,7 @@ from . import forms
 
 class CarverService(Service):
     name = "carver"
-    version = '0.0.1'
+    version = '0.0.2'
     supported_types = ['Sample']
     description = "Carve a chunk out of a sample."
 
@@ -83,11 +83,11 @@ class CarverService(Service):
                     data=base64.decode(data)
                 except Exception as exc:
                     self._error("Error: %s" % exc)
-            elsif ops == 'XORB':
+            elif ops == 'XORB':
                 if ops_parm > 0:
                     for k in range(len(data)):
                         data[k] ^= ops_parm
-            elsif ops == 'ROLB':
+            elif ops == 'ROLB':
                if parm_sign == '+':
                     for k in range(len(data)):
                         val = data[k]
@@ -102,14 +102,14 @@ class CarverService(Service):
                         (val << ops_parm%8) & (2**7) | \
                         ((val & (2**7)) >> (8-(ops_parm%8)))
                         data[k] = rol
-            elsif ops == 'SHLB':
+            elif ops == 'SHLB':
                if parm_sign == '+':
                     for k in range(len(data)):
                         data[k] >>= ops_parm
                 else:
                     for k in range(len(data)):
                         data[k] <<= ops_parm
-            elsif ops == 'ADDB':
+            elif ops == 'ADDB':
                 if parm_sign == '+':
                     for k in range(len(data)):
                         data[k] += ops_parm
