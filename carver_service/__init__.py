@@ -92,15 +92,13 @@ class CarverService(Service):
                     for k in range(len(data)):
                         val = data[k]
                         max_bits = 8
-                        ror = lambda val, ops_parm, max_bits:
-                            ((val & (2**7)) >> ops_parm%8) | (val << (8-(ops_parm%8)) & (2**7))
+                        ror = lambda val, ops_parm, max_bits: ((val & (2**max_bits-1)) >> ops_parm%max_bits) | (val << (max_bits-(ops_parm%max_bits)) & (2**max_bits-1))
                         data[k] = ror
                 else:
                     for k in range(len(data)):
                         val = data[k]
                         max_bits = 8
-                        rol = lambda val, ops_parm, max_bits:
-                            (val << ops_parm%8) & (2**7) | ((val & (2**7)) >> (8-(ops_parm%8)))
+                        rol = lambda val, ops_parm, max_bits: (val << ops_parm%max_bits) & (2**max_bits-1) | ((val & (2**max_bits-1)) >> (max_bits-(ops_parm%max_bits)))
                         data[k] = rol
             elif ops == 'SHLB':
                if parm_sign == '+':
