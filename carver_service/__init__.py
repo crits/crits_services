@@ -88,7 +88,7 @@ class CarverService(Service):
                     for k in range(len(data)):
                         data[k] ^= ops_parm
             elif ops == 'ROLB':
-               if parm_sign == '+':
+                if parm_sign == '+':
                     for k in range(len(data)):
                         val = data[k]
                         max_bits = 8
@@ -101,7 +101,7 @@ class CarverService(Service):
                         rol = lambda val, ops_parm, max_bits: (val << ops_parm%max_bits) & (2**max_bits-1) | ((val & (2**max_bits-1)) >> (max_bits-(ops_parm%max_bits)))
                         data[k] = rol
             elif ops == 'SHLB':
-               if parm_sign == '+':
+                if parm_sign == '+':
                     for k in range(len(data)):
                         data[k] >>= ops_parm
                 else:
