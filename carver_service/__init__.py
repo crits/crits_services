@@ -1,4 +1,5 @@
 import hashlib
+import base64
 
 from django.template.loader import render_to_string
 
@@ -29,7 +30,9 @@ class CarverService(Service):
     def bind_runtime_form(analyst, config):
         if config:
             # The values are submitted as a list for some reason.
-            data = {'start': config['start'][0], 'end': config['end'][0]}
+            data = {'start': config['start'][0], 'end': config['end'][0],
+                     'ops': config['ops'][0], 'ops_parm': config['ops_parm'][0]
+                       }
         else:
             data = {}
             fields = forms.CarverRunForm().fields
@@ -48,6 +51,23 @@ class CarverService(Service):
     def run(self, obj, config):
         start_offset = config['start']
         end_offset = config['end']
+        ops = config['ops']
+        try:
+            if config['ops_parm']:
+                parm_sign=str(config['ops_parm'])[0]
+                if parm_sign not in ('+', '-'):
+                    ops_parm = int(str(config['ops_parm']), 16)
+                    parm_sign = '+'
+                else:
+                    ops_parm = int(str(config['ops_parm'])[1:], 16)
+                if ops_parm > 0xff:
+                    ops_parm = 0xff
+                if ops_parm < 0x00:
+                    ops_parm = 0x00
+            else:
+                ops_parm = 0x00
+        except Exception as exc:
+            self._error("Error: %s" % exc)
         # Start must be 0 or higher. If end is greater than zero it must
         # also be greater than start_offset.
         if start_offset < 0 or (end_offset > 0 and start_offset > end_offset):
@@ -58,6 +78,44 @@ class CarverService(Service):
         if not data:
             self._error("No data.")
         else:
+            if ops == 'B64D':
+                try:
+                    data=base64.decode(data)
+                except Exception as exc:
+                    self._error("Error: %s" % exc)
+            elsif ops == 'XORB':
+                if ops_parm > 0:
+                    for k in range(len(data)):
+                        data[k] ^= ops_parm
+            elsif ops == 'ROLB':
+               if parm_sign == '+':
+                    for k in range(len(data)):
+                        val = data[k]
+                        ror = lambda val, ops_parm, 8: \
+                        ((val & (2**7)) >> ops_parm%8) | \
+                        (val << (8-(ops_parm%8)) & (2**7))
+                        data[k] = ror
+                else:
+                    for k in range(len(data)):
+                        val = data[k]
+                        rol = lambda val, ops_parm, 8: \
+                        (val << ops_parm%8) & (2**7) | \
+                        ((val & (2**7)) >> (8-(ops_parm%8)))
+                        data[k] = rol
+            elsif ops == 'SHLB':
+               if parm_sign == '+':
+                    for k in range(len(data)):
+                        data[k] >>= ops_parm
+                else:
+                    for k in range(len(data)):
+                        data[k] <<= ops_parm
+            elsif ops == 'ADDB':
+                if parm_sign == '+':
+                    for k in range(len(data)):
+                        data[k] += ops_parm
+                else:
+                    for k in range(len(data)):
+                        data[k] -= ops_parm
             filename = hashlib.md5(data).hexdigest()
             handle_file(filename, data, obj.source,
                         related_id=str(obj.id),
