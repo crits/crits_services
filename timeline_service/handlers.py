@@ -40,7 +40,7 @@ def generate_timeline(obj_type, obj_id, user):
                     i = "Source <b>%s</b> provided %s with a method of <b>'%s'</b> \
                             and a reference of <b>'%s'</b>" % (name,
                                                             obj_type,
-                                                            cgi.escape(instance.method),
+                                                            cgi.escape(str(instance.method)),
                                                             cgi.escape(str(instance.reference)))
                     append_to_timeline(timeline, instance.date, i)
 
