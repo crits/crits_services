@@ -19,6 +19,7 @@ At this point there are a few services that require some additional manual insta
 The services that currently require some manual installation are (at least until somebody fixes them):
 
 - chopshop_service
+- cuckoo_distributed_service (need external services)
 - metacap_service (it needs chopshop)
 - pyew
 - snugglefish_service

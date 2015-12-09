@@ -1,0 +1,8 @@
+The cuckoo_distributed requires the following microservices:
+
+* feed_cuckoo
+* check_results
+* parse_and_submit
+
+They can be found here:
+https://github.com/cynexit/cuckoo_distributed

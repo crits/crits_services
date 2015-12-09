@@ -1,0 +1,11 @@
+This is a service intended to perform sample analyses using Cuckoo
+in a distributed manor.
+
+This is not a standalone service! You'll find everything you need
+to use and setup this service here:
+
+https://github.com/cynexit/cuckoo_distributed
+
+
+In this directory itself you can only find all the necessary CRITs
+service files.
