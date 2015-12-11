@@ -227,13 +227,15 @@ class TAXIIServerConfigForm(forms.Form):
                               label="Private Keyfile",
                               initial='',
                               widget=forms.TextInput(),
-                              help_text="Your authentication keyfile, if required.")
+                              help_text="Path to authentication keyfile, "
+                                        "if required.")
 
     lcert = forms.CharField(required=False,
                             label="Local Certificate",
                             initial='',
                             widget=forms.TextInput(),
-                            help_text="Your authentication certificate, if required.")
+                            help_text="Path to authentication certificate "
+                                      "file, if required.")
 
     user = forms.CharField(required=False,
                             label="Username",
@@ -271,7 +273,7 @@ class TAXIIFeedConfigForm(forms.Form):
                                label="Feed Name",
                                initial='',
                                widget=forms.TextInput(),
-                               help_text="A TAXII feed for this server.")
+                               help_text="A TAXII feed (collection) on this server.")
 
     fid = forms.CharField(required=False,
                           label="Feed ID",
@@ -286,17 +288,18 @@ class TAXIIFeedConfigForm(forms.Form):
                                        " with this feed.")
 
     fcert = forms.CharField(required=False,
-                            label="Feed Certificate",
+                            label="Encryption Certificate",
                             initial='',
                             widget=forms.TextInput(),
-                            help_text="Certificate used to encrypt sent data.")
+                            help_text="Path to cert file used to encrypt STIX "
+                                      "packages. Leave blank for no encryption.")
 
     subID = forms.CharField(required=False,
                             label="Subscription ID",
                             initial='',
                             widget=forms.TextInput(),
                             help_text="The subscription ID for this "
-                                      "feed (if required).")
+                                      "feed, if required.")
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('label_suffix', ':')
