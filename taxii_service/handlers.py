@@ -838,13 +838,22 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
 
         # generate and send inbox messages
         # one message per feed, with appropriate TargetFeed header specified
-        # Store each TAXII message in a list.
-        # Create encrypted block
-        encrypted_block = encrypt_block(
-            tm.ContentBlock(
-                content_binding = t.CB_STIX_XML_111,
-                content = stix_doc.to_xml()).to_xml(),
-            fcert)
+        # Create content block
+        content_block = tm.ContentBlock(content_binding = t.CB_STIX_XML_111,
+                                        content = stix_doc.to_xml())
+
+        if fcert: # if encryption cert provided, encrypt the content_block
+            try:
+                encrypted_block = encrypt_block(content_block.to_xml(), fcert)
+            except IOError as e:
+                msg = "Error reading encryption certificate - %s" % e
+                ret['failed_rcpts'].append((rcpt, msg))
+                continue
+
+            # Wrap encrypted block in content block
+            content_block = tm.ContentBlock(
+                                 content_binding = "application/x-pks7-mime",
+                                 content = encrypted_block)
 
         try_10 = False
         failed = True
@@ -852,7 +861,7 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
         # if version=0, Poll using 1.1 then 1.0 if that fails.
         if version in ('0', '1.1'):
             status = "<br>tm11: "
-            result = gen_send(tm11, client, encrypted_block, hostname,
+            result = gen_send(tm11, client, content_block, hostname,
                               t.VID_TAXII_XML_11,
                               dcn = [feedname],
                               url = path,
@@ -872,7 +881,7 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
         # Try TAXII 1.0 since 1.1 seems to have failed.
         if version == '1.0' or (try_10 and version == '0'):
             status = "<br>tm10: "
-            result = gen_send(tm, client, encrypted_block, hostname,
+            result = gen_send(tm, client, content_block, hostname,
                             t.VID_TAXII_XML_10,
                             eh = {'TargetFeed': feedname},
                             url = path,
@@ -896,7 +905,7 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
     ret['success'] = True
     return ret
 
-def gen_send(tm_, client, encrypted_block, hostname, t_xml, dcn=None, eh=None,
+def gen_send(tm_, client, content_block, hostname, t_xml, dcn=None, eh=None,
              url="/inbox/", port=None):
     """
     Generate and send a TAXII message.
@@ -905,8 +914,8 @@ def gen_send(tm_, client, encrypted_block, hostname, t_xml, dcn=None, eh=None,
     :type tm_: TAXII message class.
     :param client: The TAXII client to use.
     :type client: TAXII Client.
-    :param encrypted_block: The encrypted block to use.
-    :type encrypted_block: TAXII Encrypted Block
+    :param content_block: The content block to use.
+    :type content_block: TAXII Content Block
     :param hostname: The TAXII server hostname to connect to.
     :type hostname: str
     :param t_xml: The TAXII XML Schema version we used.
@@ -922,11 +931,6 @@ def gen_send(tm_, client, encrypted_block, hostname, t_xml, dcn=None, eh=None,
     :returns: tuple (response, taxii_message) or (exception message)
     """
 
-    # Wrap encrypted block in content block
-    content_block = tm_.ContentBlock(
-        content_binding = "application/x-pks7-mime",
-        content = encrypted_block
-    )
     # Create inbox message
     if dcn:
         inbox_message = tm_.InboxMessage(

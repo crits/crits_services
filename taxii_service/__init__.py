@@ -91,7 +91,7 @@ class TAXIIClient(Service):
             if not does_source_exist(source):
                 errors.append("Provided CRITs source is invalid")
         if fcert and not os.path.isfile(fcert):
-            errors.append("Feed Certificate does not exist at given location")
+            errors.append("Encryption Certificate does not exist at given location")
         if errors:
             raise ServiceConfigError("<br>".join(errors))
 
