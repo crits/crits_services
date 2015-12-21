@@ -126,9 +126,9 @@ class previewService(Service):
                 # if it's a PNG, then let's convert it to something else and then back to PNG
                 if im.format == 'PNG':
                     tfile = io.BytesIO()
-                    im.save(tfile, 'TIFF')
+                    im.save(tfile, format='WebP')
                     tfile.seek(0)
-                    Image.open(io.BytesIO(tfile.read())).save(ofile, 'PNG', optimize=True)
+                    Image.open(io.BytesIO(tfile.read())).save(ofile, format='PNG', optimize=True)
                 else:
                     im.save(ofile,'PNG', optimize=True)
                 obj.filedata.seek(0)
