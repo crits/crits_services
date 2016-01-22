@@ -52,7 +52,7 @@ class TAXIISendForm(forms.Form):
         for _type in get_supported_types():
             collected = collect_objects(item._meta['crits_type'], item.id,
                                         1, sc['max_rels'], sc['max_rels'],
-                                        [_type], user_srcs)
+                                        [_type], user_srcs, False)
             field = forms.MultipleChoiceField(required=False, label=_type)
             field.choices = filter_and_format_choices(collected, item, _type)
             self.fields[_type] = field
