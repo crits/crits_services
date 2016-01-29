@@ -16,4 +16,5 @@ class previewConfigForm(forms.Form):
                                help_text="Full path to antiword binary.")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(previewConfigForm, self).__init__(*args, **kwargs)
