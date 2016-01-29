@@ -1,6 +1,6 @@
 import datetime
 
-from StringIO import StringIO
+from io import BytesIO
 
 from .object_mapper import (
     make_crits_object,
@@ -29,6 +29,7 @@ from crits.vocabulary.indicators import (
     IndicatorAttackTypes,
     IndicatorThreatTypes
 )
+from crits.vocabulary.relationships import RelationshipTypes
 
 from cybox.objects.artifact_object import Artifact
 from cybox.objects.address_object import Address
@@ -101,7 +102,7 @@ class STIXParser():
         as the true source.
         """
 
-        f = StringIO(self.data)
+        f = BytesIO(self.data)
         self.package = STIXPackage.from_xml(f)
         f.close()
         if not self.package:
@@ -137,8 +138,11 @@ class STIXParser():
                 if header.title:
                     title = header.title
                 if hasattr(header, 'package_intents'):
-                    stix_type = str(header.package_intents[0])
-                    event_type = get_crits_event_type(stix_type)
+                    try:
+                        stix_type = str(header.package_intents[0])
+                        event_type = get_crits_event_type(stix_type)
+                    except:
+                        pass
                 if header.description:
                     description = header.description
                     if isinstance(description, StructuredText):
@@ -269,6 +273,11 @@ class STIXParser():
                     continue
 
             for observable in indicator.observables: # get each observable from indicator (expecting only 1)
+                if not observable.object_ or not observable.object_.properties:
+                    self.failed.append(("No valid object_properties was found!",
+                                        type(obs).__name__,
+                                        obs.id_)) # note for display in UI
+                    continue
                 try: # create CRITs Indicator from observable
                     item = observable.object_.properties
                     obj = make_crits_object(item)
@@ -512,7 +521,7 @@ class STIXParser():
                                          analyst=analyst)
                 elif self.imported[id_][0] != 'Event':
                     evt.add_relationship(self.imported[id_][1],
-                                         rel_type='Related_To',
+                                         rel_type=RelationshipTypes.RELATED_TO,
                                          rel_confidence='Unknown',
                                          analyst=analyst)
             evt.save(username=analyst)

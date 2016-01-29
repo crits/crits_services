@@ -1,0 +1,9 @@
+Version 0.0.1
+-------------
+
+This is an attempt at integrating a crits service with pdftotext - a part of Poppler-utils (http://poppler.freedesktop.org).
+
+
+Version 0.0.2
+-------------
+Added text extraction from word documents using Antiword
