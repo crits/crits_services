@@ -75,7 +75,7 @@ def filter_and_format_choices(choice_opts, item, _type):
             continue
         if item.id != obj.id or item_type != _type:
             # only process if the item isn't the current context crits item
-            ret_opts.append((choice, choice_fmt.format(obj)))
+            ret_opts.append((choice, choice_fmt.format(obj).encode('utf-8')))
     return ret_opts
 
 def get_supported_types():

@@ -1,0 +1,7 @@
+Required:
+
+Carbon Black Client API (https://github.com/carbonblack/cbapi/tree/master/client_apis/python)
+
+Optional:
+
+pympler

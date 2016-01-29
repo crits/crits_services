@@ -16,6 +16,7 @@ from crits.pcaps.handlers import handle_pcap_file
 from crits.domains.handlers import upsert_domain
 from crits.domains.domain import Domain
 from crits.core.user_tools import get_user_organization
+from crits.vocabulary.relationships import RelationshipTypes
 
 from . import forms
 
@@ -787,7 +788,7 @@ class VirusTotalService(Service):
                                   related_type="Sample",
                                   method=self.name,
                                   reference=None,
-                                  relationship='Related_To')
+                                  relationship=RelationshipTypes.RELATED_TO)
         self._add_result("pcap added", h, {'md5': h})
 
     def _process_domain(self, domain, ip, scandate):
@@ -818,11 +819,11 @@ class VirusTotalService(Service):
         if not result['success']:
             self._info("Cannot add domain %s. reason: %s" % (str(domain), str(result['message'])))
         else:
-            # add relationshiop
+            # add relationship
             dmain = result['object']
 
             msg = dmain.add_relationship(rel_item=self.obj,
-                                         rel_type='Related_To',
+                                         rel_type=RelationshipTypes.RELATED_TO,
                                          rel_date=scandate,
                                          analyst=self.current_task.username,
                                          rel_confidence='unknown',
