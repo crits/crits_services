@@ -10,4 +10,5 @@ class ExiftoolConfigForm(forms.Form):
                                help_text="Full path to exiftool binary.")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(ExiftoolConfigForm, self).__init__(*args, **kwargs)

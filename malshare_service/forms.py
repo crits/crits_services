@@ -10,4 +10,5 @@ class MalShareConfigForm(forms.Form):
                                  initial='')
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(MalShareConfigForm, self).__init__(*args, **kwargs)

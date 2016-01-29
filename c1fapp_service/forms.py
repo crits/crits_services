@@ -14,4 +14,5 @@ class C1fappConfigForm(forms.Form):
                                    initial='https://www.c1fapp.com/cifapp/api/')
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(C1fappConfigForm, self).__init__(*args, **kwargs)
