@@ -59,15 +59,13 @@ class TAXIIClient(Service):
             errors.append("You must specify a TAXII Server Poll Path.")
         if not ipath:
             errors.append("You must specify a TAXII Server Inbox Path.")
-        if not keyfile:
-            errors.append("You must specify a keyfile location.")
-        else:
-            if  not os.path.isfile(keyfile):
-                errors.append("Keyfile does not exist at given location.")
-        if not lcert:
-            errors.append("You must specify a local certficate file location.")
-        else:
-            if  not os.path.isfile(lcert):
+        if keyfile and not lcert:
+            errors.append("If you provide a keyfile, you must also provide a certificate.")
+        if not keyfile and lcert:
+            errors.append("If you provide a certificate, you must also provide a keyfile.")
+        if keyfile and not os.path.isfile(keyfile):
+            errors.append("Keyfile does not exist at given location.")
+        if lcert and not os.path.isfile(lcert):
                 errors.append("Local cert file does not exist "
                               "at given location.")
         if errors:
@@ -133,6 +131,8 @@ class TAXIIClient(Service):
                   'keyfile': existing_config.get('keyfile', ''),
                   'port': '',
                   'lcert': existing_config.get('certfile', ''),
+                  'user': '',
+                  'pword': '',
                   'feeds': feeds}
         for key in to_remove:
             del existing_config[key]

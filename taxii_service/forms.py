@@ -223,17 +223,29 @@ class TAXIIServerConfigForm(forms.Form):
                                 help_text="The TAXII version supported "
                                           "by this server.")
 
-    keyfile = forms.CharField(required=True,
+    keyfile = forms.CharField(required=False,
                               label="Private Keyfile",
                               initial='',
                               widget=forms.TextInput(),
-                              help_text="Location of your keyfile.")
+                              help_text="Your authentication keyfile, if required.")
 
-    lcert = forms.CharField(required=True,
+    lcert = forms.CharField(required=False,
                             label="Local Certificate",
                             initial='',
                             widget=forms.TextInput(),
-                            help_text="Location of your certificate.")
+                            help_text="Your authentication certificate, if required.")
+
+    user = forms.CharField(required=False,
+                            label="Username",
+                            initial='',
+                            widget=forms.TextInput(),
+                            help_text="Username, if required.")
+
+    pword = forms.CharField(required=False,
+                            label="Password",
+                            initial='',
+                            widget=forms.PasswordInput(render_value=True),
+                            help_text="Password, if required.")
 
     tserver_attrs = {'size': 10,
                      'style':"height:100px; background-image: none"}
@@ -277,8 +289,7 @@ class TAXIIFeedConfigForm(forms.Form):
                             label="Feed Certificate",
                             initial='',
                             widget=forms.TextInput(),
-                            help_text="Certificate used to send data to "
-                                      "this feed.")
+                            help_text="Certificate used to encrypt sent data.")
 
     subID = forms.CharField(required=False,
                             label="Subscription ID",
