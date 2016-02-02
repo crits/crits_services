@@ -65,6 +65,8 @@ def poll_taxii_feeds(feeds, analyst, method):
         path = svrc['ppath']
         version = svrc['version']
         keyfile = str(svrc['keyfile'])
+        user = str(svrc['user'])
+        pword = str(svrc['pword'])
         cert = str(svrc['lcert'])
         feedc = svrc['feeds'][feed[1]]
         feed_name = feedc['feedname']
@@ -73,7 +75,7 @@ def poll_taxii_feeds(feeds, analyst, method):
 
         result = execute_taxii_agent(hostname, https, port, path, version,
                                      feed_name, keyfile, cert, subID, source,
-                                     method, analyst)
+                                     method, analyst, user, pword)
         if results:
             for k in result:
                 if isinstance(result[k], list):
@@ -103,9 +105,9 @@ def poll_taxii_feeds(feeds, analyst, method):
 
 
 def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
-                        version="0", feed=None, keyfile=None, certfile=None,
+                        version="0", feed=None, kfile=None, certfile=None,
                         subID=None, source=None, method=None, analyst=None,
-                        start=None, end=None):
+                        user=None, pword=None, start=None, end=None):
     ret = {
             'Certificate': [],
             'Domain': [],
@@ -160,10 +162,23 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         subID = None
 
     client = tc.HttpClient()
+
+    # Setup client authentication
     if https:
         client.setUseHttps(True)
+    if kfile and certfile and user:
+        client.setAuthType(tc.HttpClient.AUTH_CERT_BASIC)
+        client.setAuthCredentials({'key_file': kfile, 'cert_file': certfile,
+                                   'username': user, 'password': pword})
+    elif kfile and certfile:
         client.setAuthType(tc.HttpClient.AUTH_CERT)
-        client.setAuthCredentials({'key_file': keyfile, 'cert_file': certfile})
+        client.setAuthCredentials({'key_file': kfile, 'cert_file': certfile})
+    elif user:
+        client.setAuthType(tc.HttpClient.AUTH_BASIC)
+        client.setAuthCredentials({'username': user, 'password': pword})
+    else:
+        ret['msg'] = "Insufficient Authentication Data"
+        return ret
 
     if not port:
         port = None
@@ -188,8 +203,17 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
                             inclusive_end_timestamp_label=end,
                             subscription_id=subID)
 
-        response = client.callTaxiiService2(hostname, path, t.VID_TAXII_XML_11,
-                                            poll_msg.to_xml(), port)
+        try:
+            response = client.callTaxiiService2(hostname, path,
+                                                t.VID_TAXII_XML_11,
+                                                poll_msg.to_xml(), port)
+        except Exception as e:
+            if "alert unknown ca" in str(e):
+                ret['msg'] = ("Certficate Error - TAXII Server does not "
+                              "recognize your certificate: %s" % e)
+            else:
+                ret['msg'] = "TAXII Server Communication Error: %s" % e
+            return ret
 
         taxii_msg = t.get_message_from_http_response(response,
                                                      poll_msg.message_id)
@@ -211,8 +235,17 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
                                   exclusive_begin_timestamp_label=start,
                                   inclusive_end_timestamp_label=end,
                                   subscription_id=subID)
-        response = client.callTaxiiService2(hostname, path, t.VID_TAXII_XML_10,
-                                            poll_msg.to_xml(), port)
+        try:
+            response = client.callTaxiiService2(hostname, path,
+                                                t.VID_TAXII_XML_10,
+                                                poll_msg.to_xml(), port)
+        except Exception as e:
+            if "alert unknown ca" in str(e):
+                ret['msg'] = ("Certficate Error - TAXII Server does not "
+                              "recognize your certificate: %s" % e)
+            else:
+                ret['msg'] = "TAXII Server Communication Error: %s" % e
+            return ret
 
         taxii_msg = t.get_message_from_http_response(response, poll_msg.message_id)
         if response.getcode() != 200 or taxii_msg.message_type == tm.MSG_STATUS_MESSAGE:
@@ -238,14 +271,14 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
 
     mid = taxii_msg.message_id
     for content_block in taxii_msg.content_blocks:
-        data = parse_content_block(content_block, keyfile, certfile)
+        data = parse_content_block(content_block, kfile, certfile)
         if not data:
             ret['failures'].append(('No data found in content block',
                                     'TAXII Content Block'))
             continue
 
         objs = import_standards_doc(data, analyst, method, ref=mid,
-                                    make_event=create_events, source=feed)
+                                    make_event=create_events, source=source)
 
         if not objs['success']:
             ret['failures'].append((objs['reason'],
@@ -763,7 +796,9 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
             lcert = scfg['lcert']
             path = scfg['ipath']
             port = scfg['port']
-            keyfile = scfg['keyfile']
+            kfile = scfg['keyfile']
+            user = scfg['user']
+            pword = scfg['pword']
             feedname = fcfg['feedname']
             source = fcfg['source']
             fcert = fcfg['fcert']
@@ -785,8 +820,19 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
         # Setup client authentication
         if https:
             client.setUseHttps(True)
+        if kfile and lcert and user:
+            client.setAuthType(tc.HttpClient.AUTH_CERT_BASIC)
+            client.setAuthCredentials({'key_file': kfile, 'cert_file': lcert,
+                                       'username': user, 'password': pword})
+        elif kfile and lcert:
             client.setAuthType(tc.HttpClient.AUTH_CERT)
-            client.setAuthCredentials({'key_file': keyfile, 'cert_file': lcert})
+            client.setAuthCredentials({'key_file': kfile, 'cert_file': lcert})
+        elif user:
+            client.setAuthType(tc.HttpClient.AUTH_BASIC)
+            client.setAuthCredentials({'username': user, 'password': pword})
+        else:
+            ret['failed_rcpts'].append((feed, 'Insufficient Authentication Data'))
+            continue
 
         # generate and send inbox messages
         # one message per feed, with appropriate TargetFeed header specified
