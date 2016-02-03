@@ -19,6 +19,7 @@ class DiffieConfigForm(forms.Form):
     id_ = forms.CharField(widget=forms.HiddenInput())
 
     def __init__(self, type_, id_, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(DiffieConfigForm, self).__init__(*args, **kwargs)
         # Take each analysis result passed in as a kwarg and turn it into
         # a tuple for the form: ('id', 'service_name: start_date'). Only

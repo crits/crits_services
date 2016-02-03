@@ -31,6 +31,7 @@ class VirusTotalConfigForm(forms.Form):
 
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(VirusTotalConfigForm, self).__init__(*args, **kwargs)
 
 class VirusTotalRunForm(forms.Form):
@@ -46,4 +47,5 @@ class VirusTotalRunForm(forms.Form):
                                         help_text="Add Domains")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(VirusTotalRunForm, self).__init__(*args, **kwargs)

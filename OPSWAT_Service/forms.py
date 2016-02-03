@@ -15,4 +15,5 @@ class OPSWATConfigForm(forms.Form):
                                    help_text="Use proxy for connecting to OPSWAT service")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(OPSWATConfigForm, self).__init__(*args, **kwargs)

@@ -11,4 +11,5 @@ class EntropyCalcRunForm(forms.Form):
                              initial=-1)
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(EntropyCalcRunForm, self).__init__(*args, **kwargs)
