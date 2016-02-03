@@ -16,6 +16,7 @@ class SnugglefishSearchForm(forms.Form):
                                    help_text="Search string.")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(SnugglefishSearchForm, self).__init__(*args, **kwargs)
         snuggles = SnuggleIndex.objects()
         self.fields['indexes'].choices = [(sng.name, sng.name)

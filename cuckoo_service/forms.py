@@ -55,6 +55,7 @@ class CuckooConfigForm(forms.Form):
                                                    "period.")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(CuckooConfigForm, self).__init__(*args, **kwargs)
 
 class CuckooRunForm(forms.Form):
@@ -102,6 +103,7 @@ class CuckooRunForm(forms.Form):
                                               "automatically resubmitted.")
 
     def __init__(self, machines=[], *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(CuckooRunForm, self).__init__(*args, **kwargs)
 
         self.fields['machine'].choices = machines

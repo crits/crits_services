@@ -33,4 +33,5 @@ class CarbonBlackInegrationConfigForm(forms.Form):
     #                                initial='')
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(CarbonBlackInegrationConfigForm, self).__init__(*args, **kwargs)

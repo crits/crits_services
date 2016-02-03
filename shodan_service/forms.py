@@ -11,4 +11,5 @@ class ShodanConfigForm(forms.Form):
                                      initial='')
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(ShodanConfigForm, self).__init__(*args, **kwargs)
