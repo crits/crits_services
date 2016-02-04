@@ -12,6 +12,6 @@ def get_yara_result(request, id_):
     if request.method == "POST" and request.is_ajax():
         rule = request.POST['rule']
         result = handlers.test_yara_rule(id_, rule)
-        return HttpResponse(json.dumps(result), mimetype="application/json")
+        return HttpResponse(json.dumps(result), content_type="application/json")
     else:
         return render_to_response("error.html", {"error" : "Expected AJAX POST" }, RequestContext(request))
