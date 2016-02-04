@@ -13,14 +13,14 @@ def pyew_port(request):
 
     svc = CRITsService.objects(name='Pyew').first()
     if not svc:
-        return HttpResponse(json.dumps({}), mimetype="application/json")
+        return HttpResponse(json.dumps({}), content_type="application/json")
 
     sc = svc.config
     port = str(sc['port'])
     secure = str(sc['secure'])
     data = {'port': port,
             'secure': secure}
-    return HttpResponse(json.dumps(data), mimetype="application/json")
+    return HttpResponse(json.dumps(data), content_type="application/json")
 
 @user_passes_test(user_can_view_data)
 def pyew_tokenize(request):
@@ -37,4 +37,4 @@ def pyew_tokenize(request):
         data = {'token': token}
     except:
         data = {'token': None}
-    return HttpResponse(json.dumps(data), mimetype="application/json")
+    return HttpResponse(json.dumps(data), content_type="application/json")
