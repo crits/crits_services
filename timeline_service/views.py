@@ -9,4 +9,4 @@ from . import handlers
 @user_passes_test(user_can_view_data)
 def get_timeline(request, ctype, cid):
     result = handlers.generate_timeline(ctype, cid, "%s" % request.user)
-    return HttpResponse(json.dumps(result), mimetype="application/json")
+    return HttpResponse(json.dumps(result), content_type="application/json")

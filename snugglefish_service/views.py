@@ -29,7 +29,7 @@ def get_snugglefish_search_form(request):
     """Load the snugglefish search form via AJAX."""
     if request.method == "GET" and request.is_ajax():
         form = {'form': forms.SnugglefishSearchForm().as_table()}
-        return HttpResponse(json.dumps(form), mimetype="application/json")
+        return HttpResponse(json.dumps(form), content_type="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
