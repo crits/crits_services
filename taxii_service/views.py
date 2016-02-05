@@ -23,15 +23,19 @@ def taxii_agent(request):
     if form.is_valid():
         # Use service configuration from DB.
         feeds = [feed.split(' - ') for feed in form.cleaned_data['feeds']]
-        result = handlers.poll_taxii_feeds(feeds, analyst,
-                                           method="TAXII Agent Web")
+        try:
+            result = handlers.poll_taxii_feeds(feeds, analyst,
+                                               method="TAXII Agent Web")
 
-        if 'all_fail' in result and result['all_fail']:
-            data = {'success': False, 'msg': result['msg']}
-        else:
-            data = {'success': True}
-            data['html'] = render_to_string("taxii_agent_results.html",
-                                            {'result' : result})
+            if 'all_fail' in result and result['all_fail']:
+                data = {'success': False, 'msg': result['msg']}
+            else:
+                data = {'success': True}
+                data['html'] = render_to_string("taxii_agent_results.html",
+                                                {'result' : result})
+        except Exception as e:
+            data = {'success': False, 'msg': str(type(e)) + str(e)}
+
         return HttpResponse(json.dumps(data), mimetype="application/json")
     return render_to_response('taxii_agent_form.html',
                               {'form': form, 'errors': form.errors},
@@ -83,12 +87,16 @@ def execute_taxii_service(request, crits_type, crits_id):
     :param crits_type The type of the crits object that will be converted
     :param crits_id The ID of the crits object that will be converted
     """
-    if request.method == "POST" and request.is_ajax():
-        return get_taxii_result(request, crits_type, crits_id, False)
-    else:
-        return render_to_response('error.html',
-                                  {'error': "Must be AJAX."},
-                                  RequestContext(request))
+    try:
+        if request.method == "POST" and request.is_ajax():
+	        return get_taxii_result(request, crits_type, crits_id, False)
+        else:
+	        return render_to_response('error.html',
+	                              {'error': "Must be AJAX."},
+	                              RequestContext(request))
+    except Exception as e:
+        data = {'success': False, 'reason': str(type(e)) + str(e)}
+        return HttpResponse(json.dumps(data), mimetype="application/json")
 
 def get_taxii_result(request, crits_type, crits_id, preview):
     """
