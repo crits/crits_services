@@ -1,3 +1,4 @@
+import cgi
 import logging
 import os
 import pytz
@@ -844,11 +845,12 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
                 content = stix_doc.to_xml()).to_xml(),
             fcert)
 
+        try_10 = False
+        failed = True
+
         # if version=0, Poll using 1.1 then 1.0 if that fails.
         if version in ('0', '1.1'):
-            try_10 = False
-            current_status_type = None
-            failed = True
+            status = "<br>tm11: "
             result = gen_send(tm11, client, encrypted_block, hostname,
                               t.VID_TAXII_XML_11,
                               dcn = [feedname],
@@ -861,13 +863,14 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
                     ret['rcpts'].append(rcpt)
                 else:
                     try_10 = True
-                    current_status_type = "<br>tm11: " + res.status_type
+                    status += res.status_type
             else:
                 try_10 = True
-                current_status_type = "<br>tm11: " + result[0]
+                status += cgi.escape(result[0])
 
         # Try TAXII 1.0 since 1.1 seems to have failed.
         if version == '1.0' or (try_10 and version == '0'):
+            status = "<br>tm10: "
             result = gen_send(tm, client, encrypted_block, hostname,
                             t.VID_TAXII_XML_10,
                             eh = {'TargetFeed': feedname},
@@ -879,14 +882,12 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
                     failed = False
                     ret['rcpts'].append(rcpt)
                 else:
-                    err = "tm10: " + res.status_type
-                    current_status_type += "<br>%s" % err
+                    status += res.status_type
             else:
-                err = "tm10: " + result[0]
-                current_status_type += "<br>%s" % err
+                status += cgi.escape(result[0])
 
         if failed:
-            ret['failed_rcpts'].append((rcpt, current_status_type))
+            ret['failed_rcpts'].append((rcpt, status))
         else: # update releasability for successful TAXII messages
             verify_releasability([source], stix_msg['final_objects'],
                                  analyst, True)
@@ -955,8 +956,8 @@ def gen_send(tm_, client, encrypted_block, hostname, t_xml, dcn=None, eh=None,
                                                          inbox_message.message_id)
         return (response, taxii_message)
     # can happen if 'hostname' is reachable, but is not a TAXII server, etc
-    except Exception, e:
-        return (e)
+    except Exception as e:
+        return (str(e),)
 
 def verify_releasability(rcpts, items, analyst, update=False):
     """
