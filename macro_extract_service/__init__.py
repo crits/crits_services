@@ -3,7 +3,7 @@ from oletools.olevba import (
 )
 
 from crits.raw_data.handlers import handle_raw_data_file
-from crits.services.core import Service, ServiceConfigError
+from crits.services.core import Service
 from crits.vocabulary.relationships import RelationshipTypes
 
 
@@ -25,14 +25,7 @@ class MacroExtractService(Service):
 
     @staticmethod
     def valid_for(obj):
-        office_magic = "\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
-        if obj.filedata != None:
-            data = obj.filedata.read()
-            # Need to reset the read pointer.
-            obj.filedata.seek(0)
-            if data.startswith(office_magic):
-                return
-        raise ServiceConfigError("Not a valid office document.")
+        return
 
     def run(self, obj, config):
         username = self.current_task.username
@@ -41,13 +34,14 @@ class MacroExtractService(Service):
         try:
             vbaparser = VBA_Parser(filename, data=filedata)
         except Exception, e:
-            print str(e)
+            self._error("Cannot parse file: %s" % str(e))
             return
         if vbaparser.detect_vba_macros():
             for (filename, stream_path, vba_filename, vba_code) in vbaparser.extract_macros():
                 d = {
                     'OLE stream': stream_path,
-                    'VBA filename': vba_filename
+                    'VBA filename': vba_filename,
+                    'Length': len(vba_code)
                 }
                 #self._add_result('macro_extract', 'code', {'code': vba_code})
                 result = handle_raw_data_file(
@@ -69,7 +63,7 @@ class MacroExtractService(Service):
                         rel_reason="Extracted from related Sample"
                     )
                     obj.save()
-                    d['RawData'] = result['_id']
+                    d['RawData TLO ID'] = result['_id']
                 self._add_result('Macros', filename, d)
             results = vbaparser.analyze_macros(show_decoded_strings=True)
             self._add_result('Counts',
@@ -96,10 +90,12 @@ class MacroExtractService(Service):
             for kw_type, keyword, description in results:
                 try:
                     d = {
-                        'keyword': keyword.decode('utf-8'),
+                        'type': kw_type,
                         'description': description.decode('utf-8')
                     }
-                    self._add_result('Keywords', kw_type, d)
+                    self._add_result('Keywords',
+                                    keyword.decode('utf-8'),
+                                     d)
                 except:
                     pass
         else:
