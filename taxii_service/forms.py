@@ -8,8 +8,11 @@ from crits.core.handlers import get_source_names, collect_objects
 from crits.core.class_mapper import class_from_type
 from crits.services.handlers import get_config
 
+from datetime import datetime
+from dateutil.tz import tzutc
 
 from . import formats
+from . import taxii
 
 def get_taxii_feeds(user_srcs):
     # Avoid options that cause failure: set recipients to intersection of
@@ -74,6 +77,17 @@ class TAXIIPollForm(forms.Form):
                  label="TAXII Feeds",
                  help_text="Feeds to poll for data",
                  widget=forms.SelectMultiple(attrs={'style':"height:200px;"}))
+
+    use_last = forms.BooleanField(required=False, initial=True,
+                                  label='Get all messages since last full poll')
+
+    begin = forms.DateTimeField(required=False,
+                                label='Exclusive Begin Timestamp',
+                                initial = datetime.now(tzutc()))
+
+    end = forms.DateTimeField(required=False,
+                              label='Inclusive End Timestamp',
+                              initial = datetime.now(tzutc()))
 
     def __init__(self, username, *args, **kwargs):
         """
@@ -307,6 +321,12 @@ class TAXIIFeedConfigForm(forms.Form):
                             widget=forms.TextInput(),
                             help_text="The subscription ID for this "
                                       "feed, if required.")
+
+    last_poll = forms.CharField(required=False,
+                            label="Last Poll (Read-Only)",
+                            widget=forms.TextInput(attrs={'readonly':"True"}),
+                            help_text="The end timestamp of the last full "
+                            "poll. Future polls begin with this date/time.")
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('label_suffix', ':')

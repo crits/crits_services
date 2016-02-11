@@ -23,9 +23,19 @@ def taxii_agent(request):
     if form.is_valid():
         # Use service configuration from DB.
         feeds = [feed.split(' - ') for feed in form.cleaned_data['feeds']]
+        begin = end = None
+        if not form.cleaned_data['use_last']:
+            begin = form.cleaned_data['begin']
+            end = form.cleaned_data['end']
+            if not begin:
+                data = {'success': False,
+                        'msg': 'Exclusive Begin Timestamp is required'}
+                return HttpResponse(json.dumps(data),
+                                    mimetype="application/json")
         try:
             result = handlers.poll_taxii_feeds(feeds, analyst,
-                                               method="TAXII Agent Web")
+                                               method="TAXII Agent Web",
+                                               begin=begin, end=end)
 
             if 'all_fail' in result and result['all_fail']:
                 data = {'success': False, 'msg': result['msg']}
@@ -37,6 +47,15 @@ def taxii_agent(request):
             data = {'success': False, 'msg': str(type(e)) + str(e)}
 
         return HttpResponse(json.dumps(data), mimetype="application/json")
+
+    if request.is_ajax():
+        msg = "<b>Form Validation Error</b><br>"
+        for fld in form.errors:
+            msg += "%s: %s<br>" % (form[fld].label,
+                                   form.errors[fld].as_text())
+        data = {'success': False, 'msg': msg}
+        return HttpResponse(json.dumps(data), mimetype="application/json")
+
     return render_to_response('taxii_agent_form.html',
                               {'form': form, 'errors': form.errors},
                               RequestContext(request))
@@ -158,6 +177,13 @@ def configure_taxii(request, server=None):
         elif feed_form.is_valid():
             results = handlers.update_taxii_server_config(feed_form.cleaned_data,
                                                           analyst)
+        else:
+            msg = "<b>Form Validation Error</b><br>"
+            for fld in feed_form.errors:
+                msg += "%s: %s<br>" % (feed_form[fld].label,
+                                       feed_form.errors[fld].as_text())
+            results = {'success': False, 'error': msg}
+
         if 'service' in results:
             del results['service']
         return HttpResponse(json.dumps(results), mimetype="application/json")

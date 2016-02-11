@@ -9,9 +9,11 @@
     <div class="content_body">
         {% if result.status %}
             Status: <b>Success</b><br>
+            Time Range: {{ result.start }} to {{ result.end }}<br>
             Message: {{ result.msg }}<br>
         {% else %}
             Status: <b>Failure</b><br>
+            Time Range: {{ result.start }} to {{ result.end }}<br>
             Reason: {{ result.msg }}<br>
         {% endif %}
     </div>

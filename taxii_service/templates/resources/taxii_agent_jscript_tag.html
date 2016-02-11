@@ -6,6 +6,7 @@
 		var form_ctr = $("#taxii_config_container");
 		var result_ctr = $("#results_container");
 		var error_ctr = $("#error_container");
+		show_hide_timestamps();
 
 	    $("#taxii_submit").click(function() {
 			$("#taxii-loader").show();
@@ -15,9 +16,23 @@
 	    	execute_taxii_service();
 		});
 		$(".back_to_cfg ").click(function() {
-			show_container("Build TAXII Message", form_ctr);
+			show_container("Poll for TAXII Messages", form_ctr);
 		});
 
+		function show_hide_timestamps() {
+			if ($("#id_use_last").is(":checked")) {
+				if ($("#timestamp_container").is(":visible")) {
+					$("#timestamp_container").slideToggle();
+				}
+			}
+			else {
+				if ($("#timestamp_container").is(":hidden")) {
+					$("#timestamp_container").slideToggle();
+				}
+			}
+		}
+
+		$('#id_use_last').click(show_hide_timestamps);
 
 		/*
 		* Show only the specified container.
@@ -48,7 +63,7 @@
 					$("#results_container").html(data.html);
 					show_container("TAXII Results", result_ctr);
 				} else { // some issue occurred
-					error_ctr.children(".taxii_notice").text(data.msg);
+					error_ctr.children(".taxii_notice").html(data.msg);
 					show_container("Problems", error_ctr);
 				}
 			}).fail(function(data) { // server error

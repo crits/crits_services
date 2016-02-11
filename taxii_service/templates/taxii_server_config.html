@@ -59,7 +59,7 @@
         </form>
     </section>
 
-
+	    <br/>
 	    <div id="error_box" class="taxii_notice"></div>
 	    <br/>
 
@@ -89,6 +89,7 @@ $('#edit').click(function() {
                     $('#id_fcert').val(data.fcert);
                     $('#id_fkey').val(data.fkey);
                     $('#id_subID').val(data.subID);
+                    $('#id_last_poll').val(data.last_poll);
                 }
                 else {$('#error_box').text('Failed to edit feed.');}}});
 	if ($("#server_config_container").is(":visible")) {
@@ -129,6 +130,7 @@ $('#feed-submit-btn').click(function() {
 $('#feed-cancel-btn').click(function() {
 			if ($("#feed_config_container").is(":visible")) {
 				    $("#server_config_container").slideToggle();
+                    $("#error_box").html('');
                     $("#feed_config_container").slideToggle();
 			}});
 </script>

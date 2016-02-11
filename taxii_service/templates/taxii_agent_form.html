@@ -29,7 +29,25 @@
 	                </td>
                 </tr>
 			</table>
+
+            <strong class="taxii_ctype_label required">
+                {{ form.use_last }} {{ form.use_last.label }}
+            </strong>
+
+            <section id="timestamp_container" class="taxii-container" style="display: none;">
+                <strong class="taxii_ctype_label required">
+                    {{ form.begin.label }}
+                </strong><br/>
+                {{ form.begin }}
+                <br/><br/>
+                <strong class="taxii_ctype_label required">
+                    {{ form.end.label }}
+                </strong><br/>
+                {{ form.end }}
+            </section>
+
 		</form>
+        {{ form.errors }}
 		<div style="text-align: center; padding-bottom: 10px; margin-top: 15px;">
 			<button id="taxii_submit" class="taxii_btn">Poll</button>
 		</div>
