@@ -51,6 +51,7 @@ class YaraRunForm(forms.Form):
         # Default to all signature files.
         initial = [choice[0] for choice in sigfiles]
         self.fields['sigfiles'].initial = initial
+        self.fields['sigfiles'].widget.attrs['style'] = 'resize: both; overflow: auto;'
 
         if api_keys:
             self.fields['api_key'] = forms.ChoiceField(widget=forms.Select,
