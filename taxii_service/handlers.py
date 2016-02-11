@@ -65,18 +65,20 @@ def poll_taxii_feeds(feeds, analyst, method):
         port = svrc['port']
         path = svrc['ppath']
         version = svrc['version']
-        keyfile = str(svrc['keyfile'])
-        user = str(svrc['user'])
-        pword = str(svrc['pword'])
-        cert = str(svrc['lcert'])
+        akey = str(svrc['keyfile'])
+        user = str(svrc.get('user'))
+        pword = str(svrc.get('pword'))
+        acert = str(svrc['lcert'])
         feedc = svrc['feeds'][feed[1]]
         feed_name = feedc['feedname']
         source = feedc['source']
-        subID = feedc['subID']
+        subID = feedc.get('subID')
+        ecert = feedc.get('fcert')
+        ekey = feedc.get('fkey')
 
         result = execute_taxii_agent(hostname, https, port, path, version,
-                                     feed_name, keyfile, cert, subID, source,
-                                     method, analyst, user, pword)
+                                     feed_name, akey, acert, subID, source,
+                                     method, analyst, user, pword, ecert, ekey)
         if results:
             for k in result:
                 if isinstance(result[k], list):
@@ -106,9 +108,10 @@ def poll_taxii_feeds(feeds, analyst, method):
 
 
 def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
-                        version="0", feed=None, kfile=None, certfile=None,
+                        version="0", feed=None, akey=None, acert=None,
                         subID=None, source=None, method=None, analyst=None,
-                        user=None, pword=None, start=None, end=None):
+                        user=None, pword=None, ecert=None, ekey=None,
+                        start=None, end=None):
     ret = {
             'Certificate': [],
             'Domain': [],
@@ -167,13 +170,13 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     # Setup client authentication
     if https:
         client.setUseHttps(True)
-    if kfile and certfile and user:
+    if akey and acert and user:
         client.setAuthType(tc.HttpClient.AUTH_CERT_BASIC)
-        client.setAuthCredentials({'key_file': kfile, 'cert_file': certfile,
+        client.setAuthCredentials({'key_file': akey, 'cert_file': acert,
                                    'username': user, 'password': pword})
-    elif kfile and certfile:
+    elif akey and acert:
         client.setAuthType(tc.HttpClient.AUTH_CERT)
-        client.setAuthCredentials({'key_file': kfile, 'cert_file': certfile})
+        client.setAuthCredentials({'key_file': akey, 'cert_file': acert})
     elif user:
         client.setAuthType(tc.HttpClient.AUTH_BASIC)
         client.setAuthCredentials({'username': user, 'password': pword})
@@ -196,17 +199,29 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     crits_taxii.feed = hostname + ':' + feed
 
     # if version=0, Poll using 1.1 then 1.0 if that fails.
-    if version in ('0', '1.1'):
-        poll_msg = tm11.PollRequest(message_id=tm11.generate_message_id(),
-                            collection_name=feed,
-                            poll_parameters=tm11.PollRequest.PollParameters(),
-                            exclusive_begin_timestamp_label=start,
-                            inclusive_end_timestamp_label=end,
-                            subscription_id=subID)
+    while True:
+        if version in ('0', '1.1'):
+            poll_msg = tm11.PollRequest(message_id=tm11.generate_message_id(),
+                                collection_name=feed,
+                                poll_parameters=tm11.PollRequest.PollParameters(),
+                                exclusive_begin_timestamp_label=start,
+                                inclusive_end_timestamp_label=end,
+                                subscription_id=subID)
+            xml_msg_binding = t.VID_TAXII_XML_11
+            tm_ = tm11
+
+        else: # '1.0' should be the only other option
+            poll_msg = tm.PollRequest(message_id=tm.generate_message_id(),
+                                      feed_name=feed,
+                                      exclusive_begin_timestamp_label=start,
+                                      inclusive_end_timestamp_label=end,
+                                      subscription_id=subID)
+            xml_msg_binding = t.VID_TAXII_XML_10
+            tm_ = tm
 
         try:
             response = client.callTaxiiService2(hostname, path,
-                                                t.VID_TAXII_XML_11,
+                                                xml_msg_binding,
                                                 poll_msg.to_xml(), port)
         except Exception as e:
             if "alert unknown ca" in str(e):
@@ -219,47 +234,28 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         taxii_msg = t.get_message_from_http_response(response,
                                                      poll_msg.message_id)
 
-        # If this is a TAXII 1.0 server try again regardless of given version
-        if response.info().getheader('X-TAXII-Content-Type') == t.VID_TAXII_XML_10:
-            version = '1.0'
+        # If this is a TAXII 1.0 server, but TAXII 1.1 is selected, notify
+        if (version == '1.1' and
+            response.info().getheader('X-TAXII-Content-Type') == t.VID_TAXII_XML_10):
+            return {'msg': 'Error - TAXII 1.1 selected, but server is TAXII 1.0'}
 
-        if version == '1.1' and (response.getcode() != 200 or
-                                taxii_msg.message_type == tm.MSG_STATUS_MESSAGE):
-            ret['msg'] = "%s: %s" % (taxii_msg.status_type,
-                                     taxii_msg.message)
-            return ret
+        if response.getcode() != 200 or taxii_msg.message_type == tm_.MSG_STATUS_MESSAGE:
+            status = "%s: %s" % (taxii_msg.status_type, taxii_msg.message)
+        else:
+            break
 
-    if version == '1.0' or (version == '0' and (response.getcode() != 200 or
-                           taxii_msg.message_type == tm.MSG_STATUS_MESSAGE)):
-        poll_msg = tm.PollRequest(message_id=tm.generate_message_id(),
-                                  feed_name=feed,
-                                  exclusive_begin_timestamp_label=start,
-                                  inclusive_end_timestamp_label=end,
-                                  subscription_id=subID)
-        try:
-            response = client.callTaxiiService2(hostname, path,
-                                                t.VID_TAXII_XML_10,
-                                                poll_msg.to_xml(), port)
-        except Exception as e:
-            if "alert unknown ca" in str(e):
-                ret['msg'] = ("Certficate Error - TAXII Server does not "
-                              "recognize your certificate: %s" % e)
-            else:
-                ret['msg'] = "TAXII Server Communication Error: %s" % e
-            return ret
+        if version == '0':
+            status = 'TAXII 1.1 ' + status + '<br><br>TAXII 1.0 '
+            version = '1.0' # try '1.0'
+        else:
+            return {'msg': status, 'status': False}
 
-        taxii_msg = t.get_message_from_http_response(response, poll_msg.message_id)
-        if response.getcode() != 200 or taxii_msg.message_type == tm.MSG_STATUS_MESSAGE:
-            ret['msg'] = "%s: %s" % (taxii_msg.status_type,
-                                        taxii_msg.message)
-            return ret
-
-    valid = tm.validate_xml(taxii_msg.to_xml())
+    valid = tm_.validate_xml(taxii_msg.to_xml())
     if valid != True:
         ret['msg'] = "Invalid XML: %s" % valid
         return ret
 
-    if taxii_msg.message_type != tm.MSG_POLL_RESPONSE:
+    if taxii_msg.message_type != tm_.MSG_POLL_RESPONSE:
         msg = "No poll response. Unexpected message type: %s"
         ret['msg'] = msg % taxii_msg.message_type
         return ret
@@ -272,13 +268,13 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
 
     mid = taxii_msg.message_id
     for content_block in taxii_msg.content_blocks:
-        data = parse_content_block(content_block, kfile, certfile)
-        if not data:
-            ret['failures'].append(('No data found in content block',
+        data = parse_content_block(content_block, tm_, ekey, ecert)
+        if not data[0]:
+            ret['failures'].append((data[1],
                                     'TAXII Content Block'))
             continue
 
-        objs = import_standards_doc(data, analyst, method, ref=mid,
+        objs = import_standards_doc(data[0], analyst, method, ref=mid,
                                     make_event=create_events, source=source)
 
         if not objs['success']:
@@ -295,31 +291,34 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     crits_taxii.save()
     return ret
 
-def parse_content_block(content_block, privkey=None, pubkey=None):
-    if content_block.content_binding == 'application/x-pks7-mime':
-        if not privkey and not pubkey:
-            return None
+def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
+    binding = str(content_block.content_binding)
+    if binding == 'application/x-pkcs7-mime':
+        if not privkey or not pubkey:
+            msg = "Encrypted data found, but certificate or key not provided"
+            return (None, msg)
 
         inbuf = BIO.MemoryBuffer(BytesIO(content_block.content).read())
         s = SMIME.SMIME()
         try:
-            s.load_key(privkey, pubkey)
+            s.load_key(str(privkey), str(pubkey))
             p7, data = SMIME.smime_load_pkcs7_bio(inbuf)
             buf = s.decrypt(p7)
         except SMIME.PKCS7_Error:
-            return None
+            return (None, "Decryption Failed")
         f = BytesIO(buf)
         new_block = f.read()
         f.close()
-        return parse_content_block(tm.ContentBlock.from_xml(new_block),
+        return parse_content_block(tm_.ContentBlock.from_xml(new_block),
                                    privkey, pubkey)
-    elif content_block.content_binding == t.CB_STIX_XML_111:
+    elif binding == t.CB_STIX_XML_111:
         f = BytesIO(content_block.content)
         data = f.read()
         f.close()
-        return data
+        return (data, None)
     else:
-        return None
+        msg = 'Unknown content binding "%s"' % binding
+        return (None, msg)
 
 def to_cybox_observable(obj, exclude=None, bin_fmt="raw"):
     """
@@ -798,9 +797,9 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
             lcert = scfg['lcert']
             path = scfg['ipath']
             port = scfg['port']
-            kfile = scfg['keyfile']
-            user = scfg['user']
-            pword = scfg['pword']
+            akey = scfg['keyfile']
+            user = scfg.get('user')
+            pword = scfg.get('pword')
             feedname = fcfg['feedname']
             source = fcfg['source']
             fcert = fcfg['fcert']
@@ -822,13 +821,13 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
         # Setup client authentication
         if https:
             client.setUseHttps(True)
-        if kfile and lcert and user:
+        if akey and lcert and user:
             client.setAuthType(tc.HttpClient.AUTH_CERT_BASIC)
-            client.setAuthCredentials({'key_file': kfile, 'cert_file': lcert,
+            client.setAuthCredentials({'key_file': akey, 'cert_file': lcert,
                                        'username': user, 'password': pword})
-        elif kfile and lcert:
+        elif akey and lcert:
             client.setAuthType(tc.HttpClient.AUTH_CERT)
-            client.setAuthCredentials({'key_file': kfile, 'cert_file': lcert})
+            client.setAuthCredentials({'key_file': akey, 'cert_file': lcert})
         elif user:
             client.setAuthType(tc.HttpClient.AUTH_BASIC)
             client.setAuthCredentials({'username': user, 'password': pword})
@@ -838,63 +837,47 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
 
         # generate and send inbox messages
         # one message per feed, with appropriate TargetFeed header specified
-        # Create content block
-        content_block = tm.ContentBlock(content_binding = t.CB_STIX_XML_111,
-                                        content = stix_doc.to_xml())
 
-        if fcert: # if encryption cert provided, encrypt the content_block
-            try:
-                encrypted_block = encrypt_block(content_block.to_xml(), fcert)
-            except IOError as e:
-                msg = "Error reading encryption certificate - %s" % e
-                ret['failed_rcpts'].append((rcpt, msg))
-                continue
-
-            # Wrap encrypted block in content block
-            content_block = tm.ContentBlock(
-                                 content_binding = "application/x-pks7-mime",
-                                 content = encrypted_block)
-
-        try_10 = False
         failed = True
+        status = ""
 
         # if version=0, Poll using 1.1 then 1.0 if that fails.
-        if version in ('0', '1.1'):
-            status = "<br>tm11: "
-            result = gen_send(tm11, client, content_block, hostname,
-                              t.VID_TAXII_XML_11,
-                              dcn = [feedname],
-                              url = path,
-                              port = port)
-            if len(result) == 2:
-                res = result[1]
-                if res.status_type == tm11.ST_SUCCESS:
-                    failed = False
-                    ret['rcpts'].append(rcpt)
+        try:
+            while True:
+                if version in ('0', '1.1'):
+                    content_block = build_content_block(tm11, stix_doc, fcert)
+                    result = gen_send(tm11, client, content_block, hostname,
+                                      t.VID_TAXII_XML_11,
+                                      dcn = [feedname],
+                                      url = path,
+                                      port = port)
+                else: # '1.0' should be the only other option
+                    content_block = build_content_block(tm, stix_doc, fcert)
+                    result = gen_send(tm, client, content_block, hostname,
+                                    t.VID_TAXII_XML_10,
+                                    eh = {'TargetFeed': feedname},
+                                    url = path,
+                                    port = port)
+                if len(result) == 2:
+                    res = result[1]
+                    if res.status_type == tm11.ST_SUCCESS:
+                        failed = False
+                        ret['rcpts'].append(rcpt)
+                        break
+                    else:
+                        status += "Server Response: " + res.message
                 else:
-                    try_10 = True
-                    status += res.status_type
-            else:
-                try_10 = True
-                status += cgi.escape(result[0])
+                    status += "Error: " + cgi.escape(result[0])
 
-        # Try TAXII 1.0 since 1.1 seems to have failed.
-        if version == '1.0' or (try_10 and version == '0'):
-            status = "<br>tm10: "
-            result = gen_send(tm, client, content_block, hostname,
-                            t.VID_TAXII_XML_10,
-                            eh = {'TargetFeed': feedname},
-                            url = path,
-                            port = port)
-            if len(result) == 2:
-                res = result[1]
-                if res.status_type == tm11.ST_SUCCESS:
-                    failed = False
-                    ret['rcpts'].append(rcpt)
-                else:
-                    status += res.status_type
-            else:
-                status += cgi.escape(result[0])
+                if version == '0': # if version is unknown & '1.1' failed
+                    status = 'TAXII 1.1 ' + status + '<br><br>TAXII 1.0 '
+                    version = '1.0' # try '1.0'
+                else: # specific version provided, so done
+                    break
+        except IOError as e:
+            msg = "Error reading encryption certificate - %s" % e
+            ret['failed_rcpts'].append((rcpt, msg))
+            continue
 
         if failed:
             ret['failed_rcpts'].append((rcpt, status))
@@ -904,6 +887,31 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
 
     ret['success'] = True
     return ret
+
+def build_content_block(tm_, stix_doc, cert):
+    """
+    Build a content block from the STIX document. Encrypt it if a
+    certificate is provided.
+
+    :param tm_: The TAXII version that we should use.
+    :type tm_: TAXII message class.
+    :param stix_doc: The STIX document.
+    :type stix_doc: class 'stix.core.stix_package.STIXPackage'
+    :param cert: Path to the certificate used to encrypt the content block.
+    :type cert: str
+    :returns: A content block class
+    """
+    content_block = tm_.ContentBlock(content_binding = t.CB_STIX_XML_111,
+                                     content = stix_doc.to_xml())
+
+    if cert: # if encryption cert provided, encrypt the content_block
+        encrypted_block = encrypt_block(content_block.to_xml(), cert)
+
+        # Wrap encrypted block in content block
+        content_block = tm_.ContentBlock(
+                             content_binding = "application/x-pkcs7-mime",
+                             content = encrypted_block)
+    return content_block
 
 def gen_send(tm_, client, content_block, hostname, t_xml, dcn=None, eh=None,
              url="/inbox/", port=None):
