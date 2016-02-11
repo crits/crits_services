@@ -78,6 +78,7 @@ class TAXIIClient(Service):
         source = config.get("source", "").strip()
         subID = config.get("subID", "").strip()
         fcert = config.get("fcert", "").strip()
+        fkey = config.get("fkey", "").strip()
         errors = []
         if not srv_name:
             errors.append("No server name to which to relate this feed")
@@ -92,6 +93,8 @@ class TAXIIClient(Service):
                 errors.append("Provided CRITs source is invalid")
         if fcert and not os.path.isfile(fcert):
             errors.append("Encryption Certificate does not exist at given location")
+        if fkey and not os.path.isfile(fkey):
+            errors.append("Decryption Key does not exist at given location")
         if errors:
             raise ServiceConfigError("<br>".join(errors))
 
@@ -121,6 +124,7 @@ class TAXIIClient(Service):
             feeds[str(fid)] = {'source': cf_list[0],
                                'feedname': cf_list[1],
                                'fcert': cf_list[2],
+                               'fkey': existing_config.get('keyfile', ''),
                                'subID': ''}
         server = {'hostname': existing_config.get('hostname', ''),
                   'version': '0',
@@ -130,7 +134,6 @@ class TAXIIClient(Service):
                   'ipath': '/inbox/',
                   'keyfile': existing_config.get('keyfile', ''),
                   'port': '',
-                  'lcert': existing_config.get('certfile', ''),
                   'user': '',
                   'pword': '',
                   'feeds': feeds}

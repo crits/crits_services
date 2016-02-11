@@ -294,6 +294,13 @@ class TAXIIFeedConfigForm(forms.Form):
                             help_text="Path to cert file used to encrypt STIX "
                                       "packages. Leave blank for no encryption.")
 
+    fkey = forms.CharField(required=False,
+                           label="Decryption Key",
+                           initial='',
+                           widget=forms.TextInput(),
+                           help_text="Path to key file used to decrypt STIX "
+                                     "packages, if available.")
+
     subID = forms.CharField(required=False,
                             label="Subscription ID",
                             initial='',
