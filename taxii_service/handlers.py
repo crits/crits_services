@@ -54,7 +54,7 @@ from crits.vocabulary.relationships import RelationshipTypes
 
 logger = logging.getLogger(__name__)
 
-def poll_taxii_feeds(feeds, analyst, method):
+def poll_taxii_feeds(feeds, analyst, method, begin=None, end=None):
     results = {}
     success_feeds = []
     sc = get_config('taxii_service').taxii_servers
@@ -78,7 +78,8 @@ def poll_taxii_feeds(feeds, analyst, method):
 
         result = execute_taxii_agent(hostname, https, port, path, version,
                                      feed_name, akey, acert, subID, source,
-                                     method, analyst, user, pword, ecert, ekey)
+                                     method, analyst, user, pword,
+                                     ecert, ekey, begin, end)
         if results:
             for k in result:
                 if isinstance(result[k], list):
@@ -124,15 +125,19 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
             'Sample': [],
             'successes': 0,
             'failures': [],
+            'start': start,
+            'end': end,
             'status': False,
             'msg': ''
           }
 
+    save_datetimes = False
     sc = get_config('taxii_service')
     create_events = sc['create_events']
 
     # Last document's end time is our start time.
     if not start:
+        save_datetimes = True
         last = taxii.Taxii.get_last(hostname + ':' + feed)
         if last:
             start = pytz.utc.localize(last.end)
@@ -141,6 +146,8 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     # YYYY-MM-DD HH:MM:SS
     if isinstance(start, str):
         start = pytz.utc.localize(parse(start, fuzzy=True))
+    elif isinstance(start, datetime) and not start.tzinfo:
+        start = start.replace(tzinfo=pytz.utc)
 
     # store the current time as the time of this request
     runtime = datetime.now(tzutc())
@@ -153,6 +160,11 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     # YYYY-MM-DD HH:MM:SS
     if isinstance(end, str):
         end = pytz.utc.localize(parse(end, fuzzy=True))
+    elif isinstance(end, datetime) and not end.tzinfo:
+        end = end.replace(tzinfo=pytz.utc)
+
+    ret['start'] = start
+    ret['end'] = end
 
     # compare start and end to make sure:
     # 1) start time is before end time
@@ -262,7 +274,7 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
 
     ret['status'] = True
 
-    if not taxii_msg.content_blocks:
+    if not taxii_msg.content_blocks and save_datetimes:
         crits_taxii.save()
         return ret
 
@@ -287,8 +299,9 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         for k in objs['failed']:
             ret['failures'].append(k)
 
+    if ret['successes'] > 0 and save_datetimes:
+        crits_taxii.save()
 
-    crits_taxii.save()
     return ret
 
 def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
@@ -1128,6 +1141,12 @@ def update_taxii_server_config(updates, analyst):
             pass
     elif 'edit_feed' in updates:
         data = servers[updates['srv_name']]['feeds'][updates['edit_feed']]
+        hostname = servers[updates['srv_name']]['hostname']
+        last = taxii.Taxii.get_last(hostname + ':' + data['feedname'])
+        if last:
+            data['last_poll'] = str(pytz.utc.localize(last.end)).split('+')[0]
+        else:
+            data['last_poll'] = "No Record of Previous Poll"
         result.update(data)
         result['fid'] = updates['edit_feed']
         result['success'] = True
