@@ -43,7 +43,6 @@ class MacroExtractService(Service):
                     'VBA filename': vba_filename,
                     'Length': len(vba_code)
                 }
-                #self._add_result('macro_extract', 'code', {'code': vba_code})
                 result = handle_raw_data_file(
                     vba_code,
                     obj.source,
@@ -99,9 +98,6 @@ class MacroExtractService(Service):
                 except:
                     pass
         else:
-            print 'No VBA Macros found'
+            self._info('No VBA Macros found')
         vbaparser.close()
         return
-
-    def _parse_error(self, item, e):
-        self._error("Error parsing %s (%s): %s" % (item, e.__class__.__name__, e))
