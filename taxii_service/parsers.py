@@ -364,7 +364,7 @@ class STIXParser():
                                     indicator.id_)) # note for display in UI
 
 
-    def parse_observables(self, observables, description=None, ind_id=None):
+    def parse_observables(self, observables, description='', ind_id=None):
         """
         Parse list of observables in STIX doc.
         :param observables: List of STIX observables.
@@ -412,7 +412,7 @@ class STIXParser():
             self.parse_cybox_object(ob.object_, description, ind_id)
 
 
-    def parse_cybox_object(self, cbx_obj, description=None, ind_id=None):
+    def parse_cybox_object(self, cbx_obj, description='', ind_id=None):
         """
         Parse a CybOX object form a STIX doc. An object can contain
         multiple related_objects, which in turn can have their own
