@@ -46,6 +46,7 @@ import ramrod
 import stix
 from stix.common import StructuredText
 from stix.core import STIXPackage, STIXHeader
+from stix.indicator.indicator import CompositeIndicatorExpression
 from stix.utils.parser import UnsupportedVersionError
 
 class STIXParserException(Exception):
@@ -164,7 +165,7 @@ class STIXParser():
             if isinstance(header, STIXHeader):
                 if header.title:
                     title = header.title
-                if hasattr(header, 'package_intents'):
+                if header.package_intents:
                     try:
                         stix_type = str(header.package_intents[0])
                         event_type = get_crits_event_type(stix_type)
@@ -280,14 +281,53 @@ class STIXParser():
                                     "Threat Actor (%s)" % name,
                                     threat_actor.id_)) # note for display in UI
 
-    def parse_indicators(self, indicators):
+    def parse_indicators(self, indicators, parent_description=''):
         """
         Parse list of indicators.
         :param indicators: List of STIX indicators.
         :type indicators: List of STIX indicators.
+        :param parent_description: The description of the parent indicator.
+        :type parent_description: str.
         """
 
         for indicator in indicators: # for each STIX indicator
+            if indicator.composite_indicator_expression: # parse indicator composition.
+                # CRITs doesn't support complex boolean relationships like
+                # ((A OR B) AND C). This code simply imports all indicators
+                # and forms "Related_To" relationships between them
+
+                # grab description while keeping any parent description
+                p_description = ''
+                if parent_description:
+                    p_description = parent_description + '\n'
+                if indicator.indicator_types:
+                    p_description += ('STIX Indicator Type: ' +
+                                  indicator.indicator_types[0].value + '\n')
+                if indicator.description:
+                    p_description += indicator.description.value
+
+                cie = indicator.composite_indicator_expression
+                self.parse_indicators(cie, p_description)
+                rel_ids = []
+                for com_ind in cie:
+                    if com_ind.observables: # this contains an indicator
+                        rel_ids.append(com_ind.id_)
+                    else: # this contains another composition
+                        if com_ind.id_ in self.ind2obj:
+                            rel_ids.extend(self.ind2obj.pop(com_ind.id_))
+                        else:
+                            rel_ids.append(com_ind.id_)
+                if isinstance(indicators, CompositeIndicatorExpression):
+                    self.ind2obj.setdefault(indicator.id_, []).extend(rel_ids)
+                else: # This is the top level, so form relationships
+                    for iid in rel_ids:
+                        for iid2 in rel_ids:
+                            if iid != iid2:
+                                self.relationships.append((iid,
+                                                           "Related_To",
+                                                           iid2, "High"))
+                continue
+
             # store relationships
             for rel in getattr(indicator, 'related_indicators', ()):
                 if rel.confidence:
@@ -307,6 +347,8 @@ class STIXParser():
                         continue
 
                 description = ''
+                if parent_description:
+                    description += '\n' + parent_description
                 if indicator.indicator_types:
                     description += ('STIX Indicator Type: ' +
                                     indicator.indicator_types[0].value + '\n')

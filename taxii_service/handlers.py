@@ -709,8 +709,7 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
     stix_msg['stix_obj'] = STIXPackage(incidents=stix_msg['stix_incidents'],
                     indicators=stix_msg['stix_indicators'],
                     threat_actors=stix_msg['stix_actors'],
-                    stix_header=header,
-                    id_=uuid.uuid4())
+                    stix_header=header)
 
     return stix_msg
 
