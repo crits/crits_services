@@ -66,7 +66,7 @@ depend_crits()
     if [ -f requirements.txt ];
     then
         printf "${HEAD}Installing Python Dependencies${END}\n"
-        sudo ${PIP} install -r requirements.txt
+        sudo ${PIP} install -U -r requirements.txt
         if [ $? -ne 0 ]
         then
             printf "${FAIL}Dependency installation failed!${END}\n"
