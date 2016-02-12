@@ -9,4 +9,5 @@ class PEInfoRunForm(forms.Form):
                                   initial=True)
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(PEInfoRunForm, self).__init__(*args, **kwargs)

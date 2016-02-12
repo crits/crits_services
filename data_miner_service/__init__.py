@@ -70,6 +70,24 @@ class DataMinerService(Service):
             if id_:
                 tdict['exists'] = str(id_.id)
             self._add_result('Potential Emails', email, tdict)
+        hashes = extract_hashes(data)
+        for hash_ in hashes:
+            type_ = hash_[0]
+            val = hash_[1]
+            tdict = {'Type': type_}
+            if type_ == IndicatorTypes.MD5:
+                id_ = Sample.objects(md5=val).only('id').first()
+            elif type_ == IndicatorTypes.SHA1:
+                id_ = Sample.objects(sha1=val).only('id').first()
+            elif type_ == IndicatorTypes.SHA256:
+                id_ = Sample.objects(sha256=val).only('id').first()
+            elif type_ == IndicatorTypes.SSDEEP:
+                id_ = Sample.objects(ssdeep=val).only('id').first()
+            else:
+                id_ = None
+            if id_:
+                tdict['exists'] = str(id_.id)
+            self._add_result('Potential Samples', val, tdict)
 
 # hack of a parser to extract potential ip addresses from data
 def extract_ips(data):
@@ -114,3 +132,31 @@ def extract_emails(data):
             except:
                 pass
     return final_emails
+
+# hack of a parser to extract potential domains from data
+def extract_hashes(data):
+
+    re_md5 = re.compile("\\b[a-f0-9]{32}\\b", re.I | re.S | re.M)
+    re_sha1 = re.compile("\\b[a-f0-9]{40}\\b", re.I | re.S | re.M)
+    re_sha256 = re.compile("\\b[a-f0-9]{64}\\b", re.I | re.S | re.M)
+    re_ssdeep = re.compile("\\b\\d{2}:[A-Za-z0-9/+]{3,}:[A-Za-z0-9/+]{3,}\\b", re.I | re.S | re.M)
+
+    final_hashes = []
+    md5 = IndicatorTypes.MD5
+    sha1 = IndicatorTypes.SHA1
+    sha256 = IndicatorTypes.SHA256
+    ssdeep = IndicatorTypes.SSDEEP
+    final_hashes.extend(
+        [(md5,each) for each in re.findall(re_md5, data) if len(each) > 0]
+    )
+    final_hashes.extend(
+        [(sha1,each) for each in re.findall(re_sha1, data) if len(each) > 0]
+    )
+    final_hashes.extend(
+        [(sha256,each) for each in re.findall(re_sha256, data) if len(each) > 0]
+    )
+    final_hashes.extend(
+        [(ssdeep,each) for each in re.findall(re_ssdeep, data) if len(each) > 0]
+    )
+    return final_hashes
+

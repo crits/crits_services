@@ -17,4 +17,5 @@ class pyewConfigForm(forms.Form):
                                 help_text="Use secure websockets.")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(pyewConfigForm, self).__init__(*args, **kwargs)

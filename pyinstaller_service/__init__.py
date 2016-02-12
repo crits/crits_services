@@ -3,7 +3,7 @@ import zlib
 
 from django.core.urlresolvers import reverse
 from hashlib import md5, sha1, sha256
-from PyInstaller.cliutils.archive_viewer import get_archive
+from PyInstaller.utils.cliutils.archive_viewer import get_archive
 
 from crits.raw_data.handlers import handle_raw_data_file
 from crits.services.core import Service

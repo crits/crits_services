@@ -1,14 +1,13 @@
 from django import forms
 
-class previewConfigForm(forms.Form):
+class pdf2txtConfigForm(forms.Form):
     error_css_class = 'error'
     required_css_class = 'required'
-    pdftoppm_path = forms.CharField(required=True,
-                               label="pdftoppm binary",
-                               initial='/usr/bin/pdftoppm',
+    pdf2txt_path = forms.CharField(required=True,
+                               label="pdftotext binary",
+                               initial='/usr/bin/pdftotext',
                                widget=forms.TextInput(),
-                               help_text="Full path to pdftoppm binary.")
-
+                               help_text="Full path to pdftotext binary.")
     antiword_path = forms.CharField(required=True,
                                label="antiword binary",
                                initial='/usr/bin/antiword',
@@ -17,4 +16,4 @@ class previewConfigForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('label_suffix', ':')
-        super(previewConfigForm, self).__init__(*args, **kwargs)
+        super(pdf2txtConfigForm, self).__init__(*args, **kwargs)

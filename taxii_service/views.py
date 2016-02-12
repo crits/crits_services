@@ -28,11 +28,11 @@ def get_taxii_config_form(request, crits_type, crits_id):
         obj = class_from_id(crits_type, crits_id)
         if not obj:
             ret = {'success': False, 'reason': "Could not locate object in the database."}
-            return HttpResponse(json.dumps(ret), mimetype="application/json")
+            return HttpResponse(json.dumps(ret), content_type="application/json")
 
         tform = forms.TAXIIForm(request.user.username, obj)
         taxii_form = {'form' : render_to_string("_taxii_form_template.html", {'form' : tform})}
-        return HttpResponse(json.dumps(taxii_form), mimetype="application/json")
+        return HttpResponse(json.dumps(taxii_form), content_type="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
@@ -86,7 +86,7 @@ def get_taxii_result(request, crits_type, crits_id, preview):
     obj = class_from_id(crits_type, crits_id)
     if not obj:
         ret = {'success': False, 'reason': "Could not locate object in the database."}
-        return HttpResponse(json.dumps(ret), mimetype="application/json")
+        return HttpResponse(json.dumps(ret), content_type="application/json")
 
     # did user accept responsibility for potential releasability updates?
     confirm_rel = True if "updates_confirmed" in request.POST else False
@@ -102,10 +102,10 @@ def get_taxii_result(request, crits_type, crits_id, preview):
             resp['Content-Disposition'] = 'attachment; filename="STIX_preview.xml"'
             return resp
         else: # else show success/error message that has been generated
-            return HttpResponse(json.dumps(data), mimetype="application/json")
+            return HttpResponse(json.dumps(data), content_type="application/json")
     else: # form doesn't validate
         data = {'success': False, 'reason': "Invalid options provided. Please fix and try again."}
-        return HttpResponse(json.dumps(data), mimetype="application/json")
+        return HttpResponse(json.dumps(data), content_type="application/json")
 
 @user_passes_test(user_can_view_data)
 def upload_standards(request):

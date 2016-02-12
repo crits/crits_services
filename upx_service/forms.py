@@ -10,4 +10,5 @@ class UPXConfigForm(forms.Form):
                                help_text="Full path to UPX binary.")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(UPXConfigForm, self).__init__(*args, **kwargs)

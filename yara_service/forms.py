@@ -32,6 +32,7 @@ class YaraConfigForm(forms.Form):
                                   help_text="Distribution routing key. Leave blank if not distributed.")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(YaraConfigForm, self).__init__(*args, **kwargs)
 
 class YaraRunForm(forms.Form):
@@ -43,12 +44,14 @@ class YaraRunForm(forms.Form):
                                          help_text="Signature files to use.")
 
     def __init__(self, sigfiles=[], api_keys=[], *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(YaraRunForm, self).__init__(*args, **kwargs)
 
         self.fields['sigfiles'].choices = sigfiles
         # Default to all signature files.
         initial = [choice[0] for choice in sigfiles]
         self.fields['sigfiles'].initial = initial
+        self.fields['sigfiles'].widget.attrs['style'] = 'resize: both; overflow: auto;'
 
         if api_keys:
             self.fields['api_key'] = forms.ChoiceField(widget=forms.Select,

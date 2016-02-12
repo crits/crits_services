@@ -23,4 +23,5 @@ class clamdServiceConfigForm(forms.Form):
                                 initial=False)
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(clamdServiceConfigForm, self).__init__(*args, **kwargs)

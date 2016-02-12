@@ -25,4 +25,5 @@ class CarverRunForm(forms.Form):
                                initial=0)
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(CarverRunForm, self).__init__(*args, **kwargs)
