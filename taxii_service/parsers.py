@@ -40,6 +40,7 @@ from cybox.objects.domain_name_object import DomainName
 from cybox.objects.email_message_object import EmailMessage
 from cybox.objects.file_object import File
 from cybox.objects.http_session_object import HTTPSession
+from cybox.objects.uri_object import URI
 from cybox.objects.whois_object import WhoisEntry
 
 import ramrod
@@ -462,7 +463,8 @@ class STIXParser():
                         else:
                             res = {'success': False, 'reason': 'No IP Type'}
                         self.parse_res(imp_type, val, cbx_obj, res, ind_id)
-            if isinstance(item, DomainName) and not ind_id:
+            if (not ind_id and (isinstance(item, DomainName) or
+                (isinstance(item, URI) and item.type_ == 'Domain Name'))):
                 imp_type = "Domain"
                 for val in item.value.values:
                     res = upsert_domain(str(val),
