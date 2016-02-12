@@ -682,6 +682,8 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
                     if 'EmailMessage' in stix_obj.observable.object_.id_:
                         if rel_meta[0] == 'Contains' and rel_meta[2] == 'Sample':
                             email = stix_obj.observable.object_.properties
+                            if not email.attachments:
+                                email.attachments = Attachments()
                             email.attachments.append(refObjs[rel].idref)
 
     tool_list = ToolInformationList()
