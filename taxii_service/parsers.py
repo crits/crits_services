@@ -284,6 +284,12 @@ class STIXParser():
                     continue
                 try: # create CRITs Indicator from observable
                     item = observable.object_.properties
+                    if isinstance(item, File):
+                        self.parse_observables(indicator.observables)
+                        result = self.imported.pop(indicator.observables[0].id_, None)
+                        if result:
+                            self.imported[indicator.id_] = result
+                        continue
                     obj = make_crits_object(item)
                     ind_type = obj.object_type
                     for value in obj.value:
@@ -418,7 +424,7 @@ class STIXParser():
                     self.parse_res(imp_type, val, obs, res)
                 elif isinstance(item, File):
                     imp_type = "Sample"
-                    filename = str(item.file_name)
+                    filename = str(item.file_name or item.md5)
                     val = item.md5
                     data = None
                     for obj in item.parent.related_objects:
