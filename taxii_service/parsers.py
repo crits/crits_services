@@ -170,7 +170,7 @@ class STIXParser():
                                                            rel.confidence.value.value)
             else:
                 self.failed.append((res['message'],
-                                    "STIX Event",
+                                    "Event (%s)" % title,
                                     ""))
 
         if self.package.indicators:
@@ -239,11 +239,15 @@ class STIXParser():
                                                            obj)
                     else:
                         self.failed.append((res['message'],
-                                            type(threat_actor).__name__,
+                                            "%s (%s)" % (type(threat_actor).__name__,
+                                                         name),
                                             "")) # note for display in UI
             except Exception, e:
-                self.failed.append((e.message, type(threat_actor).__name__,
-                                    "")) # note for display in UI
+                if name in vars() and name:
+                    name = "%s (%s)" % (type(threat_actor).__name__, name)
+                else:
+                    name = type(threat_actor).__name__
+                self.failed.append((e.message, name, "")) # note for display in UI
 
     def parse_indicators(self, indicators):
         """
@@ -297,10 +301,25 @@ class STIXParser():
                                                                 res['object'])
                             else:
                                 self.failed.append((res['message'],
-                                                    type(item).__name__,
+                                                    "%s - %s (%s)" % (
+                                                        type(indicator).__name__,
+                                                        ind_type, value.strip()),
                                                     item.parent.id_)) # note for display in UI
-                except Exception, e: # probably caused by cybox object we don't handle
-                    self.failed.append((e.message, type(item).__name__, item.parent.id_)) # note for display in UI
+
+                except Exception as e: # probably caused by cybox object we don't handle
+                    if isinstance(e, AttributeError) and not observable.object_:
+                        msg = "Indicator Observable has no Object"
+                        pid = observable.id_
+                    else:
+                        msg = e.message
+                        pid = item.parent.id_ # note for display in UI
+                    try:
+                        name = "%s - %s (%s)"(type(indicator).__name__,
+                                              ind_type, value.strip())
+                    except:
+                        name = type(indicator).__name__
+
+                    self.failed.append((msg, name, pid))
 
     def parse_observables(self, observables):
         """
@@ -325,26 +344,30 @@ class STIXParser():
                                          'ipv6-net', 'ipv6-netmask'):
                         imp_type = "IP"
                         for value in item.address_value.values:
-                            ip = str(value).strip()
+                            val = str(value).strip()
                             iptype = get_crits_ip_type(item.category)
                             if iptype:
-                                res = ip_add_update(ip,
+                                res = ip_add_update(val,
                                                     iptype,
                                                     [self.source],
                                                     analyst=analyst,
                                                     is_add_indicator=True)
-                                self.parse_res(imp_type, obs, res)
+                                self.parse_res(imp_type, val, obs, res)
                 if isinstance(item, DomainName):
                     imp_type = "Domain"
-                    for value in item.value.values:
-                        res = upsert_domain(str(value),
+                    for val in item.value.values:
+                        res = upsert_domain(str(val),
                                             [self.source],
                                             username=analyst)
-                        self.parse_res(imp_type, obs, res)
+                        self.parse_res(imp_type, str(val), obs, res)
                 elif isinstance(item, Artifact):
                     # Not sure if this is right, and I believe these can be
                     # encoded in a couple different ways.
                     imp_type = "RawData"
+                    if obs.title:
+                        val = obs.title
+                    else:
+                        val = obs.id_
                     rawdata = item.data.decode('utf-8')
                     description = "None"
                     # TODO: find out proper ways to determine title, datatype,
@@ -360,43 +383,43 @@ class STIXParser():
                                             tool_version=None,
                                             method=self.source_instance.method,
                                             reference=self.source_instance.reference)
-                    self.parse_res(imp_type, obs, res)
+                    self.parse_res(imp_type, val, obs, res)
                 elif (isinstance(item, File) and
                       item.custom_properties and
                       item.custom_properties[0].name == "crits_type" and
                       item.custom_properties[0]._value == "Certificate"):
                     imp_type = "Certificate"
                     description = "None"
-                    filename = str(item.file_name)
+                    val = str(item.file_name)
                     data = None
                     for obj in item.parent.related_objects:
                         if isinstance(obj.properties, Artifact):
                             data = obj.properties.data
-                    res = handle_cert_file(filename,
+                    res = handle_cert_file(val,
                                            data,
                                            self.source,
                                            user=analyst,
                                            description=description)
-                    self.parse_res(imp_type, obs, res)
+                    self.parse_res(imp_type, val, obs, res)
                 elif isinstance(item, File) and self.has_network_artifact(item):
                     imp_type = "PCAP"
                     description = "None"
-                    filename = str(item.file_name)
+                    val = str(item.file_name)
                     data = None
                     for obj in item.parent.related_objects:
                         if (isinstance(obj.properties, Artifact) and
                             obj.properties.type_ == Artifact.TYPE_NETWORK):
                             data = obj.properties.data
-                    res = handle_pcap_file(filename,
+                    res = handle_pcap_file(val,
                                            data,
                                            self.source,
                                            user=analyst,
                                            description=description)
-                    self.parse_res(imp_type, obs, res)
+                    self.parse_res(imp_type, val, obs, res)
                 elif isinstance(item, File):
                     imp_type = "Sample"
                     filename = str(item.file_name)
-                    md5 = item.md5
+                    val = item.md5
                     data = None
                     for obj in item.parent.related_objects:
                         if (isinstance(obj.properties, Artifact) and
@@ -406,11 +429,12 @@ class STIXParser():
                                       data,
                                       self.source,
                                       user=analyst,
-                                      md5_digest=md5,
+                                      md5_digest=val,
                                       is_return_only_md5=False)
-                    self.parse_res(imp_type, obs, res)
+                    self.parse_res(imp_type, val, obs, res)
                 elif isinstance(item, EmailMessage):
                     imp_type = "Email"
+                    val = item.parent.id_
                     data = {}
                     data['source'] = self.source.name
                     data['source_method'] = self.source_instance.method
@@ -419,22 +443,25 @@ class STIXParser():
                     data['raw_header'] = str(item.raw_header)
                     data['helo'] = str(item.email_server)
                     if item.header:
-                        data['message_id'] = str(item.header.message_id)
+                        data['date'] = item.header.date.value
                         data['subject'] = str(item.header.subject)
+                        val = "Date: %s, Subject: %s" % (data['date'],
+                                                         data['subject'])
+                        data['message_id'] = str(item.header.message_id)
                         data['sender'] = str(item.header.sender)
                         data['reply_to'] = str(item.header.reply_to)
                         data['x_originating_ip'] = str(item.header.x_originating_ip)
                         data['x_mailer'] = str(item.header.x_mailer)
                         data['boundary'] = str(item.header.boundary)
                         data['from_address'] = str(item.header.from_)
-                        data['date'] = item.header.date.value
                         if item.header.to:
                             data['to'] = [str(r) for r in item.header.to.to_list()]
                     res = handle_email_fields(data,
                                             analyst,
                                             "STIX")
+                    self.parse_res(imp_type, val, obs, res)
+
                     # Should check for attachments and add them here.
-                    self.parse_res(imp_type, obs, res)
                     if res.get('status') and item.attachments:
                         for attach in item.attachments:
                             rel_id = attach.to_dict()['object_reference']
@@ -449,9 +476,9 @@ class STIXParser():
                         continue
                     else:
                         ind_type = obj.object_type
-                        for value in obj.value:
-                            if value and ind_type:
-                                res = handle_indicator_ind(value.strip(),
+                        for val in obj.value:
+                            if val and ind_type:
+                                res = handle_indicator_ind(val.strip(),
                                                         self.source,
                                                         ind_type,
                                                         IndicatorThreatTypes.UNKNOWN,
@@ -459,13 +486,14 @@ class STIXParser():
                                                         analyst,
                                                         add_domain=True,
                                                         add_relationship=True)
-                                self.parse_res(imp_type, obs, res)
+                                self.parse_res(imp_type, val.strip(), obs, res)
             except Exception, e: # probably caused by cybox object we don't handle
                 self.failed.append((e.message,
-                                    type(item).__name__,
+                                    "%s - %s (%s)" % (type(obs).__name__,
+                                                      imp_type, val),
                                     item.parent.id_)) # note for display in UI
 
-    def parse_res(self, imp_type, obs, res):
+    def parse_res(self, imp_type, val, obs, res):
         s = res.get('success', None)
         if s is None:
             s = res.get('status', None)
@@ -480,7 +508,8 @@ class STIXParser():
             else:
                 msg = "Failed for unknown reason."
             self.failed.append((msg,
-                                type(obs).__name__,
+                                "%s - %s (%s)" % (type(obs).__name__,
+                                                  imp_type, val),
                                 obs.id_)) # note for display in UI
 
     def has_network_artifact(self, file_obj):
