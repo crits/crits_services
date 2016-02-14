@@ -878,20 +878,40 @@ class MachOEntity(object):
         """
 
         ret = {}
-        # TODO Check length 12*4
-        #    raise MachOParserError("Code directory too small.")
+        if len(sig_data) < 12:
+            raise MachOParserError('Code directory too small.')
+        version = sig_data[8:12]
+        if version != "\x00\x02\x01\x00":
+            # Only grabbing certain parts of this structure..
+            (ver, ho, io, hs, ht) = struct.unpack('>' + 'x' * 8 + 'I' + 'x' * 4 + 'II' + 'x' * 12 + 'BB' + 'x' * 6, sig_data[:44])
+            if (ho + hs) > len(sig_data):
+                raise MachOParserError("Code directory too large.")
+            ret['ver'] = "0x%08x" % ver
+            ret['hashtype'] = self.hashes.get(ht, '0x%02x' % ht)
+            ret['hash'] = binascii.hexlify(sig_data[ho:ho + hs])
+            # Identifier is null terminated.
+            null = sig_data[io:].find('\x00')
+            if null == -1:
+                ret['identifier'] = 'Unknown'
+            else:
+                ret['identifier'] = sig_data[io:io + null]
+            return ret
+
+        if len(sig_data) < 12*4:
+            raise MachOParserError('Code directory too small.')
+
         (magic, length, version, flags, hashOffset, identOffset, nSpecialSlots, nCodeSlots, codeLimit, hashSize, hashType, spare1, pageSize, spare2, scatterOffset) = struct.unpack(">IIIIIIIIIBBBBII", sig_data[0:12*4])
         ret['length'] = length
         ret['version'] = "0x%08x" % version
         # TODO: Versions != 0x00020100 might have different entries => Implement
         ret['nSpecialSlots'] = nSpecialSlots
         ret['nCodeSlots'] = nCodeSlots
-        ret['hashType'] = self.hashes.get(hashType, '0x%02x' % hashType) # Actually will always be SHA1, see opensourced code.
-        # TODO Check len(sig_data) >= length
-        #    raise MachOParserError("Code directory too small.")
+        ret['hashtype'] = self.hashes.get(hashType, '0x%02x' % hashType) # Actually will always be SHA1, see opensourced code.
+        if len(sig_data) < length:
+            raise MachOParserError('Code directory too small.')
 
         # Calculate CodeDirectory Hash
-        ret['cdhash'] = sha1(sig_data[:length]).hexdigest()
+        ret['hash'] = sha1(sig_data[:length]).hexdigest()
 
         # Get Bundle Identifier
         identifier = ''
@@ -900,9 +920,14 @@ class MachOEntity(object):
             identifier+=b
         ret['identifier'] = identifier
 
-        # Get special hash slots http://www.opensource.apple.com/source/Security/Security-55179.13/libsecurity_codesigning/lib/codedirectory.h
-        # TODO Check if hashOffset - 20*nSpecialSlots not exceed codedirectory boundaries (have to be after 12*4 and maybe right after identifier!
+
+        # Check if hashOffset - 20*nSpecialSlots not exceed codedirectory boundaries (have to be after 12*4 and maybe right after identifier!
+        if (hashOffset - 20*nSpecialSlots) < 12*4:
+            raise MachoParserError('OutOfBoundaryException SpecialSlots.')
+
         hash_size = self.hashes_length.get(hashType, '0x%02x' % hashType)
+
+        # Get special hash slots http://www.opensource.apple.com/source/Security/Security-55179.13/libsecurity_codesigning/lib/codedirectory.h
         specialSlots = []
         for idx in reversed(range((nSpecialSlots))):
             offset_hash = hashOffset - int(idx)*hash_size - hash_size
