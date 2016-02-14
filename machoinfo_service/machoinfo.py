@@ -11,7 +11,6 @@
 # XXX: There are a lot of comments indicating we should check we aren't
 # parsing past the end of a slice. These should all be fixed. ;)
 
-from hexdump import hexdump
 import struct
 import binascii
 from hashlib import md5, sha1
