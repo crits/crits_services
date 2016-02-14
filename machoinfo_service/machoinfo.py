@@ -11,9 +11,10 @@
 # XXX: There are a lot of comments indicating we should check we aren't
 # parsing past the end of a slice. These should all be fixed. ;)
 
+from hexdump import hexdump
 import struct
 import binascii
-from hashlib import md5
+from hashlib import md5, sha1
 from datetime import datetime
 
 class MachOParserError(Exception):
@@ -507,7 +508,23 @@ class MachOEntity(object):
                         self.CS_SHA256: 'SHA256',
                         self.CS_SKEIN1: 'SKEIN 160x256',
                         self.CS_SKEIN2: 'SKEIN 256x512'
-                      }
+        }
+
+        self.hashes_length = {
+                        self.CS_NOHASH: 0,
+                        self.CS_SHA1: 20,
+                        self.CS_SHA256: 64,
+                        self.CS_SKEIN1: None, # TODO How to calculate this arbitrary length
+                        self.CS_SKEIN2: None  # See above
+        }
+
+        self.special_slots = [
+                'InfoSlot',
+                'RequirementsSlot',
+                'ResourceDirSlot',
+                'ApplicationSlot',
+                'EntitlementSlot'
+        ]
 
         # These should be the first 4 bytes of a PKCS7 blob.
         self.PKCS7 = [0x3080, 0x3081, 0x3082, 0x3083, 0x3084]
@@ -835,20 +852,72 @@ class MachOEntity(object):
     # Best definition of this structure I've been able to find:
     # http://opensource.apple.com/source/Security/Security-55179.11/libsecurity_codesigning/lib/cscdefs.h
     def parse_code_directory(self, sig_data):
+        """
+        /*
+         * C form of a CodeDirectory.
+         */
+        typedef struct __CodeDirectory {
+          uint32_t magic;         /* magic number (CSMAGIC_CODEDIRECTORY) */
+          uint32_t length;        /* total length of CodeDirectory blob */
+          uint32_t version;       /* compatibility version */
+          uint32_t flags;         /* setup and mode flags */
+          uint32_t hashOffset;      /* offset of hash slot element at index zero */
+          uint32_t identOffset;     /* offset of identifier string */
+          uint32_t nSpecialSlots;     /* number of special hash slots */
+          uint32_t nCodeSlots;      /* number of ordinary (code) hash slots */
+          uint32_t codeLimit;       /* limit to main image signature range */
+          uint8_t hashSize;       /* size of each hash in bytes */
+          uint8_t hashType;       /* type of hash (cdHashType* constants) */
+          uint8_t spare1;         /* unused (must be zero) */
+          uint8_t pageSize;       /* log2(page size in bytes); 0 => infinite */
+          uint32_t spare2;        /* unused (must be zero) */
+          /* Version 0x20100 */
+          uint32_t scatterOffset;       /* offset of optional scatter vector */
+          /* followed by dynamic content as located by offset fields above */
+        } CS_CodeDirectory;
+        """
+
         ret = {}
-        # Only grabbing certain parts of this structure..
-        (ver, ho, io, hs, ht) = struct.unpack('>' + 'x' * 8 + 'I' + 'x' * 4 + 'II' + 'x' * 12 + 'BB' + 'x' * 6, sig_data[:44])
-        if (ho + hs) > len(sig_data):
-            raise MachOParserError("Code directory too large.")
-        ret['ver'] = "0x%08x" % ver
-        ret['hashtype'] = self.hashes.get(ht, '0x%02x' % ht)
-        ret['hash'] = binascii.hexlify(sig_data[ho:ho + hs])
-        # Identifier is null terminated.
-        null = sig_data[io:].find('\x00')
-        if null == -1:
-            ret['identifier'] = 'Unknown'
-        else:
-            ret['identifier'] = sig_data[io:io + null]
+        # TODO Check length 12*4
+        #    raise MachOParserError("Code directory too small.")
+        (magic, length, version, flags, hashOffset, identOffset, nSpecialSlots, nCodeSlots, codeLimit, hashSize, hashType, spare1, pageSize, spare2, scatterOffset) = struct.unpack(">IIIIIIIIIBBBBII", sig_data[0:12*4])
+        ret['length'] = length
+        ret['version'] = "0x%08x" % version
+        # TODO: Versions != 0x00020100 might have different entries => Implement
+        ret['nSpecialSlots'] = nSpecialSlots
+        ret['nCodeSlots'] = nCodeSlots
+        ret['hashType'] = self.hashes.get(hashType, '0x%02x' % hashType) # Actually will always be SHA1, see opensourced code.
+        # TODO Check len(sig_data) >= length
+        #    raise MachOParserError("Code directory too small.")
+
+        # Calculate CodeDirectory Hash
+        ret['cdhash'] = sha1(sig_data[:length]).hexdigest()
+
+        # Get Bundle Identifier
+        identifier = ''
+        for b in sig_data[identOffset:length]:
+            if b=="\x00" or not (b.isalnum() or b in ".-" ): break
+            identifier+=b
+        ret['identifier'] = identifier
+
+        # Get special hash slots http://www.opensource.apple.com/source/Security/Security-55179.13/libsecurity_codesigning/lib/codedirectory.h
+        # TODO Check if hashOffset - 20*nSpecialSlots not exceed codedirectory boundaries (have to be after 12*4 and maybe right after identifier!
+        hash_size = self.hashes_length.get(hashType, '0x%02x' % hashType)
+        specialSlots = []
+        for idx in reversed(range((nSpecialSlots))):
+            offset_hash = hashOffset - int(idx)*hash_size - hash_size
+            if nSpecialSlots == 5:
+                slotname = self.special_slots[idx]
+            else:
+                slotname = str(-idx)
+            specialSlots.append((slotname, sig_data[offset_hash:offset_hash + hash_size].encode('hex')))
+        ret['specialSlots'] = specialSlots
+
+        codeSlots = []
+        for idx in range((nCodeSlots)):
+            offset_hash = hashOffset + int(idx)*hash_size
+            codeSlots.append((str(idx), sig_data[offset_hash:offset_hash + hash_size].encode('hex')))
+        ret['codeSlots'] = codeSlots
         return ret
 
     def parse_code_requirement(self, sig_data):
