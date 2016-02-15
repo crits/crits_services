@@ -1043,7 +1043,7 @@ class MachOEntity(object):
         elif match_type == self.MATCH_GREATER_EQUAL:
             expr += ' >= '
         else:
-            raise MachOParserError('Unknown Match Operation Type!')
+            raise MachOParserError('Unknown Match Operation Type [{}]!'.format(match_type))
 
         # data
         expr_data = self.parse_expr_data(ptr)
@@ -1327,7 +1327,7 @@ class MachOEntity(object):
 
             expr += ')'
         else:
-            raise MachOParserError('Unknown Expression Operand!')
+            raise MachOParserError('Unknown Expression Operand [{}]!'.format(expr_type))
         ret['expr'] = expr
         ret['size'] = size
         return ret
