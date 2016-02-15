@@ -243,6 +243,48 @@ class MachOEntity(object):
     N_PBUD = 0x0C
     N_INDR = 0x0A
 
+    # Requirement Types
+    # Source: http://www.opensource.apple.com/source/libsecurity_codesigning/libsecurity_codesigning-33803/lib/CSCommon.h
+    SEC_HOST_REQUIREMENT_TYPE       = 0x01 #  kSecHostRequirementType = 1,            /* what hosts may run us */
+    SEC_GUEST_REQUIREMENT_TYPE      = 0x02 # kSecGuestRequirementType = 2,           /* what guests we may run */
+    SEC_DESIGNATED_REQUIREMENT_TYPE = 0x03 # kSecDesignatedRequirementType = 3,      /* designated requirement */
+    SEC_LIBRARY_REQUIREMENT_TYPE    = 0x04 # kSecLibraryRequirementType = 4,         /* what libraries we may link against */
+
+    # Expression Types
+    # Source: https://opensource.apple.com/source/libsecurity_codesigning/libsecurity_codesigning-55032/lib/requirement.h
+    OP_FALSE                = 0x00 # unconditionally false
+    OP_TRUE                 = 0x01 # unconditionally true
+    OP_IDENT                = 0x02 # MATCH CANONICAL CODE [STRING]
+    OP_APPLEANCHOR          = 0x03 # SIGNED BY APPLE AS APPLE'S PRODUCT
+    OP_ANCHORHASH           = 0x04 # MATCH ANCHOR [CERT HASH]
+    OP_INFOKEYVALUE         = 0x05 # *LEGACY* - USE OPINFOKEYFIELD [KEY; VALUE]
+    OP_AND                  = 0x06 # BINARY PREFIX EXPR AND EXPR [EXPR; EXPR]
+    OP_OR                   = 0x07 # BINARY PREFIX EXPR OR EXPR [EXPR; EXPR]
+    OP_CDHASH               = 0x08 # MATCH HASH OF CODEDIRECTORY DIRECTLY [CD HASH]
+    OP_NOT                  = 0x09 # LOGICAL INVERSE [EXPR]
+    OP_INFOKEYFIELD         = 0x0A # INFO.PLIST KEY FIELD [STRING; MATCH SUFFIX]
+    OP_CERTFIELD            = 0x0B # CERTIFICATE FIELD [CERT INDEX; FIELD NAME; MATCH SUFFIX]
+    OP_TRUSTEDCERT          = 0x0C # REQUIRE TRUST SETTINGS TO APPROVE ONE PARTICULAR CERT [CERT INDEX]
+    OP_TRUSTEDCERTS         = 0x0D # REQUIRE TRUST SETTINGS TO APPROVE THE CERT CHAIN
+    OP_CERTGENERIC          = 0x0E # CERTIFICATE COMPONENT BY OID [CERT INDEX; OID; MATCH SUFFIX]
+    OP_APPLEGENERICANCHOR   = 0x0F # SIGNED BY APPLE IN ANY CAPACITY
+    OP_ENTITLEMENTFIELD     = 0x10 # ENTITLEMENT DICTIONARY FIELD [STRING; MATCH SUFFIX]
+    OP_CERTPOLICY           = 0x11 # CERTIFICATE POLICY BY OID [CERT INDEX; OID; MATCH SUFFIX]
+    OP_NAMEDANCHOR          = 0x12 # NAMED ANCHOR TYPE
+    OP_NAMEDCODE            = 0x13 # NAMED SUBROUTINE
+    #EXPR_OP_COUNT                     // (TOTAL OPCODE COUNT IN USE)
+
+    # Match Operation Types
+    MATCH_EXISTS            = 0x00 # anything but explicit "false" - no value stored
+    MATCH_EQUAL             = 0x01 # equal (CFEqual)
+    MATCH_CONTAINS          = 0x02 # partial match (substring)
+    MATCH_BEGINS_WITH       = 0x03 # partial match (initial substring)
+    MATCH_ENDS_WITH         = 0x04 # partial match (terminal substring)
+    MATCH_LESS_THAN         = 0x05 # less than (string with numeric comparison)
+    MATCH_GREATHER_THAN     = 0x06 # greater than (string with numeric comparison)
+    MATCH_LESS_EQUAL        = 0x07 # less or equal (string with numeric comparison)
+    MATCH_GREATER_EQUAL     = 0x08 # greater or equal (string with numeric comparison)
+
     def __init__(self):
         self.magic       = 0
         self.nfat        = 0
@@ -499,6 +541,17 @@ class MachOEntity(object):
                                    self.EMBEDDED_SIG: self.parse_embedded_sig,
                                    self.CERT_BLOB: self.parse_cert_blob
                                  }
+
+
+        # Requirement Types
+        # Source: http://www.opensource.apple.com/source/libsecurity_codesigning/libsecurity_codesigning-33803/lib/CSCommon.h
+        self.requirement_types = {
+                self.SEC_HOST_REQUIREMENT_TYPE: 'Host', #  kSecHostRequirementType = 1,            /* what hosts may run us */
+                self.SEC_GUEST_REQUIREMENT_TYPE: 'Guest', # kSecGuestRequirementType = 2,           /* what guests we may run */
+                self.SEC_DESIGNATED_REQUIREMENT_TYPE: 'Designated', # kSecDesignatedRequirementType = 3,      /* designated requirement */
+                self.SEC_LIBRARY_REQUIREMENT_TYPE: 'Library' # kSecLibraryRequirementType = 4,         /* what libraries we may link against */
+                # TODO: Invalid, Count
+        }
 
         # Hash type mapping
         self.hashes = {
@@ -944,32 +997,384 @@ class MachOEntity(object):
         ret['codeSlots'] = codeSlots
         return ret
 
+    def parse_expr_data(self, sig_data):
+        ret = {}
+        ptr = sig_data
+        data_size = struct.unpack(">I", ptr[:4])[0]
+        size = 4
+        ptr = ptr[4:]
+
+        # Alignment
+        mod = data_size % 4
+        alignment = data_size
+        if mod != 0:
+            alignment += 4 - mod
+        ret['data'] = ptr[:data_size]
+        ptr = ptr[alignment:]
+        size += alignment
+
+        ret['size'] = size
+        return ret
+
+    def parse_match_ops(self, sig_data):
+        ret = {}
+        ptr = sig_data
+        match_type = struct.unpack(">I", ptr[:4])[0]
+        size = 4
+        ptr = ptr[4:]
+
+        expr = ''
+        if match_type == self.MATCH_EXISTS:
+            expr += ' /* exists */'
+        elif match_type == self.MATCH_EQUAL:
+            expr += ' = '
+        elif match_type == self.MATCH_CONTAINS:
+            expr += ' ~ '
+        elif match_type == self.MATCH_BEGINS_WITH:
+            expr += ' = '
+        elif match_type == self.MATCH_ENDS_WITH:
+            expr += ' = *'
+        elif match_type == self.MATCH_LESS_THAN:
+            expr += ' < '
+        elif match_type == self.MATCH_GREATHER_THAN:
+            expr += ' > '
+        elif match_type == self.MATCH_LESS_EQUAL:
+            expr += ' <= '
+        elif match_type == self.MATCH_GREATER_EQUAL:
+            expr += ' >= '
+        else:
+            raise MachOParserError('Unknown Match Operation Type!')
+
+        # data
+        expr_data = self.parse_expr_data(ptr)
+        expr_data_size = expr_data['size']
+        expr += expr_data['data']
+        ptr = ptr[expr_data_size:]
+        size += expr_data_size
+
+        if match_type == self.MATCH_BEGINS_WITH:
+            expr += '*'
+
+        ret['size'] = size
+        ret['match_ops'] = expr
+        return ret
+
+    # Use https://opensource.apple.com/source/libsecurity_codesigning/libsecurity_codesigning-55032/lib/reqdumper.cpp
+    # Use http://opensource.apple.com/source/libsecurity_codesigning/libsecurity_codesigning-55032/lib/reqreader.cpp
+    # TODO: Check lengths in several places, put hashData / certSlot redundancy code into functions
+    # TODO dotString vs data difference implement
+    # TODO Are dotStrings and data blobs always null byte ending?
+    # TODO Remove nullbytes from Alignment data ? 
+    def parse_expr(self, sig_data):
+        certSlot = [" root", " leaf"]
+        ret = {}
+        size = 0
+        expr = ''
+        expr_type = struct.unpack(">I", sig_data[:4])[0]
+        size+=4
+        ptr = sig_data[4:]
+        if expr_type == self.OP_FALSE:
+            ret['op'] = 'False'
+            expr += 'never'
+        elif expr_type == self.OP_TRUE:
+            ret['op'] = 'True'
+            expr += 'always'
+        elif expr_type == self.OP_IDENT:
+            ret['op'] = 'Identifier'
+            expr += 'identifier '
+
+
+            # data
+            expr_data = self.parse_expr_data(ptr)
+            expr_data_size = expr_data['size']
+            expr += expr_data['data']
+            ptr = ptr[expr_data_size:]
+            size += expr_data_size
+        elif expr_type == self.OP_APPLEANCHOR:
+            ret['op'] = 'AppleAnchor'
+            expr += 'anchor apple'
+        elif expr_type == self.OP_ANCHORHASH:
+            ret['op'] = 'AnchorHash'
+            expr += 'certificate '
+
+            # certSlot
+            cert_type = struct.unpack(">I", ptr[:4])[0]
+            ptr = ptr[4:]
+            size += 4
+            if cert_type < 2:
+                cert_type_name = certSlot[cert_type]
+            else:
+                cert_type_name = str(cert_type)
+
+            # hashData
+            hash_length = struct.unpack(">I", ptr[:4])[0]
+            ptr = ptr[4:]
+            size += 4
+            digest = ptr[:hash_length].encode('hex')
+            expr += ' {} = H"{}"'.format(cert_type_name,digest)
+            ptr = ptr[hash_length:]
+            size += hash_length
+        elif expr_type == self.OP_INFOKEYVALUE:
+            ret['op'] = 'InfoKeyValue'
+            # TODO mDebug check ?
+            
+            # dotString
+            expr_data = self.parse_expr_data(ptr)
+            expr_data_size = expr_data['size']
+            expr += expr_data['data']
+            ptr = ptr[expr_data_size:]
+            size += expr_data_size
+
+            # data
+            expr_data = self.parse_expr_data(ptr)
+            expr_data_size = expr_data['size']
+            expr += expr_data['data']
+            ptr = ptr[expr_data_size:]
+            size += expr_data_size
+        elif expr_type == self.OP_AND:
+            ret['op'] = 'And'
+            expr += '('
+            expr_obj = self.parse_expr(ptr)
+            expr += expr_obj['expr']
+            ptr = ptr[expr_obj['size']:]
+            size += expr_obj['size']
+            expr += ' and '
+            expr_obj = self.parse_expr(ptr)
+            expr += expr_obj['expr']
+            ptr = ptr[expr_obj['size']:]
+            size += expr_obj['size']
+            expr += ')'
+        elif expr_type == self.OP_OR:
+            ret['op'] = 'Or'
+            expr += '('
+            expr_obj = self.parse_expr(ptr)
+            expr += expr_obj['expr']
+            ptr = ptr[expr_obj['size']:]
+            size += expr_obj['size']
+            expr += ' and '
+            expr_obj = self.parse_expr(ptr)
+            expr += expr_obj['expr']
+            ptr = ptr[expr_obj['size']:]
+            size += expr_obj['size']
+            expr += ')'
+        elif expr_type == self.OP_CDHASH:
+            ret['op'] = 'CDHash'
+            expr += ' cdhash '
+
+            # hashData
+            hash_length = struct.unpack(">I", ptr[:4])[0]
+            ptr = ptr[4:]
+            digest = ptr[:hash_length].encode('hex')
+            expr += 'H"{}"'.format(digest)
+        elif expr_type == self.OP_NOT:
+            ret['op'] = 'Not'
+            expr += '! '
+            expr_obj = self.parse_expr(ptr)
+            expr += expr_obj['expr']
+            ptr = ptr[expr_obj['size']:]
+            size += expr_obj['size']
+        elif expr_type == self.OP_INFOKEYFIELD:
+            ret['op'] = 'InfoKeyField'
+            expr += 'info['
+
+            # dotString
+            expr_data = self.parse_expr_data(ptr)
+            expr_data_size = expr_data['size']
+            expr += expr_data['data']
+            ptr = ptr[expr_data_size:]
+            size += expr_data_size
+
+            expr += ']'
+
+            # match
+            match_ops = self.parse_match_ops(ptr)
+            expr += match_ops['match_ops']
+            match_ops_size = match_ops['size']
+            size += match_ops_size
+            ptr = ptr[match_ops_size:]
+        elif expr_type == self.OP_CERTFIELD:
+            ret['op'] = 'CertField'
+            expr += 'certificate'
+
+            # certSlot
+            cert_type = struct.unpack(">I", ptr[:4])[0]
+            ptr = ptr[4:]
+            if cert_type < 2:
+                cert_type_name = certSlot[cert_type]
+            else:
+                cert_type_name = str(cert_type)
+
+            expr += '['
+
+            # dotString
+            expr_data = self.parse_expr_data(ptr)
+            expr_data_size = expr_data['size']
+            expr += expr_data['data']
+            ptr = ptr[expr_data_size:]
+            size += expr_data_size
+
+            expr += ']'
+
+            # match
+            match_ops = self.parse_match_ops(ptr)
+            expr += match_ops['match_ops']
+            match_ops_size = match_ops['size']
+            size += match_ops_size
+            ptr = ptr[match_ops_size:]
+        elif expr_type == self.OP_TRUSTEDCERT:
+            ret['op'] = 'TrustedCert'
+            expr += 'certificate'
+
+            # certSlot
+            cert_type = struct.unpack(">I", ptr[:4])[0]
+            ptr = ptr[4:]
+            if cert_type < 2:
+                cert_type_name = certSlot[cert_type]
+            else:
+                cert_type_name = str(cert_type)
+
+            expr += 'trusted'
+        elif expr_type == self.OP_TRUSTEDCERTS:
+            ret['op'] = 'TrustedCerts'
+            expr += 'anchor trusted'
+        elif expr_type == self.OP_CERTGENERIC:
+            ret['op'] = 'CertGeneric'
+            expr += 'certificate'
+
+            # certSlot
+            cert_type = struct.unpack(">I", ptr[:4])[0]
+            ptr = ptr[4:]
+            if cert_type < 2:
+                cert_type_name = certSlot[cert_type]
+            else:
+                cert_type_name = str(cert_type)
+
+            expr += '['
+            # TODO
+            expr += ']'
+
+            # match
+            match_ops = self.parse_match_ops(ptr)
+            expr += match_ops['match_ops']
+            match_ops_size = match_ops['size']
+            size += match_ops_size
+            ptr = ptr[match_ops_size:]
+        elif expr_type == self.OP_APPLEGENERICANCHOR:
+            ret['op'] = 'AppleGenericAnchor'
+            expr += 'anchor apple generic'
+        elif expr_type == self.OP_ENTITLEMENTFIELD:
+            ret['op'] = 'EntitlementField'
+            expr += 'entitlement['
+
+            # dotString
+            expr_data = self.parse_expr_data(ptr)
+            expr_data_size = expr_data['size']
+            expr += expr_data['data']
+            ptr = ptr[expr_data_size:]
+            size += expr_data_size
+
+            expr += ']'
+
+            # match
+            match_ops = self.parse_match_ops(ptr)
+            expr += match_ops['match_ops']
+            match_ops_size = match_ops['size']
+            size += match_ops_size
+            ptr = ptr[match_ops_size:]
+        elif expr_type == self.OP_CERTPOLICY:
+            ret['op'] = 'CertPolicy'
+            expr += 'certificate'
+
+            # certSlot
+            cert_type = struct.unpack(">I", ptr[:4])[0]
+            ptr = ptr[4:]
+            if cert_type < 2:
+                cert_type_name = certSlot[cert_type]
+            else:
+                cert_type_name = str(cert_type)
+
+            expr += '['
+            # TODO
+            expr += ']'
+
+            # match
+            match_ops = self.parse_match_ops(ptr)
+            expr += match_ops['match_ops']
+            match_ops_size = match_ops['size']
+            size += match_ops_size
+            ptr = ptr[match_ops_size:]
+        elif expr_type == self.OP_NAMEDANCHOR:
+            ret['op'] = 'NamedAnchor'
+            expr += 'anchor apple '
+
+            # data
+            expr_data = self.parse_expr_data(ptr)
+            expr_data_size = expr_data['size']
+            expr += expr_data['data']
+            ptr = ptr[expr_data_size:]
+            size += expr_data_size
+        elif expr_type == self.OP_NAMEDCODE:
+            ret['op'] = 'NamedCode'
+            expr += '('
+
+            # data
+            expr_data = self.parse_expr_data(ptr)
+            expr_data_size = expr_data['size']
+            expr += expr_data['data']
+            ptr = ptr[expr_data_size:]
+            size += expr_data_size
+
+            expr += ')'
+        else:
+            raise MachOParserError('Unknown Expression Operand!')
+        ret['expr'] = expr
+        ret['size'] = size
+        return ret
+
+    # https://opensource.apple.com/source/libsecurity_codesigning/libsecurity_codesigning-55032/lib/requirement.h
     def parse_code_requirement(self, sig_data):
         ret = {}
+        # 4 byte magic, 4 byte size ( as usual ), then number of expressions if exprForm <> always true, since only expr so far are supported
+        (magic, size, nExpr) = struct.unpack(">III", sig_data[:4*3])
+        ret['nExpr'] = nExpr
+        ptr = sig_data[4*3:]
+        expressions = []
+        offset = 0
+        for expridx in range(nExpr):
+            expr = self.parse_expr(ptr[offset:size])
+            expressions.append(expr)
+            offset += expr['size']
+        ret['requirement'] = expressions
         return ret
 
     # Requirement sets are like other blobs. Follow the offset to
     # the real block we care about.
     def parse_requirement_set(self, sig_data):
         ret = {}
-        # Skipping the 4 byte magic, the next 4 bytes are the size and
-        # the next 4 bytes are the number of requirements in this set.
-        count = struct.unpack('>I', sig_data[8:12])[0]
+        # 4 byte magic, 4 byte size ( as usual ), then number of requirements TODO: Find source code equivalent
+        (magic, size, nRequirements) = struct.unpack(">III", sig_data[:4*3])
         # Requirement sets are stored like super blobs.
-        ptr = sig_data[12:]
-        ret['requirements'] = []
-        for i in xrange(count):
-            # Skipping over the first 4 bytes, I don't know what they are.
-            # I think they are a type?
-            offset = struct.unpack('>I', ptr[4:8])[0]
+        ptr = sig_data[4*3:]
+        requirements = []
+        for i in xrange(nRequirements):
+            # https://opensource.apple.com/source/libsecurity_codesigning/libsecurity_codesigning-36924/lib/CSCommon.h
+            # 4 byte requirementType, 4 byte offset
+            (requirementType, offset) = struct.unpack('>II', ptr[:4*2])
             if offset > len(sig_data):
                 raise MachOParserError("Requirement set too large.")
-            magic = struct.unpack('>I', sig_data[offset:offset + 4])[0]
+
+            # Get requirement blob and parse it
+            magic = struct.unpack('>I', sig_data[offset:offset + 4])[0] # Should be 0xFADE0C00
             new_parser = self.signature_parsers.get(magic, self.unknown_sig)
             req = new_parser(sig_data[offset:])
-            req['type'] = magic
-            ret['requirements'].append(req)
+            requirementTypeName = self.requirement_types.get(requirementType)
+            # TODO Check if invalid type or count, see source code -- should be None then
+            req['type'] = requirementTypeName
+            requirements.append(req)
+
             ptr = ptr[8:]
+
+        ret['requirements'] = requirements
         return ret
 
     def parse_lc_segment_sub(self, cmd_dict, data):
