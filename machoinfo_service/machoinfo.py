@@ -1065,6 +1065,7 @@ class MachOEntity(object):
     # TODO dotString vs data difference implement
     # TODO Are dotStrings and data blobs always null byte ending?
     # TODO Remove nullbytes from Alignment data ? 
+    # TODO Better prefix to infix translation with fewer brackets!
     def parse_expr(self, sig_data):
         certSlot = [" root", " leaf"]
         ret = {}
