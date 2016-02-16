@@ -14,8 +14,10 @@ class MacroExtractService(Service):
 
     name = "macro_extract"
     version = '0.1.0'
+    template = "macro_extract_template.html"
     supported_types = ['Sample']
     description = "Extracs VBA Macros from MS Office documents."
+    compatibility_mode = True
 
     @staticmethod
     def get_config(existing_config):
