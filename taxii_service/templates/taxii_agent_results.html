@@ -1,7 +1,4 @@
-{% extends "base.html" %}
 {% load url from future %}
-
-{% block title %}TAXII Import Results{% endblock %}
 
 {% block content %}
 
@@ -12,9 +9,10 @@
     <div class="content_body">
         {% if result.status %}
             Status: <b>Success</b><br>
+            Message: {{ result.msg }}<br>
         {% else %}
             Status: <b>Failure</b><br>
-            Reason: {{ result.reason }}<br>
+            Reason: {{ result.msg }}<br>
         {% endif %}
     </div>
 </div>

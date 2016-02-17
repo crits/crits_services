@@ -1,4 +1,4 @@
-from mongoengine import Document
+from mongoengine import Document, StringField
 
 from crits.core.crits_mongoengine import CritsDocument
 from crits.core.fields import CritsDateTimeField
@@ -19,20 +19,23 @@ class Taxii(CritsDocument, Document):
         #NOTE: minify_defaults fields should match the MongoEngine field names, NOT the database fields
         "minify_defaults": [
             'runtime',
-            'end'
+            'end',
+            'feed'
         ],
         "schema_doc": {
             'runtime': 'The last time we made a TAXII request.',
-            'end': 'End date of this taxii document.'
+            'end': 'End date of this taxii document.',
+            'feed': 'The hostname:feed data was pulled from'
         },
     }
 
     runtime = CritsDateTimeField(required=True)
     end = CritsDateTimeField(required=True)
+    feed = StringField(required=True)
 
     def migrate(self):
         pass
 
     @classmethod
-    def get_last(cls):
-        return cls.objects.order_by('-end').first()
+    def get_last(cls, feed):
+        return cls.objects(feed=feed).order_by('-end').first()

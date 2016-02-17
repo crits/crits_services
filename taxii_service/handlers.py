@@ -17,6 +17,11 @@ import libtaxii.messages_11 as tm11
 from stix.utils import set_id_namespace
 
 from django.conf import settings
+from django import forms as dforms
+from django.template.loader import render_to_string
+from django.utils.safestring import SafeText
+
+from mongoengine.base import ValidationError
 
 from cybox.common import String, DateTime, Hash, UnsignedLong
 from cybox.common.object_properties import CustomProperties, Property
@@ -31,22 +36,76 @@ from stix.threat_actor import ThreatActor
 
 from . import taxii
 from . import formats
+from . import forms
 from .parsers import STIXParser, STIXParserException
 from .object_mapper import make_cybox_object
 
 from crits.events.event import Event
 from crits.core.class_mapper import class_from_id, class_from_type
 from crits.core.crits_mongoengine import Releasability
-from crits.services.handlers import get_config
+from crits.services.analysis_result import AnalysisConfig
+from crits.services.core import ServiceConfigError
+from crits.services.handlers import get_config, update_config
+from crits.services.service import CRITsService
 
 from crits.vocabulary.ips import IPTypes
 from crits.vocabulary.relationships import RelationshipTypes
 
 logger = logging.getLogger(__name__)
 
-def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
-                        certfile=None, start=None, end=None, analyst=None,
-                        method=None):
+def poll_taxii_feeds(feeds, analyst, method):
+    results = {}
+    success_feeds = []
+    sc = get_config('taxii_service').taxii_servers
+    for feed in feeds:
+        svrc = sc[feed[0]]
+        hostname = svrc['hostname']
+        https = svrc['https']
+        port = svrc['port']
+        path = svrc['ppath']
+        version = svrc['version']
+        keyfile = str(svrc['keyfile'])
+        cert = str(svrc['lcert'])
+        feedc = svrc['feeds'][feed[1]]
+        feed_name = feedc['feedname']
+        source = feedc['source']
+        subID = feedc['subID']
+
+        result = execute_taxii_agent(hostname, https, port, path, version,
+                                     feed_name, keyfile, cert, subID, source,
+                                     method, analyst)
+        if results:
+            for k in result:
+                if isinstance(result[k], list):
+                    results[k].extend(result[k])
+                elif isinstance(result[k], bool):
+                    results[k] = result[k]
+                elif isinstance(result[k], int):
+                    results[k] += result[k]
+        else:
+            results = result
+
+        if result['status']:
+            success_feeds.append("%s - %s" % (feed[0], feedc['feedname']))
+        else:
+            results['status'] = False
+            msg = " Feed '%s' failed. %s feeds were processed successfully: %s"
+            msg = msg % (("%s - %s" % (feed[0], feedc['feedname'])),
+                         len(success_feeds), ", ".join(success_feeds))
+            results['msg'] = result['msg'] + msg
+            results['all_fail'] = len(success_feeds) == False
+            return results
+
+    results['status'] = True
+    msg = "All %s feed(s) processed successfully: %s"
+    results['msg'] = msg % (len(success_feeds), ', '.join(success_feeds))
+    return results
+
+
+def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
+                        version="0", feed=None, keyfile=None, certfile=None,
+                        subID=None, source=None, method=None, analyst=None,
+                        start=None, end=None):
     ret = {
             'Certificate': [],
             'Domain': [],
@@ -60,27 +119,15 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
             'successes': 0,
             'failures': [],
             'status': False,
-            'reason': ''
+            'msg': ''
           }
 
     sc = get_config('taxii_service')
-    # XXX: Validate these!
-    if not hostname:
-        hostname = str(sc['hostname'])
-    if not keyfile:
-        keyfile = str(sc['keyfile'])
-    if not certfile:
-        certfile = str(sc['certfile'])
-    if not feed:
-        feed = str(sc['data_feed'])
-    if https == None:
-        https = sc['https']
     create_events = sc['create_events']
-
 
     # Last document's end time is our start time.
     if not start:
-        last = taxii.Taxii.get_last()
+        last = taxii.Taxii.get_last(hostname + ':' + feed)
         if last:
             start = pytz.utc.localize(last.end)
 
@@ -105,14 +152,21 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
     # 1) start time is before end time
     # 2) end time is not in the future
     if (start != None and start >= end) and end > runtime:
-        ret['reason'] = "Bad timestamp(s)"
+        ret['msg'] = "Bad timestamp(s)"
         return ret
+
+    # subID must be none if not provided
+    if not subID:
+        subID = None
 
     client = tc.HttpClient()
     if https:
         client.setUseHttps(True)
         client.setAuthType(tc.HttpClient.AUTH_CERT)
         client.setAuthCredentials({'key_file': keyfile, 'cert_file': certfile})
+
+    if not port:
+        port = None
 
     if settings.HTTP_PROXY:
         proxy = settings.HTTP_PROXY
@@ -123,46 +177,57 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
     crits_taxii = taxii.Taxii()
     crits_taxii.runtime = runtime
     crits_taxii.end = end
+    crits_taxii.feed = hostname + ':' + feed
 
-    # Poll using 1.1 then 1.0 if that fails.
-    poll_msg = tm11.PollRequest(message_id=tm11.generate_message_id(),
-                                collection_name=feed,
-                                poll_parameters=tm11.PollRequest.PollParameters(),
-                                exclusive_begin_timestamp_label=start,
-                                inclusive_end_timestamp_label=end)
+    # if version=0, Poll using 1.1 then 1.0 if that fails.
+    if version in ('0', '1.1'):
+        poll_msg = tm11.PollRequest(message_id=tm11.generate_message_id(),
+                            collection_name=feed,
+                            poll_parameters=tm11.PollRequest.PollParameters(),
+                            exclusive_begin_timestamp_label=start,
+                            inclusive_end_timestamp_label=end,
+                            subscription_id=subID)
 
-    response = client.callTaxiiService2(hostname, '/poll/', t.VID_TAXII_XML_11,
-                                        poll_msg.to_xml())
-    taxii_msg = t.get_message_from_http_response(response, poll_msg.message_id)
+        response = client.callTaxiiService2(hostname, path, t.VID_TAXII_XML_11,
+                                            poll_msg.to_xml(), port)
 
-    if response.getcode() != 200 or taxii_msg.message_type == tm11.MSG_STATUS_MESSAGE:
-        # Check if this is a TAXII 1.0 server and try again
+        taxii_msg = t.get_message_from_http_response(response,
+                                                     poll_msg.message_id)
+
+        # If this is a TAXII 1.0 server try again regardless of given version
         if response.info().getheader('X-TAXII-Content-Type') == t.VID_TAXII_XML_10:
-            poll_msg = tm.PollRequest(message_id=tm.generate_message_id(),
-                                    feed_name=feed,
-                                    exclusive_begin_timestamp_label=start,
-                                    inclusive_end_timestamp_label=end)
+            version = '1.0'
 
-            response = client.callTaxiiService2(hostname, '/poll/', t.VID_TAXII_XML_10,
-                                            poll_msg.to_xml())
-            taxii_msg = t.get_message_from_http_response(response, poll_msg.message_id)
-            if response.getcode() != 200 or taxii_msg.message_type == tm.MSG_STATUS_MESSAGE:
-                ret['reason'] = "%s: %s" % (taxii_msg.status_type,
-                                            taxii_msg.message)
-                return ret
-        else:
-            ret['reason'] = "%s: %s" % (taxii_msg.status_type,
+        if version == '1.1' and (response.getcode() != 200 or
+                                taxii_msg.message_type == tm.MSG_STATUS_MESSAGE):
+            ret['msg'] = "%s: %s" % (taxii_msg.status_type,
+                                     taxii_msg.message)
+            return ret
+
+    if version == '1.0' or (version == '0' and (response.getcode() != 200 or
+                           taxii_msg.message_type == tm.MSG_STATUS_MESSAGE)):
+        poll_msg = tm.PollRequest(message_id=tm.generate_message_id(),
+                                  feed_name=feed,
+                                  exclusive_begin_timestamp_label=start,
+                                  inclusive_end_timestamp_label=end,
+                                  subscription_id=subID)
+        response = client.callTaxiiService2(hostname, path, t.VID_TAXII_XML_10,
+                                            poll_msg.to_xml(), port)
+
+        taxii_msg = t.get_message_from_http_response(response, poll_msg.message_id)
+        if response.getcode() != 200 or taxii_msg.message_type == tm.MSG_STATUS_MESSAGE:
+            ret['msg'] = "%s: %s" % (taxii_msg.status_type,
                                         taxii_msg.message)
             return ret
 
-
     valid = tm.validate_xml(taxii_msg.to_xml())
     if valid != True:
-        ret['reason'] = "Invalid XML: %s" % valid
+        ret['msg'] = "Invalid XML: %s" % valid
         return ret
 
     if taxii_msg.message_type != tm.MSG_POLL_RESPONSE:
-        ret['reason'] = "No poll response. Unexpected message type: %s" % taxii_msg.message_type
+        msg = "No poll response. Unexpected message type: %s"
+        ret['msg'] = msg % taxii_msg.message_type
         return ret
 
     ret['status'] = True
@@ -179,8 +244,10 @@ def execute_taxii_agent(hostname=None, https=None, feed=None, keyfile=None,
             continue
 
         objs = import_standards_doc(data, analyst, method, ref=mid,
-                                    make_event=create_events)
+                                    make_event=create_events, source=feed)
 
+        if not objs['success']:
+            ret['failures'].append((objs['reason'], 'Data'))
         for k in objs['imported']:
             ret['successes'] += 1
             ret[objs['imported'][k][0]].append(objs['imported'][k][1])
@@ -207,7 +274,8 @@ def parse_content_block(content_block, privkey=None, pubkey=None):
         f = BytesIO(buf)
         new_block = f.read()
         f.close()
-        return parse_content_block(tm.ContentBlock.from_xml(new_block), privkey, pubkey)
+        return parse_content_block(tm.ContentBlock.from_xml(new_block),
+                                   privkey, pubkey)
     elif content_block.content_binding == t.CB_STIX_XML_111:
         f = BytesIO(content_block.content)
         data = f.read()
@@ -215,7 +283,6 @@ def parse_content_block(content_block, privkey=None, pubkey=None):
         return data
     else:
         return None
-
 
 def to_cybox_observable(obj, exclude=None, bin_fmt="raw"):
     """
@@ -610,19 +677,22 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
 
     return stix_msg
 
-def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirmed=False):
+ run_taxii_service(analyst, obj, rcpts, preview,
+                      relation_choices=[], confirmed=False):
     """
     :param analyst The analyst triggering this TAXII service call
     :param obj The context object being shared
     :param rcpts The list of sources to which the TAXII message is being sent
-    :param preview If true, generate and return the STIX doc, rather than sending via TAXII
-    :param relation_choices The list of items related to OBJ that have been chosen for sharing
+    :param preview If true, generate and return the STIX doc, rather
+                   than sending via TAXII
+    :param relation_choices The list of items related to OBJ that have
+                            been chosen for sharing
     :param confirmed True if user has accepted & approved releasability updates
     """
     ret = {
-            'success': False, # tells client whether any message was sent successfully
+            'success': False, # tells client if any message was sent successfully
             'rcpts': [], # list of sources the message was sent
-            'failed_rcpts': [], # list of sources to which the message failed to be sent
+            'failed_rcpts': [], # list of sources to which message failed to send
           }
 
     if not obj: # no item (shouldn't occur unless someone is really trying to break things.)
@@ -639,38 +709,15 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
         ret['reason'] = "Need at least one related item to send."
         return ret
 
-    # Get config and grab some stuff we need.
-    sc = get_config('taxii_service')
-    hostname = sc['hostname']
-    https = sc['https']
-    keyfile = sc['keyfile']
-    certfile = sc['certfile']
-    certfiles = sc['certfiles']
-    namespace = {sc['namespace']: sc['ns_prefix']}
-
-    # collect the list of destination data feeds for the message
-    destination_feeds = []
-    for crtfile in certfiles:
-        (source, feed, filepath) = crtfile.split(',')
-        src = source.strip()
-        if src in rcpts:
-            destination_feeds.append((src, feed.strip(), filepath.strip()))
-
-    if not destination_feeds or len(destination_feeds) != len(rcpts):
-        # TAXII form ensures that this shouldn't happen, but just in case...
-        ret['reason'] = "Misconfigured TAXII service -- contact an administrator."
-        return ret
-
     # Set the XML namespace for STIX documents
-    set_id_namespace(namespace)
+    sc = get_config('taxii_service')
+    set_id_namespace({sc['namespace']: sc['ns_prefix']})
 
-    # The minimum required info has been provided by user via the TAXII form.
-    # Form configuration and validation ensures the form is valid.
-    # The TAXII service has also been confirmed to have config information
-    # for each selected recipient.
-    #
-    # NOTE: this does not guarantee that the message will send to
-    # each/any recipient feed successfully.
+    # Get list of recipient sources
+    rcpt_srcs = []
+    for rcpt in rcpts:
+        (svr, fid) = rcpt.split(' - ')
+        rcpt_srcs.append(sc['taxii_servers'][svr]['feeds'][fid]['source'])
 
     # Convert object and chosen related items to STIX/CybOX
     stix_msg = to_stix(obj, relation_choices, bin_fmt="base64")
@@ -681,65 +728,102 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
         ret['preview'] = stix_doc.to_xml()
         return ret
     elif not confirmed: # if user has not accepted responsibility for releasability
-        release = verify_releasability(rcpts, stix_msg['final_objects'], analyst, False)
+        release = verify_releasability(rcpt_srcs, stix_msg['final_objects'],
+                                       analyst, False)
         if release: # if releasability needs to change
             ret['release_changes'] = release
             return ret # make user confirm changes, instead of sending messages
 
-    #TODO: this doesn't confirm that 'hostname' is a TAXII server...
-    if not resolve_taxii_server(hostname):
-        ret['reason'] = "Cannot contact TAXII Server at: %s" % hostname
-        return ret
-
+    # Setup TAXII client for proxy communication
     client = tc.HttpClient()
-    if https:
-        client.setUseHttps(True)
-        client.setAuthType(tc.HttpClient.AUTH_CERT)
-        client.setAuthCredentials({'key_file': keyfile, 'cert_file': certfile})
-
     if settings.HTTP_PROXY:
         proxy = settings.HTTP_PROXY
         if not proxy.startswith('http://'):
             proxy = 'http://' + proxy
         client.setProxy(proxy)
 
-    # generate and send inbox messages
-    # one message per feed, with appropriate TargetFeed header specified
-    # Store each TAXII message in a list.
-    for feed in destination_feeds:
-        rcpt = feed[0]
+    # The minimum required info has been provided by user via the TAXII form.
+    # Form configuration and validation ensures the form is valid.
+    #
+    # NOTE: this does not guarantee that the message will send to
+    # each/any recipient feed successfully.
+
+    # Loop through each recipient
+    for feed in rcpts:
+        try: # try to get config
+            (svr, fid) = feed.split(' - ')
+            scfg = sc['taxii_servers'][svr]
+            fcfg = sc['taxii_servers'][svr]['feeds'][fid]
+            hostname = scfg['hostname']
+            version = scfg['version']
+            https = scfg['https']
+            lcert = scfg['lcert']
+            path = scfg['ipath']
+            port = scfg['port']
+            keyfile = scfg['keyfile']
+            feedname = fcfg['feedname']
+            source = fcfg['source']
+            fcert = fcfg['fcert']
+            rcpt = "%s - %s" % (svr, feedname)
+            if not port:
+                port = None
+
+        except KeyError as e: # if can't find necessary config info, do next
+            ret['failed_rcpts'].append((feed, 'None/Bad Configuration'))
+            continue
+
+        #TODO: this doesn't confirm that 'hostname' is a TAXII server...
+        # This doesn't work if a proxy is needed for internet access
+        if not settings.HTTP_PROXY and not resolve_taxii_server(hostname):
+            msg = "Cannot contact TAXII Server at: %s" % hostname
+            ret['failed_rcpts'].append((rcpt, msg))
+            continue
+
+        # Setup client authentication
+        if https:
+            client.setUseHttps(True)
+            client.setAuthType(tc.HttpClient.AUTH_CERT)
+            client.setAuthCredentials({'key_file': keyfile, 'cert_file': lcert})
+
+        # generate and send inbox messages
+        # one message per feed, with appropriate TargetFeed header specified
+        # Store each TAXII message in a list.
         # Create encrypted block
         encrypted_block = encrypt_block(
             tm.ContentBlock(
                 content_binding = t.CB_STIX_XML_111,
                 content = stix_doc.to_xml()).to_xml(),
-            feed[2])
-        # Try TAXII 1.1 first:
-        try_10 = False
-        current_status_type = None
-        failed = True
-        result = gen_send(tm11, client, encrypted_block, hostname,
-                          t.VID_TAXII_XML_11,
-                          dcn = [feed[1]],
-                          url = "/services/inbox/")
-        if len(result) == 2:
-            res = result[1]
-            if res.status_type == tm11.ST_SUCCESS:
-                failed = False
-                ret['rcpts'].append(rcpt)
+            fcert)
+
+        # if version=0, Poll using 1.1 then 1.0 if that fails.
+        if version in ('0', '1.1'):
+            try_10 = False
+            current_status_type = None
+            failed = True
+            result = gen_send(tm11, client, encrypted_block, hostname,
+                              t.VID_TAXII_XML_11,
+                              dcn = [feedname],
+                              url = path,
+                              port = port)
+            if len(result) == 2:
+                res = result[1]
+                if res.status_type == tm11.ST_SUCCESS:
+                    failed = False
+                    ret['rcpts'].append(rcpt)
+                else:
+                    try_10 = True
+                    current_status_type = "<br>tm11: " + res.status_type
             else:
                 try_10 = True
-                current_status_type = "<br>tm11: " + res.status_type
-        else:
-            try_10 = True
-            current_status_type = "<br>tm11: " + result[0]
+                current_status_type = "<br>tm11: " + result[0]
 
         # Try TAXII 1.0 since 1.1 seems to have failed.
-        if try_10:
+        if version == '1.0' or (try_10 and version == '0'):
             result = gen_send(tm, client, encrypted_block, hostname,
                             t.VID_TAXII_XML_10,
-                            eh = {'TargetFeed': feed[1]},
-                            url = "/inbox/")
+                            eh = {'TargetFeed': feedname},
+                            url = path,
+                            port = port)
             if len(result) == 2:
                 res = result[1]
                 if res.status_type == tm11.ST_SUCCESS:
@@ -754,15 +838,15 @@ def run_taxii_service(analyst, obj, rcpts, preview, relation_choices=[], confirm
 
         if failed:
             ret['failed_rcpts'].append((rcpt, current_status_type))
-
-    if ret['rcpts']: # update releasability for successful TAXII messages
-        verify_releasability(ret['rcpts'], stix_msg['final_objects'], analyst, True)
+        else: # update releasability for successful TAXII messages
+            verify_releasability([source], stix_msg['final_objects'],
+                                 analyst, True)
 
     ret['success'] = True
     return ret
 
 def gen_send(tm_, client, encrypted_block, hostname, t_xml, dcn=None, eh=None,
-             url="/inbox/"):
+             url="/inbox/", port=None):
     """
     Generate and send a TAXII message.
 
@@ -782,6 +866,8 @@ def gen_send(tm_, client, encrypted_block, hostname, t_xml, dcn=None, eh=None,
     :type eh: dict
     :param url: The URL suffix to locate the inbox service.
     :type url: str
+    :param port: The TAXII server port to connect to.
+    :type port: str
     :returns: tuple (response, taxii_message) or (exception message)
     """
 
@@ -813,7 +899,8 @@ def gen_send(tm_, client, encrypted_block, hostname, t_xml, dcn=None, eh=None,
             hostname,
             url,
             t_xml,
-            inbox_message.to_xml()
+            inbox_message.to_xml(),
+            port
         )
         taxii_message = t.get_message_from_http_response(response,
                                                          inbox_message.message_id)
@@ -901,6 +988,215 @@ def encrypt_block(blob, pubkey):
     s.write(temp_buff, p7)
     x = temp_buff.read()
     return x
+
+def add_feed_config_buttons(html):
+    """
+    Modify the form html to include buttons enabling the addition, editing,
+    and removal of feeds.
+
+    :return str
+    """
+
+    # Add TAXII Feed config buttons to form
+    html = str(html)
+    idx = html.rfind('</select>')
+    buttons = '<br /><input class="form_submit_button" type="button" id="add" value="Add" /> <input class="form_submit_button" type="button" id="edit" value="Edit Selected" /> <input class="form_submit_button" type="button" id="remove" value="Remove Selected" />'
+    return SafeText(html[0:idx+9] + buttons + html[idx:])
+
+def get_taxii_server_config(server):
+    """
+    Get the TAXII Server config in the DB.
+
+    :return dictionary
+    """
+
+    cfg = ''
+    feeds = []
+    status = {'success': False}
+
+    if server:
+        service = CRITsService.objects(name='taxii_service',
+                                       status__ne="unavailable").first()
+        if not service:
+            msg = 'Service "%s" unavailable. Please review error logs.' % name
+            status['config_error'] = msg
+            status['form'] = ''
+            status['service'] = ''
+            return status
+
+        cfg = service.config.taxii_servers[server]
+        try:
+            feeds = [(x, cfg['feeds'][x]['feedname']) for x in cfg['feeds']]
+        except (AttributeError, KeyError):
+            feeds = []
+
+        cfg['servername'] = server
+        cfg['cur_sname'] = server
+    status['form'] = forms.TAXIIServerConfigForm(feeds, initial=cfg)
+
+    # Add TAXII Feed config buttons to form
+    status['html'] = add_feed_config_buttons(status['form'])
+
+    status['success'] = True
+    return status
+
+def update_taxii_server_config(updates, analyst):
+    """
+    Update the TAXII Server config in the DB.
+
+    :return dictionary
+    """
+    result = {'success': False}
+    service = CRITsService.objects(name='taxii_service').first()
+    servers = service.config.taxii_servers
+    if 'remove_server' in updates:
+        try:
+            del servers[updates['remove_server']]
+        except:
+            pass
+    elif 'remove_feed' in updates:
+        try:
+            srv_name = updates.get('srv_name')
+            sdict = service.to_dict()
+            servers = sdict['config']['taxii_servers']
+            del servers[srv_name]['feeds'][updates['remove_feed']]
+            service.config.taxii_servers = servers
+        except:
+            pass
+    elif 'edit_feed' in updates:
+        data = servers[updates['srv_name']]['feeds'][updates['edit_feed']]
+        result.update(data)
+        result['fid'] = updates['edit_feed']
+        result['success'] = True
+        return result
+    elif updates:
+        # Get the class that implements this service.
+        from . import TAXIIClient
+        taxii_class = TAXIIClient()
+        try:
+            if 'servername' in updates:
+                taxii_class.parse_server_config(updates)
+                name = updates.pop('servername', None)
+                cur_sname = updates.pop('cur_sname', None)
+                if not cur_sname:
+                    cur_sname = name
+
+                try:
+                    if 'feeds' in servers.get(cur_sname, {}):
+                        updates['feeds'] = servers[cur_sname]['feeds']
+                    else:
+                        updates['feeds'] = {}
+
+                    # Remove existing if changing servername
+                    if cur_sname and cur_sname != name:
+                        del servers[cur_sname]
+
+                    servers[name] = updates
+                except AttributeError:
+                    servers = {}
+                    servers[name] = updates
+            elif 'feedname' in updates:
+                taxii_class.parse_feed_config(updates)
+                srv_name = updates.pop('srv_name', None)
+                fid = updates.pop('fid', None)
+
+                sdict = service.to_dict()
+                servers = sdict['config']['taxii_servers']
+
+                try:
+                    feeds = servers[srv_name]['feeds']
+                    if not fid:
+                        fid = len(feeds)
+                        while str(fid) in feeds:
+                            fid += 1
+                    feeds[str(fid)] = updates
+                    servers[srv_name]['feeds'] = feeds
+                except KeyError:
+                    servers[srv_name] = {'feeds': {'0': updates}}
+
+                service.config.taxii_servers = servers
+        except ServiceConfigError as e:
+            result['error'] = str(e)
+            return result
+
+    try:
+        service.save(username=analyst)
+    except ValidationError, e:
+        result['message'] = e
+        return result
+
+    if 'remove_server' in updates:
+        service.reload()
+        choices = ''
+        for choice in service.config.taxii_servers:
+            choices += '<option value="%s">%s</option>' % (choice, choice)
+        result['html'] = choices
+    elif 'remove_feed' in updates or 'subID' in updates:
+        service.reload()
+        choices = ''
+        feeds = service.config.taxii_servers[srv_name]['feeds']
+        html = '<option value="%s">%s</option>'
+        for choice in feeds:
+            choices += html % (choice,
+                               feeds[choice]['feedname'])
+        result['html'] = choices
+
+    result['success'] = True
+    return result
+
+def update_taxii_service_config(post_data, analyst):
+    """
+    Update the TAXII Service config in the DB.
+
+    :return dictionary
+    """
+    status = {'success': False}
+    service = CRITsService.objects(name='taxii_service',
+                                   status__ne="unavailable").first()
+    if not service:
+        msg = 'Service "%s" is unavailable. Please review error logs.' % name
+        status['config_error'] = msg
+        status['form'] = ''
+        status['service'] = ''
+        return status
+
+    # Get the class that implements this service.
+    from . import TAXIIClient
+    taxii_class = TAXIIClient()
+
+    config = service.config.to_dict()
+    cfg_form, html = taxii_class.generate_config_form(config)
+    # This isn't a form object. It's the HTML.
+    status['form'] = html
+    status['service'] = service
+
+    if post_data:
+        #Populate the form with values from the POST request
+        form = cfg_form([], post_data)
+        if form.is_valid():
+            try:
+                taxii_class.parse_service_config(form.cleaned_data)
+            except ServiceConfigError as e:
+                service.status = 'misconfigured'
+                service.save()
+                status['config_error'] = str(e)
+                return status
+
+            form.cleaned_data['taxii_servers'] = config['taxii_servers']
+            result = update_config('taxii_service',
+                                   form.cleaned_data, analyst)
+
+            if not result['success']:
+                return status
+
+            service.status = 'available'
+            service.save()
+        else:
+            status['config_error'] = form.errors
+            return status
+
+    status['success'] = True
+    return status
 
 def import_standards_doc(data, analyst, method, ref=None, make_event=False,
                          source=None):
