@@ -96,10 +96,11 @@ class PassiveTotalService(Service):
     def save_runtime_config(config):
         config.pop('pt_username')
         config.pop('pt_api_key')
+        config.pop('prompt_user')
 
     @staticmethod
     def bind_runtime_form(analyst, config):
-        query_types = ['dns', 'whois', 'ssl', 'enrichment', 'malware', 'osint'
+        query_types = ['dns', 'whois', 'ssl', 'enrichment', 'malware', 'osint',
                        'tracker', 'component', 'subdomain', 'ssl_history',
                        'whois_email_search']
         for item in query_types:
@@ -107,6 +108,20 @@ class PassiveTotalService(Service):
                 config[item] = True
         form = forms.PassiveTotalRuntimeForm(data=config)
         return form
+
+    @classmethod
+    def generate_runtime_form(self, analyst, config, crits_type, identifier):
+        if not config['prompt_user']:
+            return None
+
+        details = {
+            'name': self.name,
+            'form': forms.PassiveTotalRuntimeForm(),
+            'crits_type': crits_type,
+            'identifier': identifier
+        }
+        html = render_to_string("services_run_form.html", details)
+        return html
 
     def _gen_label(self, item):
         """Generate a friendly looking label based on a string.
@@ -329,25 +344,25 @@ class PassiveTotalService(Service):
         if not self.api_key or not self.username:
             self._error("PassiveTotal username or API key are blank")
 
-        if config['dns']:
+        if config['dns'] or not config['prompt_user']:
             self.do_pdns_query(obj)
-        if config['whois']:
+        if config['whois'] or not config['prompt_user']:
             self.do_whois_query(obj)
-        if config['whois_email_search']:
+        if config['whois_email_search'] or not config['prompt_user']:
             self.do_whois_email_search(obj)
-        if config['ssl']:
+        if config['ssl'] or not config['prompt_user']:
             self.do_ssl_query(obj)
-        if config['ssl_history']:
+        if config['ssl_history'] or not config['prompt_user']:
             self.do_ssl_history(obj)
-        if config['subdomain']:
+        if config['subdomain'] or not config['prompt_user']:
             self.do_subdomain_query(obj)
-        if config['enrichment']:
+        if config['enrichment'] or not config['prompt_user']:
             self.do_enrichment_query(obj)
-        if config['tracker']:
+        if config['tracker'] or not config['prompt_user']:
             self.do_tracker_query(obj)
-        if config['component']:
+        if config['component'] or not config['prompt_user']:
             self.do_component_query(obj)
-        if config['osint']:
+        if config['osint'] or not config['prompt_user']:
             self.do_osint_query(obj)
-        if config['malware']:
+        if config['malware'] or not config['prompt_user']:
             self.do_malware_query(obj)
