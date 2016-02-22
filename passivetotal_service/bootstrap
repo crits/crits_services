@@ -20,7 +20,7 @@ ubuntu_install()
     else
       printf "${FAIL}Ubuntu Install Failed${END}\n"
     fi
-    sudo ldconfig 
+    sudo ldconfig
 }
 
 debian_install()
