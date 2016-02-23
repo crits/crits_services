@@ -6,6 +6,7 @@ __email__ = "admin@passivetotal.org"
 __version__ = '2.0.0'
 
 import logging
+import sys
 
 from . import forms
 from crits.services.core import Service, ServiceConfigError
@@ -31,7 +32,7 @@ def call_supported_types(supported=[]):
             request_type = self.obj._meta['crits_type']
             if request_type not in supported:
                 logger.warn("PassiveTotal: Invalid type.")
-                self._warning("Invalid type specified.")
+                self._warning("%s: Invalid type specified." % f.func_name)
                 return
             return f(self, *args)
         return wrapper
@@ -173,12 +174,34 @@ class PassiveTotalService(Service):
         authenticated = loaded(self.username, self.api_key)
         return authenticated
 
+    def _check_response(self, response):
+        """Make sure there aren't any errors on the response."""
+        if 'error' in response:
+            error = response.get('error', {})
+            message = ("PassiveTotal: [HTTP %d] %s, %s" % (
+                error.get('http_code', 500),
+                error.get('message', 'Failed to grab message'),
+                error.get('developer_message', 'Failed to grab message')
+            ))
+            logger.error(message)
+            self._error(message)
+            if error.get('http_code', 500) == 401:
+                pt_site = 'https://www.passivetotal.org/enterprise'
+                self._add_result('Invalid Authentication', pt_site,
+                                 {'Message': message})
+            if error.get('http_code', 500) == 403:
+                pt_site = 'https://www.passivetotal.org/enterprise'
+                self._add_result('Quota Reached', pt_site,
+                                 {'Message': message})
+
     @call_supported_types(['Domain', 'IP', 'Indicator'])
     def do_pdns_query(self, obj):
         """Perform a passive DNS lookup on the query value."""
         client = self._generate_request_instance('dns')
         query = self._get_query_type(obj)
-        results = DnsResponse(client.get_passive_dns(query=query))
+        results = client.get_passive_dns(query=query)
+        self._check_response(results)
+        results = DnsResponse(results)
         for record in results.get_records():
             stats = {
                 'First Seen': record.firstSeen,
@@ -193,6 +216,7 @@ class PassiveTotalService(Service):
         client = self._generate_request_instance('whois')
         query = self._get_query_type(obj)
         results = client.get_whois_details(query=query)
+        self._check_response(results)
         top_level = ['registered', 'registryUpdatedAt', 'expiresAt',
                      'whoisServer', 'registrar', 'contactEmail']
         for field in top_level:
@@ -214,6 +238,7 @@ class PassiveTotalService(Service):
         if type(query) == list:
             for item in query:
                 results = client.search_whois_by_field(query=item, field=field)
+                self._check_response(results)
                 for record in results.get('results', []):
                     stats = {'Registered': record.get('registered'),
                              'Updated': record.get('registryUpdatedAt'),
@@ -224,6 +249,7 @@ class PassiveTotalService(Service):
                                      record.get('domain'), stats)
         else:
             results = client.search_whois_by_field(query=query, field=field)
+            self._check_response(results)
             for record in results.get('results', []):
                 stats = {'Registered': record.get('registered'),
                          'Updated': record.get('registryUpdatedAt'),
@@ -239,6 +265,7 @@ class PassiveTotalService(Service):
         client = self._generate_request_instance('ssl')
         query = self._get_query_type(obj)
         results = client.get_ssl_certificate_details(query=query)
+        self._check_response(results)
         for key, value in iteritems(results):
             if not value or value == '':
                 continue
@@ -251,6 +278,7 @@ class PassiveTotalService(Service):
         client = self._generate_request_instance('ssl')
         query = self._get_query_type(obj)
         results = client.get_ssl_certificate_history(query=query)
+        self._check_response(results)
         for record in results.get('results', []):
             for ip in record.get('ipAddresses', []):
                 stats = {'SHA-1': record.get('sha1'),
@@ -264,6 +292,7 @@ class PassiveTotalService(Service):
         client = self._generate_request_instance('enrichment')
         query = self._get_query_type(obj)
         results = client.get_subdomains(query=query)
+        self._check_response(results)
         for sub in results.get('subdomains', []):
             full_domain = sub + "." + results.get('queryValue')
             self._add_result('Subdomains', full_domain)
@@ -274,6 +303,7 @@ class PassiveTotalService(Service):
         client = self._generate_request_instance('enrichment')
         query = self._get_query_type(obj)
         results = client.get_enrichment(query=query)
+        self._check_response(results)
         for key, value in iteritems(results):
             if not value or value == '':
                 continue
@@ -286,6 +316,7 @@ class PassiveTotalService(Service):
         client = self._generate_request_instance('attributes')
         query = self._get_query_type(obj)
         results = client.get_host_attribute_trackers(query=query)
+        self._check_response(results)
         for record in results.get('results', []):
             stats = {
                 'First Seen': record.get('firstSeen'),
@@ -301,6 +332,7 @@ class PassiveTotalService(Service):
         client = self._generate_request_instance('attributes')
         query = self._get_query_type(obj)
         results = client.get_host_attribute_components(query=query)
+        self._check_response(results)
         for record in results.get('results', []):
             stats = {
                 'First Seen': record.get('firstSeen'),
@@ -316,6 +348,7 @@ class PassiveTotalService(Service):
         client = self._generate_request_instance('enrichment')
         query = self._get_query_type(obj)
         results = client.get_osint(query=query)
+        self._check_response(results)
         for record in results.get('results', []):
             stats = {'URL': record.get('sourceUrl'),
                      'Tags': ', '.join(record.get('tags'))}
@@ -329,6 +362,7 @@ class PassiveTotalService(Service):
         client = self._generate_request_instance('enrichment')
         query = self._get_query_type(obj)
         results = client.get_malware(query=query)
+        self._check_response(results)
         for record in results.get('results', []):
             stats = {'Source': record.get('source'),
                      'URL': record.get('sourceUrl'),
