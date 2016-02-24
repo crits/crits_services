@@ -5,6 +5,11 @@
         {% include custom_template %}
     </td>
     <td>
-        <button class="submit" name="submit" style="float: right;">Import</button>
+        {% if exists %}
+            <span class="ui-icon ui-icon-alert" style="float: right;" title="Object exists already"></span>
+        {% else %}
+            <button class="import" name="import" style="float: right;" data-id="{{data.id}}" data-type="{{type}}">Import</button>
+            <span class="import_result" style="float: right;"></span>
+        {% endif %}
     </td>
 </tr>
