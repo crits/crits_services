@@ -55,3 +55,16 @@ def submit_query(request):
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
                                   RequestContext(request))
+
+@user_passes_test(user_can_view_data)
+def import_object(request):
+    if request.method == "POST" and request.is_ajax():
+        id_ = request.POST.get('id', None)
+        type_ = request.POST.get('type', None)
+        results = handlers.import_object(request, type_, id_)
+        return HttpResponse(json.dumps(results),
+                            content_type="application/json")
+    else:
+        return render_to_response('error.html',
+                                  {'error': "Must be AJAX."},
+                                  RequestContext(request))

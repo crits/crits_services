@@ -1,1 +1,3 @@
-ThreatExchange requires the pytx python library.
+ThreatExchange requires the pytx python library. It also requires that you add a
+source of "ThreatExchange" to CRITs and give appropriate users access to that
+source.

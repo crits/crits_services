@@ -269,6 +269,26 @@ $(document).ready(function() {
              }
         });
     });
+    $(document).on('click', '.import', function(e) {
+        var me = $(this);
+        var res = me.next();
+        data = {
+             type: me.data('type'),
+             id: me.data('id')
+        }
+        $.ajax({
+             type: "POST",
+             url: "{% url 'threatexchange.views.import_object' %}",
+             data: data,
+             success: function(data) {
+                 if (data.success) {
+                     res.addClass("ui-icon").addClass("ui-icon-check");
+                 } else {
+                     res.addClass("ui-icon").addClass("ui-icon-cross");
+                 }
+             }
+        });
+    });
 });
 </script>
 
