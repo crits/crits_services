@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+
+
+{% block title %}ThreatExchange Query{% endblock %}
+
+{% block content %}
+
+<style>
+    .share_level { min-height: 50px; min-width: 5px; }
+    .tlp_WHITE { background-color: white; }
+    .tlp_GREEN { background-color: #9FF781; }
+    .tlp_AMBER { background-color: #F3F781; }
+    .tlp_RED { background-color: #F78181; }
+    .query_builder {
+        display: inline-block;
+    }
+    .query_results {
+        font-size: "80%";
+    }
+    .query_results tr td {
+        border-bottom: 1pt solid #ddd;
+    }
+    .query_results tr td td {
+        border: none;
+    }
+</style>
+
+<p>
+Query Facebook's ThreatExchange for information.
+</p>
+<div class="content_box">
+    <h3 class="titleheader">
+        <span id="qb" class="collapsible">Query Builder:</span>
+        <span style="float: right;" class="ui-icon ui-icon-triangle-1-s collapsible"></span>
+    </h3>
+    <div class="content_body">
+        <table class="query_builder">
+            <tr id="type_row">
+                <td>
+                    Type
+                </td>
+                <td>
+                    <select id="type" name="type">
+                        <option>Threat Descriptors</option>
+                        <option>Threat Indicators</option>
+                        <option>Malware Analyses</option>
+                        <option>Malware Families</option>
+                    </select>
+                </td>
+            </tr>
+            <tr id="text_row">
+                <td>
+                    Text
+                </td>
+                <td>
+                    <input type="text" id="text" name="text" size=25 placeholder="foo" />
+                </td>
+            </tr>
+            <tr id="strict_row">
+                <td>
+                    Strict
+                </td>
+                <td>
+                    <input type="checkbox" id="strict" name="strict" />
+                </td>
+            </tr>
+            <tr id="threat_type_row">
+                <td>
+                    Threat Type
+                </td>
+                <td>
+                    <select id="threat_type" name="threat_type">
+                    </select>
+                </td>
+            </tr>
+            <tr id="sample_type_row">
+                <td>
+                    Sample Type
+                </td>
+                <td>
+                    <select id="sample_type" name="sample_type">
+                    </select>
+                </td>
+            </tr>
+            <tr id="limit_row">
+                <td>
+                    Limit
+                </td>
+                <td>
+                    <input type="text" id="limit" name="limit" size=5 placeholder="25">
+                </td>
+            </tr>
+            <tr id="since_row">
+                <td>
+                    Since
+                </td>
+                <td>
+                    <input type="text" id="since" name="since" size=25 placeholder="foo">
+                </td>
+            </tr>
+            <tr id="until_row">
+                <td>
+                    Until
+                </td>
+                <td>
+                    <input type="text" id="until" name="until" size=25 placeholder="foo">
+                </td>
+            </tr>
+        </table>
+        <table class="query_builder">
+            <tr id="include_expired_row">
+                <td>
+                    Include Expired
+                </td>
+                <td>
+                    <input type="checkbox" id="include_expired" name="include_expired" />
+                </td>
+            </tr>
+            <tr id="max_confidence_row">
+                <td>
+                    Max Confidence
+                </td>
+                <td>
+                    <input type="text" id="max_confidence" name="max_confidence" size=3 placeholder="100">
+                </td>
+            </tr>
+            <tr id="min_confidence_row">
+                <td>
+                    Min Confidence
+                </td>
+                <td>
+                    <input type="text" id="min_confidence" name="min_confidence" size=3 placeholder="0">
+                </td>
+            </tr>
+            <tr id="owner_row">
+                <td>
+                    Owner ID
+                </td>
+                <td>
+                    <input type="text" id="owner" name="owner" size=25 placeholder="foo">
+                </td>
+            </tr>
+            <tr id="status_row">
+                <td>
+                    Status
+                </td>
+                <td>
+                    <input type="text" id="text" name="text" size=25 placeholder="foo">
+                </td>
+            </tr>
+            <tr id="review_status_row">
+                <td>
+                    Review Status
+                </td>
+                <td>
+                    <input type="text" id="review_status" name="review_status" size=25 placeholder="foo">
+                </td>
+            </tr>
+            <tr id="share_level_row">
+                <td>
+                    Share Level
+                </td>
+                <td>
+                    <input type="text" id="share_level" name="share_level" size=25 placeholder="foo">
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <button id="submit" name="submit" type="submit">Submit</button>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+<div class="content_box">
+    <h3 class="titleheader">
+        <span class="collapsible">Results:</span>
+        <span style="float: right;" class="ui-icon ui-icon-triangle-1-s collapsible"></span>
+    </h3>
+    <div class="content_body">
+        <table class="query_results">
+            <colgroup>
+                <col width="5px">
+                <col width="80%">
+                <col width="200px">
+            </colgroup>
+            <tbody id="results">
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    var sorted = []
+    $.ajax({
+         type: "POST",
+         url: "{% url 'threatexchange.views.get_threat_types' %}",
+         success: function(data) {
+            $.each(data, function (i, item) {
+                sorted.push(item);
+            });
+            $('#threat_type').append($('<option>', {
+                value: '',
+                text : ''
+            }));
+            sorted.sort();
+            var len = sorted.length;
+            for (var i=0; i < len; i++) {
+                $('#threat_type').append($('<option>', {
+                    value: sorted[i],
+                    text : sorted[i]
+                }));
+            }
+         }
+    });
+    sorted = [];
+    $.ajax({
+         type: "POST",
+         url: "{% url 'threatexchange.views.get_sample_types' %}",
+         success: function(data) {
+            $.each(data, function (i, item) {
+                sorted.push(item);
+            });
+            $('#sample_type').append($('<option>', {
+                value: '',
+                text : ''
+            }));
+            sorted.sort();
+            var len = sorted.length;
+            for (var i=0; i < len; i++) {
+                $('#sample_type').append($('<option>', {
+                    value: sorted[i],
+                    text : sorted[i]
+                }));
+            }
+         }
+    });
+    $(document).on('click', '#submit', function(e) {
+        $('#qb').click();
+        $('#results').html('');
+        data = {
+             type: $('#type').val(),
+             text: $('#text').val(),
+             strict_text: $('#strict_text').prop('checked'),
+             threat_type: $('#threat_type').val(),
+             sample_type: $('#sample_type').val(),
+             limit: $('#limit').val(),
+             since: $('#since').val(),
+             until: $('#until').val(),
+             include_expired: $('#include_expired').prop('checked'),
+             max_confidence: $('#max_confidence').val(),
+             min_confidence: $('#min_confidence').val(),
+             owner: $('#owner').val(),
+             status: $('#status').val(),
+             review_status: $('#review_status').val(),
+             share_level: $('#share_level').val()
+        }
+        $.ajax({
+             type: "POST",
+             url: "{% url 'threatexchange.views.submit_query' %}",
+             data: data,
+             success: function(data) {
+                 if (data.html) {
+                    $('#results').html(data.html);
+                 } else {
+                      $('#results').text(data.message);
+                 }
+             }
+        });
+    });
+});
+</script>
+
+{% endblock %}
