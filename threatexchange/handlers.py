@@ -8,10 +8,8 @@ from pytx import (
     access_token,
     Broker,
     Malware,
-    MalwareFamily,
     ThreatDescriptor,
     ThreatExchangeMember,
-    ThreatIndicator,
     ThreatPrivacyGroup,
 )
 
@@ -33,6 +31,7 @@ from django.template import RequestContext
 
 from crits.indicators.handlers import handle_indicator_ind
 from crits.indicators.indicator import Indicator
+from crits.samples.handlers import handle_file
 from crits.samples.sample import Sample
 from crits.services.handlers import get_config
 from crits.vocabulary.indicators import (
@@ -65,21 +64,21 @@ def submit_query(request, url, type_, params=None):
         lookup_value = "value"
         ref_value = td.RAW_INDICATOR
         template = "tx_threat_descriptor.html"
-    elif type_ == "Threat Indicators":
-        klass = ThreatIndicator
-        lookup = Indicator
-        lookup_value = "value"
-        ref_value = td.RAW_INDICATOR
-        template = "tx_threat_indicator.html"
+    #elif type_ == "Threat Indicators":
+    #    klass = ThreatIndicator
+    #    lookup = Indicator
+    #    lookup_value = "value"
+    #    ref_value = td.RAW_INDICATOR
+    #    template = "tx_threat_indicator.html"
     elif type_ == "Malware Analyses":
         klass = Malware
         lookup = Sample
         lookup_value = "md5"
         ref_value = m.MD5
         template = "tx_malware.html"
-    elif type_ == "Malware Families":
-        klass = MalwareFamily
-        template = "tx_malware_family.html"
+    #elif type_ == "Malware Families":
+    #    klass = MalwareFamily
+    #    template = "tx_malware_family.html"
     else:
         return {'success': False,
                 'message': "Invalid Type"}
@@ -92,6 +91,9 @@ def submit_query(request, url, type_, params=None):
         except pytxFetchError, e:
             return {'success': False,
                     'message': e.message['message']}
+        except Exception, e:
+            return {'success': False,
+                    'message': str(e)}
     data = results.get('data', None)
     next_url = results.get('paging', {}).get('next', '')
     if len(next_url) > 0:
@@ -103,17 +105,22 @@ def submit_query(request, url, type_, params=None):
     if data:
         for d in data:
             exists = False
+            no_import = False
             objectid = None
-            tmp = lookup.objects(**{lookup_value: d[ref_value]}).first()
-            if tmp is not None:
-                exists = True
-                objectid = tmp.id
+            if d.get(ref_value):
+                tmp = lookup.objects(**{lookup_value: d[ref_value]}).first()
+                if tmp is not None:
+                    exists = True
+                    objectid = str(tmp.id)
+            else:
+                no_import = True
             html += render_to_string("tx_common.html",
                                      {
                                          'custom_template': template,
                                          'data': d,
                                          'type': type_,
                                          'exists': exists,
+                                         'no_import': no_import,
                                          'objectid': objectid
                                      },
                                      RequestContext(request))
@@ -243,12 +250,32 @@ def import_object(request, type_, id_):
             description=obj.get(td.DESCRIPTION)
         )
         return results
-    elif type_ == "Threat Indicators":
-        obj = ThreatIndicator(id=id_)
     elif type_ == "Malware Analyses":
         obj = Malware(id=id_)
-    elif type_ == "Malware Families":
-        obj = MalwareFamily(id=id_)
+        obj.details(
+            fields=[f for f in Malware._fields if f not in
+                    (td.PRIVACY_MEMBERS, td.METADATA)]
+        )
+        filename = obj.get(m.MD5)
+        try:
+            data = obj.rf
+        except:
+            data = None
+        results = handle_file(
+            filename,
+            data,
+            "ThreatExchange",
+            method="ThreatExchange Service",
+            reference="id: %s" % obj.get(m.ID),
+            user=request.user.username,
+            md5_digest = obj.get(m.MD5),
+            sha1_digest = obj.get(m.SHA1),
+            sha256_digest = obj.get(m.SHA256),
+            size = obj.get(m.SAMPLE_SIZE),
+            mimetype = obj.get(m.SAMPLE_TYPE),
+        )
+        return {'success': True,
+                'md5': results}
     else:
         return {'success': False,
                 'message': "Invalid Type"}
