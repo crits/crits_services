@@ -310,52 +310,58 @@ def make_crits_object(cybox_obj):
     :returns: :class:`crits.core.crits_mongoengine.EmbeddedObject`
     """
 
-    o = EmbeddedObject()
-    o.datatype = "string"
-    if isinstance(cybox_obj, Account):
-        o.object_type = IndicatorTypes.USER_ID
-        o.value = get_object_values(cybox_obj.description)
-        return o
-    elif isinstance(cybox_obj, Address):
-        name = str(cybox_obj.category)
-        if name == 'ipv4-addr':
-            o.object_type = IPTypes.IPV4_ADDRESS
-        elif name == 'ipv6-addr':
-            o.object_type = IPTypes.IPV6_ADDRESS
-        elif name == 'ipv4-net':
-            o.object_type = IPTypes.IPV4_SUBNET
-        elif name == 'ipv6-net':
-            o.object_type = IPTypes.IPV6_SUBNET
-        o.value = get_object_values(cybox_obj.address_value)
-        return o
-    elif isinstance(cybox_obj, API):
-        o.object_type = IndicatorTypes.API_KEY
-        o.value = get_object_values(cybox_obj.description)
-        return o
-    elif isinstance(cybox_obj, DomainName):
-        o.object_type = IndicatorTypes.DOMAIN
-        o.value = get_object_values(cybox_obj.value)
-        return o
-    elif isinstance(cybox_obj, Mutex):
-        o.object_type = IndicatorTypes.MUTEX
-        o.value = get_object_values(cybox_obj.name)
-        return o
-    # Unless there is a way to know this is source or destination, this doesn't
-    # help :(
-    #elif isinstance(cybox_obj, Port):
-    #    o.object_type = "Port"
-    #    o.value = get_object_values(cybox_obj.port_value)
-    #    return o
-    elif isinstance(cybox_obj, Process):
-        o.object_type = IndicatorTypes.PROCESS_NAME
-        o.value = get_object_values(cybox_obj.name)
-        return o
-    elif isinstance(cybox_obj, URI):
-        o.object_type = IndicatorTypes.URI
-        o.value = get_object_values(cybox_obj.value)
-        return o
-    elif isinstance(cybox_obj, WinRegistryKey):
-        o.object_type = IndicatorTypes.REGISTRY_KEY
-        o.value = get_object_values(cybox_obj.key)
-        return o
+    try:
+        o = EmbeddedObject()
+        o.datatype = "string"
+        if isinstance(cybox_obj, Account):
+            o.object_type = IndicatorTypes.USER_ID
+            o.value = get_object_values(cybox_obj.description)
+            return o
+        elif isinstance(cybox_obj, Address):
+            name = str(cybox_obj.category)
+            if name == 'ipv4-addr':
+                o.object_type = IPTypes.IPV4_ADDRESS
+            elif name == 'ipv6-addr':
+                o.object_type = IPTypes.IPV6_ADDRESS
+            elif name == 'ipv4-net':
+                o.object_type = IPTypes.IPV4_SUBNET
+            elif name == 'ipv6-net':
+                o.object_type = IPTypes.IPV6_SUBNET
+            o.value = get_object_values(cybox_obj.address_value)
+            return o
+        elif isinstance(cybox_obj, API):
+            o.object_type = IndicatorTypes.API_KEY
+            o.value = get_object_values(cybox_obj.description)
+            return o
+        elif isinstance(cybox_obj, DomainName):
+            o.object_type = IndicatorTypes.DOMAIN
+            o.value = get_object_values(cybox_obj.value)
+            return o
+        elif isinstance(cybox_obj, Mutex):
+            o.object_type = IndicatorTypes.MUTEX
+            o.value = get_object_values(cybox_obj.name)
+            return o
+        # Unless there is a way to know this is source or destination, this doesn't
+        # help :(
+        #elif isinstance(cybox_obj, Port):
+        #    o.object_type = "Port"
+        #    o.value = get_object_values(cybox_obj.port_value)
+        #    return o
+        elif isinstance(cybox_obj, Process):
+            o.object_type = IndicatorTypes.PROCESS_NAME
+            o.value = get_object_values(cybox_obj.name)
+            return o
+        elif isinstance(cybox_obj, URI):
+            o.object_type = IndicatorTypes.URI
+            o.value = get_object_values(cybox_obj.value)
+            return o
+        elif isinstance(cybox_obj, WinRegistryKey):
+            o.object_type = IndicatorTypes.REGISTRY_KEY
+            o.value = get_object_values(cybox_obj.key)
+            return o
+    except:
+        z = UnsupportedCRITsObjectTypeError(cybox_obj)
+        z.message = "Unsupported use of '%s' object." % type(cybox_obj).__name__
+        raise z
+
     raise UnsupportedCRITsObjectTypeError(cybox_obj)
