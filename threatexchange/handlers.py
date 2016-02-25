@@ -1,5 +1,12 @@
+import urllib
+from urlparse import (
+    urlparse,
+    parse_qsl
+)
+
 from pytx import (
     access_token,
+    Broker,
     ThreatDescriptor,
     ThreatIndicator,
     Malware,
@@ -26,9 +33,19 @@ from crits.vocabulary.indicators import (
 )
 
 
-def submit_query(request, type_, params=None):
+def submit_query(request, url, type_, params=None):
     klass = None
     template = None
+    sc = get_config('ThreatExchange')
+    access_token.access_token(app_id=sc['app_id'], app_secret=sc['app_secret'])
+
+    if url is not None and len(url) > 0:
+        url = url + "&access_token=" + access_token.get_access_token()
+        try:
+            results = Broker.get(url)
+        except pytxFetchError, e:
+            return {'success': False,
+                    'message': e.message['message']}
     if type_ == "Threat Descriptors":
         klass = ThreatDescriptor
         lookup = Indicator
@@ -53,17 +70,22 @@ def submit_query(request, type_, params=None):
     else:
         return {'success': False,
                 'message': "Invalid Type"}
-    for k, v in params.iteritems():
-        if len(params[k]) < 1 or params[k] == '':
-            params[k] = None
-    sc = get_config('ThreatExchange')
-    access_token.access_token(app_id=sc['app_id'], app_secret=sc['app_secret'])
-    try:
-        results = klass.objects(full_response=True, fields=klass._fields, **params)
-    except pytxFetchError, e:
-        return {'success': False,
-                'message': e.message['message']}
+    if url is None:
+        for k, v in params.iteritems():
+            if len(params[k]) < 1 or params[k] == '':
+                params[k] = None
+        try:
+            results = klass.objects(full_response=True, fields=klass._fields, **params)
+        except pytxFetchError, e:
+            return {'success': False,
+                    'message': e.message['message']}
     data = results.get('data', None)
+    next_url = results.get('paging', {}).get('next', '')
+    if len(next_url) > 0:
+        params = dict(parse_qsl(urlparse(next_url).query, keep_blank_values=True))
+        if 'access_token' in params:
+            del params['access_token']
+        next_url = next_url.split('?')[0] + "/?"+ urllib.urlencode(params)
     html = ''
     if data:
         for d in data:
@@ -79,7 +101,8 @@ def submit_query(request, type_, params=None):
                                      },
                                      RequestContext(request))
     return {'success': True,
-            'html': html}
+            'html': html,
+            'next_url': next_url}
 
 def build_ci(confidence):
     if confidence < 1:

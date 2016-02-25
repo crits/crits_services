@@ -45,10 +45,11 @@ def get_sample_types(request):
 def submit_query(request):
     if request.method == "POST" and request.is_ajax():
         params = dict(request.POST.copy().dict())
+        url = params.get('url', None)
         type_ = params.get('type', None)
         if type_:
             del params['type']
-        results = handlers.submit_query(request, type_, params=params)
+        results = handlers.submit_query(request, url, type_, params=params)
         return HttpResponse(json.dumps(results),
                             content_type="application/json")
     else:
