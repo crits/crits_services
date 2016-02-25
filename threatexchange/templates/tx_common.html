@@ -6,10 +6,15 @@
     </td>
     <td>
         {% if exists %}
-            <a href="{% url 'crits.indicators.views.indicator' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
+            {% if type == 'Threat Descriptors' %}
+                <a href="{% url 'crits.core.views.details' 'Indicator' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
+            {% else %}
+                <a href="{% url 'crits.core.views.details' 'Sample' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
+            {% endif %}
         {% else %}
-            <button class="import" name="import" style="float: right;" data-id="{{data.id}}" data-type="{{type}}">Import</button>
-            <a href="#" style="display:inline-block; float: right"><span class="import_result"></span></a>
+            <span class="ui-icon ui-icon-alert" title="Not enough data to import" style="display:inline-block; float: right";></span>
         {% endif %}
+        <button class="import" name="import" style="float: right;" data-id="{{data.id}}" data-type="{{type}}">Import</button>
+        <a href="#" style="display:inline-block; float: right"><span class="import_result"></span></a>
     </td>
 </tr>

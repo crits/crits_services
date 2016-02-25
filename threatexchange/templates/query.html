@@ -239,9 +239,7 @@ Query Facebook's ThreatExchange for information.
                 <td>
                     <select id="type" name="type">
                         <option>Threat Descriptors</option>
-                        <option>Threat Indicators</option>
                         <option>Malware Analyses</option>
-                        <option>Malware Families</option>
                     </select>
                 </td>
             </tr>
@@ -409,7 +407,7 @@ function get_results(data) {
                 $('#next_url').val(data.next_url);
                 toggle_loader();
              } else {
-                $('#results').text(data.message);
+                $('#results').append(data.message);
                 toggle_loader();
              }
          }
@@ -488,8 +486,9 @@ $(document).ready(function() {
     $(document).on('click', '.import', function(e) {
         var me = $(this);
         var res = me.next().find('span');
+        var type_ = me.data('type');
         data = {
-             type: me.data('type'),
+             type: type_,
              id: me.data('id')
         }
         $.ajax({
@@ -499,7 +498,11 @@ $(document).ready(function() {
              success: function(data) {
                  if (data.success) {
                      res.addClass("ui-icon").addClass("ui-icon-check");
-                     var url_mask = "{% url 'crits.indicators.views.indicator' '12345' %}".replace(/12345/, data.objectid);
+                     if (type_ == "Threat Descriptors") {
+                         var url_mask = "{% url 'crits.indicators.views.indicator' '12345' %}".replace(/12345/, data.objectid);
+                     } else {
+                         var url_mask = "{% url 'crits.samples.views.detail' '12345' %}".replace(/12345/, data.md5);
+                     }
                      $(res).parent().attr("href", url_mask);
                  } else {
                      res.addClass("ui-icon").addClass("ui-icon-cross").attr("title", data.message);
@@ -511,6 +514,7 @@ $(document).ready(function() {
         if ($(this)[0].scrollHeight - $(this).scrollTop() === $(this).outerHeight()) {
             var next_url = $('#next_url').val();
             if (typeof(next_url !== 'undefined') && next_url.length > 0) {
+                toggle_loader();
                 data = {
                      type: $('#type').val(),
                      url: $('#next_url').val()

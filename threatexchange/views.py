@@ -64,7 +64,8 @@ def import_object(request):
         type_ = request.POST.get('type', None)
         results = handlers.import_object(request, type_, id_)
         if results.get('success', False):
-            del results['object']
+            if 'object' in results:
+                del results['object']
         return HttpResponse(json.dumps(results),
                             content_type="application/json")
     else:
