@@ -32,6 +32,194 @@
         word-break: break-all;
         overflow-wrap: break-word;
     }
+    #escapingBallG{
+        position:relative;
+        width:38px;
+        height:13px;
+        margin:auto;
+        padding-top: -3px;
+    }
+
+    .escapingBallG{
+        background-color:rgba(41,133,204,0.72);
+        position:absolute;
+        top:3px;
+        left:0;
+        width:13px;
+        height:13px;
+        border-radius:7px;
+            -o-border-radius:7px;
+            -ms-border-radius:7px;
+            -webkit-border-radius:7px;
+            -moz-border-radius:7px;
+        animation-name:bounce_escapingBallG;
+            -o-animation-name:bounce_escapingBallG;
+            -ms-animation-name:bounce_escapingBallG;
+            -webkit-animation-name:bounce_escapingBallG;
+            -moz-animation-name:bounce_escapingBallG;
+        animation-duration:1.5s;
+            -o-animation-duration:1.5s;
+            -ms-animation-duration:1.5s;
+            -webkit-animation-duration:1.5s;
+            -moz-animation-duration:1.5s;
+        animation-iteration-count:infinite;
+            -o-animation-iteration-count:infinite;
+            -ms-animation-iteration-count:infinite;
+            -webkit-animation-iteration-count:infinite;
+            -moz-animation-iteration-count:infinite;
+        animation-timing-function:linear;
+            -o-animation-timing-function:linear;
+            -ms-animation-timing-function:linear;
+            -webkit-animation-timing-function:linear;
+            -moz-animation-timing-function:linear;
+        animation-delay:0s;
+            -o-animation-delay:0s;
+            -ms-animation-delay:0s;
+            -webkit-animation-delay:0s;
+            -moz-animation-delay:0s;
+        transform:scale(0.5, 1);
+            -o-transform:scale(0.5, 1);
+            -ms-transform:scale(0.5, 1);
+            -webkit-transform:scale(0.5, 1);
+            -moz-transform:scale(0.5, 1);
+    }
+
+
+
+    @keyframes bounce_escapingBallG{
+        0%{
+            left:0px;
+            transform:scale(0.5, 1);
+        }
+
+        25%{
+            left:13px;
+            transform:scale(1, 0.5);
+        }
+
+        50%{
+            left:32px;
+            transform:scale(0.5, 1);
+        }
+
+        75%{
+            left:13px;
+            transform:scale(1, 0.5);
+        }
+
+        100%{
+            left:0px;
+            transform:scale(0.5, 1);
+        }
+    }
+
+    @-o-keyframes bounce_escapingBallG{
+        0%{
+            left:0px;
+            -o-transform:scale(0.5, 1);
+        }
+
+        25%{
+            left:13px;
+            -o-transform:scale(1, 0.5);
+        }
+
+        50%{
+            left:32px;
+            -o-transform:scale(0.5, 1);
+        }
+
+        75%{
+            left:13px;
+            -o-transform:scale(1, 0.5);
+        }
+
+        100%{
+            left:0px;
+            -o-transform:scale(0.5, 1);
+        }
+    }
+
+    @-ms-keyframes bounce_escapingBallG{
+        0%{
+            left:0px;
+            -ms-transform:scale(0.5, 1);
+        }
+
+        25%{
+            left:13px;
+            -ms-transform:scale(1, 0.5);
+        }
+
+        50%{
+            left:32px;
+            -ms-transform:scale(0.5, 1);
+        }
+
+        75%{
+            left:13px;
+            -ms-transform:scale(1, 0.5);
+        }
+
+        100%{
+            left:0px;
+            -ms-transform:scale(0.5, 1);
+        }
+    }
+
+    @-webkit-keyframes bounce_escapingBallG{
+        0%{
+            left:0px;
+            -webkit-transform:scale(0.5, 1);
+        }
+
+        25%{
+            left:13px;
+            -webkit-transform:scale(1, 0.5);
+        }
+
+        50%{
+            left:32px;
+            -webkit-transform:scale(0.5, 1);
+        }
+
+        75%{
+            left:13px;
+            -webkit-transform:scale(1, 0.5);
+        }
+
+        100%{
+            left:0px;
+            -webkit-transform:scale(0.5, 1);
+        }
+    }
+
+    @-moz-keyframes bounce_escapingBallG{
+        0%{
+            left:0px;
+            -moz-transform:scale(0.5, 1);
+        }
+
+        25%{
+            left:13px;
+            -moz-transform:scale(1, 0.5);
+        }
+
+        50%{
+            left:32px;
+            -moz-transform:scale(0.5, 1);
+        }
+
+        75%{
+            left:13px;
+            -moz-transform:scale(1, 0.5);
+        }
+
+        100%{
+            left:0px;
+            -moz-transform:scale(0.5, 1);
+        }
+    }
 </style>
 
 <p>
@@ -184,6 +372,9 @@ Query Facebook's ThreatExchange for information.
 <div class="content_box">
     <h3 class="titleheader">
         <span class="collapsible">Results:</span>
+        <span id="escapingBallG" style="display: none;">
+            <span id="escapingBall_1" class="escapingBallG"></span>
+        </span>
         <span style="float: right;" class="ui-icon ui-icon-triangle-1-s collapsible"></span>
     </h3>
     <div class="content_body">
@@ -203,6 +394,10 @@ Query Facebook's ThreatExchange for information.
 </div>
 
 <script>
+function toggle_loader() {
+    $('#escapingBallG').toggle();
+}
+
 function get_results(data) {
     $.ajax({
          type: "POST",
@@ -212,8 +407,10 @@ function get_results(data) {
              if (data.html) {
                 $('#results').append(data.html);
                 $('#next_url').val(data.next_url);
+                toggle_loader();
              } else {
-                  $('#results').text(data.message);
+                $('#results').text(data.message);
+                toggle_loader();
              }
          }
     });
@@ -265,6 +462,7 @@ $(document).ready(function() {
          }
     });
     $(document).on('click', '#submit', function(e) {
+        toggle_loader();
         $('#qb').click();
         $('#results').html('');
         $('#next_url').val('');
@@ -289,7 +487,7 @@ $(document).ready(function() {
     });
     $(document).on('click', '.import', function(e) {
         var me = $(this);
-        var res = me.next();
+        var res = me.next().find('span');
         data = {
              type: me.data('type'),
              id: me.data('id')
@@ -301,8 +499,10 @@ $(document).ready(function() {
              success: function(data) {
                  if (data.success) {
                      res.addClass("ui-icon").addClass("ui-icon-check");
+                     var url_mask = "{% url 'crits.indicators.views.indicator' '12345' %}".replace(/12345/, data.objectid);
+                     $(res).parent().attr("href", url_mask);
                  } else {
-                     res.addClass("ui-icon").addClass("ui-icon-cross");
+                     res.addClass("ui-icon").addClass("ui-icon-cross").attr("title", data.message);
                  }
              }
         });
