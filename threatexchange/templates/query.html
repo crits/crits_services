@@ -6,7 +6,7 @@
 {% block content %}
 
 <style>
-    .share_level { min-height: 50px; min-width: 5px; }
+    .share_level { min-height: 50px; min-width: 5px; max-width: 5px; }
     .tlp_WHITE { background-color: white; }
     .tlp_GREEN { background-color: #9FF781; }
     .tlp_AMBER { background-color: #F3F781; }
@@ -18,10 +18,19 @@
         font-size: "80%";
     }
     .query_results tr td {
+        vertical-align: top;
         border-bottom: 1pt solid #ddd;
+        word-break: break-all;
+        overflow-wrap: break-word;
     }
     .query_results tr td td {
         border: none;
+    }
+    #results_div {
+        max-height: 500px;
+        overflow-y: auto;
+        word-break: break-all;
+        overflow-wrap: break-word;
     }
 </style>
 
@@ -178,19 +187,38 @@ Query Facebook's ThreatExchange for information.
         <span style="float: right;" class="ui-icon ui-icon-triangle-1-s collapsible"></span>
     </h3>
     <div class="content_body">
-        <table class="query_results">
-            <colgroup>
-                <col width="5px">
-                <col width="80%">
-                <col width="200px">
-            </colgroup>
-            <tbody id="results">
-            </tbody>
-        </table>
+        <div id="results_div">
+            <table class="query_results">
+                <colgroup>
+                    <col width="5px">
+                    <col width="90%">
+                    <col width="50px">
+                </colgroup>
+                <tbody id="results">
+                </tbody>
+            </table>
+            <input type="hidden" id="next_url" value="">
+        </div>
     </div>
 </div>
 
 <script>
+function get_results(data) {
+    $.ajax({
+         type: "POST",
+         url: "{% url 'threatexchange.views.submit_query' %}",
+         data: data,
+         success: function(data) {
+             if (data.html) {
+                $('#results').append(data.html);
+                $('#next_url').val(data.next_url);
+             } else {
+                  $('#results').text(data.message);
+             }
+         }
+    });
+}
+
 $(document).ready(function() {
     var sorted = []
     $.ajax({
@@ -239,6 +267,7 @@ $(document).ready(function() {
     $(document).on('click', '#submit', function(e) {
         $('#qb').click();
         $('#results').html('');
+        $('#next_url').val('');
         data = {
              type: $('#type').val(),
              text: $('#text').val(),
@@ -256,18 +285,7 @@ $(document).ready(function() {
              review_status: $('#review_status').val(),
              share_level: $('#share_level').val()
         }
-        $.ajax({
-             type: "POST",
-             url: "{% url 'threatexchange.views.submit_query' %}",
-             data: data,
-             success: function(data) {
-                 if (data.html) {
-                    $('#results').html(data.html);
-                 } else {
-                      $('#results').text(data.message);
-                 }
-             }
-        });
+        get_results(data);
     });
     $(document).on('click', '.import', function(e) {
         var me = $(this);
@@ -289,6 +307,18 @@ $(document).ready(function() {
              }
         });
     });
+    $('#results_div').on('scroll', function(e) {
+        if ($(this)[0].scrollHeight - $(this).scrollTop() === $(this).outerHeight()) {
+            var next_url = $('#next_url').val();
+            if (typeof(next_url !== 'undefined') && next_url.length > 0) {
+                data = {
+                     type: $('#type').val(),
+                     url: $('#next_url').val()
+                }
+                get_results(data);
+            }
+        }
+    })
 });
 </script>
 
