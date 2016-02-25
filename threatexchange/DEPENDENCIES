@@ -1,0 +1,6 @@
+ThreatExchange requires the pytx python library. It also requires that you add a
+source of "ThreatExchange" to CRITs and give appropriate users access to that
+source.
+
+You will need to contact Facebook to sign up for ThreatExchange and acquire the
+necessary information to configure this service.
