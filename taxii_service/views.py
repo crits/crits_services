@@ -221,7 +221,7 @@ def upload_standards(request):
 
 
     # XXX: Add reference to form and handle here?
-    status = handlers.import_standards_doc(data, request.user.username, "Upload",
+    status = handlers.import_standards_doc(data, request.user.username, "STIX Upload",
                                  ref=reference, make_event=make_event, source=source)
 
     if not status['success']:
