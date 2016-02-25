@@ -6,10 +6,10 @@
     </td>
     <td>
         {% if exists %}
-            <span class="ui-icon ui-icon-alert" style="float: right;" title="Object exists already"></span>
+            <a href="{% url 'crits.indicators.views.indicator' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
         {% else %}
             <button class="import" name="import" style="float: right;" data-id="{{data.id}}" data-type="{{type}}">Import</button>
-            <span class="import_result" style="float: right;"></span>
+            <a href="#" style="display:inline-block; float: right"><span class="import_result"></span></a>
         {% endif %}
     </td>
 </tr>

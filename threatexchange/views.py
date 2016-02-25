@@ -63,6 +63,56 @@ def import_object(request):
         id_ = request.POST.get('id', None)
         type_ = request.POST.get('type', None)
         results = handlers.import_object(request, type_, id_)
+        if results.get('success', False):
+            del results['object']
+        return HttpResponse(json.dumps(results),
+                            content_type="application/json")
+    else:
+        return render_to_response('error.html',
+                                  {'error': "Must be AJAX."},
+                                  RequestContext(request))
+
+@user_passes_test(user_can_view_data)
+def export_object(request):
+    if request.method == "POST" and request.is_ajax():
+        params = dict(request.POST.copy().dict())
+        type_ = params.get('tlo_type', None)
+        if type_:
+            del params['tlo_type']
+        results = handlers.export_object(request, type_, params)
+        return HttpResponse(json.dumps(results),
+                            content_type="application/json")
+    else:
+        return render_to_response('error.html',
+                                  {'error': "Must be AJAX."},
+                                  RequestContext(request))
+
+@user_passes_test(user_can_view_data)
+def get_members(request):
+    if request.method == "POST" and request.is_ajax():
+        results = handlers.get_members()
+        return HttpResponse(json.dumps(results),
+                            content_type="application/json")
+    else:
+        return render_to_response('error.html',
+                                  {'error': "Must be AJAX."},
+                                  RequestContext(request))
+
+@user_passes_test(user_can_view_data)
+def get_groups(request):
+    if request.method == "POST" and request.is_ajax():
+        results = handlers.get_groups()
+        return HttpResponse(json.dumps(results),
+                            content_type="application/json")
+    else:
+        return render_to_response('error.html',
+                                  {'error': "Must be AJAX."},
+                                  RequestContext(request))
+
+@user_passes_test(user_can_view_data)
+def get_dropdowns(request):
+    if request.method == "POST" and request.is_ajax():
+        results = handlers.get_dropdowns()
         return HttpResponse(json.dumps(results),
                             content_type="application/json")
     else:

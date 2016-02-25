@@ -7,16 +7,25 @@ from urlparse import (
 from pytx import (
     access_token,
     Broker,
-    ThreatDescriptor,
-    ThreatIndicator,
     Malware,
-    MalwareFamily
+    MalwareFamily,
+    ThreatDescriptor,
+    ThreatExchangeMember,
+    ThreatIndicator,
+    ThreatPrivacyGroup,
 )
 
 from pytx.errors import pytxFetchError
 from pytx.vocabulary import (
+    Malware as m,
+    Precision,
+    PrivacyType,
+    ReviewStatus,
+    Severity,
+    ShareLevel,
+    Status,
     ThreatDescriptor as td,
-    Malware as m
+    ThreatPrivacyGroup as tpg,
 )
 
 from django.template.loader import render_to_string
@@ -33,11 +42,15 @@ from crits.vocabulary.indicators import (
 )
 
 
+def setup_access():
+    sc = get_config('ThreatExchange')
+    access_token.access_token(app_id=sc['app_id'], app_secret=sc['app_secret'])
+    return
+
 def submit_query(request, url, type_, params=None):
     klass = None
     template = None
-    sc = get_config('ThreatExchange')
-    access_token.access_token(app_id=sc['app_id'], app_secret=sc['app_secret'])
+    setup_access()
 
     if url is not None and len(url) > 0:
         url = url + "&access_token=" + access_token.get_access_token()
@@ -90,14 +103,18 @@ def submit_query(request, url, type_, params=None):
     if data:
         for d in data:
             exists = False
-            if lookup.objects(**{lookup_value: d[ref_value]}).first() is not None:
+            objectid = None
+            tmp = lookup.objects(**{lookup_value: d[ref_value]}).first()
+            if tmp is not None:
                 exists = True
+                objectid = tmp.id
             html += render_to_string("tx_common.html",
                                      {
                                          'custom_template': template,
                                          'data': d,
                                          'type': type_,
                                          'exists': exists,
+                                         'objectid': objectid
                                      },
                                      RequestContext(request))
     return {'success': True,
@@ -117,7 +134,91 @@ def build_ci(confidence):
         confidence = IndicatorCI.UNKNOWN
     return confidence
 
+def get_members():
+    setup_access()
+    try:
+        members = ThreatExchangeMember.objects(full_response=True)
+    except pytxFetchError, e:
+        return {'success': False,
+                'message': e.message.message}
+    mlist = members.get('data', [])
+    html = ''
+    for member in mlist:
+        html += render_to_string("tx_member.html",
+                                    {
+                                        'member': member
+                                    })
+    return {'success': True,
+            'html': html}
+
+def get_groups():
+    setup_access()
+    html = ''
+    owner = ThreatPrivacyGroup.mine(role="owner", dict_generator=True)
+    member = ThreatPrivacyGroup.mine(role="member", dict_generator=True)
+    for o in owner:
+        html += render_to_string("tx_member.html",
+                                    {
+                                        'member': o
+                                    })
+    for mem in member:
+        if mem.get(tpg.MEMBERS_CAN_USE):
+            html += render_to_string("tx_member.html",
+                                        {
+                                            'member': o
+                                        })
+    return {'success': True,
+            'html': html}
+
+def get_dropdowns():
+    result = {}
+    result['precision'] = [Precision.UNKNOWN,
+                           Precision.LOW,
+                           Precision.MEDIUM,
+                           Precision.HIGH]
+    result['privacy_type'] = [PrivacyType.HAS_PRIVACY_GROUP,
+                              PrivacyType.HAS_WHITELIST,
+                              PrivacyType.VISIBLE]
+    result['review_status'] = [ReviewStatus.UNKNOWN,
+                               ReviewStatus.UNREVIEWED,
+                               ReviewStatus.PENDING,
+                               ReviewStatus.REVIEWED_MANUALLY,
+                               ReviewStatus.REVIEWED_AUTOMATICALLY]
+    result['severity'] = [Severity.UNKNOWN,
+                          Severity.INFO,
+                          Severity.WARNING,
+                          Severity.SUSPICIOUS,
+                          Severity.SEVERE,
+                          Severity.APOCALYPSE]
+    result['share_level'] = [ShareLevel.WHITE,
+                             ShareLevel.GREEN,
+                             ShareLevel.AMBER,
+                             ShareLevel.RED]
+    result['status'] = [Status.MALICIOUS,
+                        Status.NON_MALICIOUS,
+                        Status.SUSPICIOUS,
+                        Status.UNKNOWN]
+    return result
+
+def export_object(request, type_, params):
+    setup_access()
+    if type_ == "Indicator":
+        klass = ThreatDescriptor
+    elif type_ == "Sample":
+        klass = Malware
+    else:
+        return {'success': False,
+                'message': "Invalid Type"}
+    try:
+        result = klass.new(params=params)
+        return {'success': True,
+                'results': result}
+    except pytxFetchError, e:
+        return {'success': False,
+                'message': e.message['message']}
+
 def import_object(request, type_, id_):
+    setup_access()
     if type_ == "Threat Descriptors":
         obj = ThreatDescriptor(id=id_)
         obj.details(
@@ -139,6 +240,7 @@ def import_object(request, type_, id_):
             add_domain=True,
             add_relationship=True,
             confidence=build_ci(obj.get(td.CONFIDENCE)),
+            description=obj.get(td.DESCRIPTION)
         )
         return results
     elif type_ == "Threat Indicators":
