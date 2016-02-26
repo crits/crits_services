@@ -2,7 +2,7 @@ import datetime
 
 from contextlib import closing
 from copy import copy
-from io import BytesIO
+from io import StringIO
 
 from .object_mapper import (
     make_crits_object,
@@ -63,19 +63,23 @@ class STIXParser():
     STIX Parser class.
     """
 
-    def __init__(self, data, analyst, method):
+    def __init__(self, data, analyst, method, preview_only=False):
         """
         Instantiation of the STIXParser can take the data to parse, the analyst
         doing the parsing, and the method of data aquisition.
+
         :param data: The data to parse.
         :type data: str
         :param analyst: The analyst parsing the document.
         :type analyst: str
         :param method: The method of acquiring this data.
         :type method: str
+        :param preview_only: If True, nothing is imported and a preview is returned
+        :type preview_only: boolean
         """
 
         self.data = data
+        self.preview = preview_only
 
         self.package = None
         self.stix_version = None
@@ -102,6 +106,7 @@ class STIXParser():
     def parse_stix(self, reference='', make_event=False, source=''):
         """
         Parse the document.
+
         :param reference: The reference to the data.
         :type reference: str
         :param make_event: Whether or not to create an Event for this document.
@@ -109,12 +114,13 @@ class STIXParser():
         :param source: The source of this document.
         :type source: str
         :raises: :class:`taxii_service.parsers.STIXParserException`
+
         Until we have a way to map source strings in a STIX document to
         a source in CRITs, we are being safe and using the source provided
         as the true source.
         """
 
-        with closing(BytesIO(self.data)) as f:
+        with closing(StringIO(self.data)) as f:
             try:
                 try:
                     self.package = STIXPackage.from_xml(f)
@@ -133,29 +139,30 @@ class STIXParser():
                                     '')) # note for display in UI
                 return
 
-        self.stix_version = self.package.version
-        stix_header = self.package.stix_header
-        if stix_header and stix_header.information_source and stix_header.information_source.identity:
-            self.information_source = stix_header.information_source.identity.name
-            if self.information_source:
-                info_src = "STIX Source: %s" % self.information_source
-                if not reference:
-                    reference = ''
+        if not self.preview:
+            self.stix_version = self.package.version
+            stix_header = self.package.stix_header
+            if stix_header and stix_header.information_source and stix_header.information_source.identity:
+                self.information_source = stix_header.information_source.identity.name
+                if self.information_source:
+                    info_src = "STIX Source: %s" % self.information_source
+                    if not reference:
+                        reference = ''
+                    else:
+                        reference += ", "
+                    reference += info_src
+            if source:
+                if does_source_exist(source):
+                    self.source.name = source
                 else:
-                    reference += ", "
-                reference += info_src
-        if source:
-            if does_source_exist(source):
-                self.source.name = source
+                    raise STIXParserException('Source "%s" does not exist in CRITs.' % source)
+            elif does_source_exist(self.information_source):
+                self.source.name = self.information_source
             else:
-                raise STIXParserException('Source "%s" does not exist in CRITs.' % source)
-        elif does_source_exist(self.information_source):
-            self.source.name = self.information_source
-        else:
-            raise STIXParserException("No source to attribute data to.")
+                raise STIXParserException("No source to attribute data to.")
 
-        self.source_instance.reference = reference
-        self.source.instances.append(self.source_instance)
+            self.source_instance.reference = reference
+            self.source.instances.append(self.source_instance)
 
         if make_event:
             title = "STIX Document %s" % self.package.id_
@@ -179,34 +186,39 @@ class STIXParser():
                             description = description.to_dict()
                         except:
                             pass
-            res = add_new_event(title,
-                                description,
-                                event_type,
-                                self.source.name,
-                                self.source_instance.method,
-                                self.source_instance.reference,
-                                date,
-                                self.source_instance.analyst)
-            self.parsed.append(self.package.id_)
-            if res['success']:
-                self.event = res['object']
+            if self.preview:
                 self.imported[self.package.id_] = ('Event',
-                                                   res['object'].id,
-                                                   title or res['object'].id)
-                self.updates[res['object'].id] = res['object']
-
-                # Get relationships to the Event
-                if self.package.incidents:
-                    incdnts = self.package.incidents
-                    for rel in getattr(incdnts[0], 'related_indicators', ()):
-                        if rel.relationship or rel.confidence:
-                            r = rel.relationship.value or RelationshipTypes.RELATED_TO
-                            c = getattr(rel.confidence.value, 'value', 'Unknown')
-                            self.event_rels[rel.item.idref] = (r, c)
+                                                   None,
+                                                   title)
             else:
-                self.failed.append((res['message'],
-                                    "Event (%s)" % title,
-                                    self.package.id_))
+                res = add_new_event(title,
+                                    description,
+                                    event_type,
+                                    self.source.name,
+                                    self.source_instance.method,
+                                    self.source_instance.reference,
+                                    date,
+                                    self.source_instance.analyst)
+                self.parsed.append(self.package.id_)
+                if res['success']:
+                    self.event = res['object']
+                    self.imported[self.package.id_] = ('Event',
+                                                       res['object'].id,
+                                                       title or res['object'].id)
+                    self.updates[res['object'].id] = res['object']
+
+                    # Get relationships to the Event
+                    if self.package.incidents:
+                        incdnts = self.package.incidents
+                        for rel in getattr(incdnts[0], 'related_indicators', ()):
+                            if rel.relationship or rel.confidence:
+                                r = rel.relationship.value or RelationshipTypes.RELATED_TO
+                                c = getattr(rel.confidence.value, 'value', 'Unknown')
+                                self.event_rels[rel.item.idref] = (r, c)
+                else:
+                    self.failed.append((res['message'],
+                                        "Event (%s)" % title,
+                                        self.package.id_))
 
         if self.package.indicators:
             self.parse_indicators(self.package.indicators)
@@ -220,6 +232,7 @@ class STIXParser():
     def parse_threat_actors(self, threat_actors):
         """
         Parse list of Threat Actors.
+
         :param threat_actors: List of STIX ThreatActors.
         :type threat_actors: List of STIX ThreatActors.
         """
@@ -229,50 +242,54 @@ class STIXParser():
             try: # create CRITs Actor from ThreatActor
                 if isinstance(threat_actor, ThreatActor):
                     name = str(threat_actor.title)
-                    description = str(threat_actor.description)
-                    res = add_new_actor(name=name,
-                                        description=description,
-                                        source=[self.source],
-                                        analyst=analyst)
-                    self.parsed.append(threat_actor.id_)
-                    if res['success']:
-                        sl = ml = tl = il = []
-                        for s in threat_actor.sophistications:
-                            v = get_crits_actor_tags(str(s.value))
-                            if v:
-                                sl.append(v)
-                        update_actor_tags(res['id'],
-                                            'ActorSophistication',
-                                            sl,
-                                            analyst)
-                        for m in threat_actor.motivations:
-                            v = get_crits_actor_tags(str(m.value))
-                            if v:
-                                ml.append(v)
-                        update_actor_tags(res['id'],
-                                            'ActorMotivation',
-                                            ml,
-                                            analyst)
-                        for t in threat_actor.types:
-                            v = get_crits_actor_tags(str(t.value))
-                            if v:
-                                tl.append(v)
-                        update_actor_tags(res['id'],
-                                            'ActorThreatType',
-                                            tl,
-                                            analyst)
-                        for i in threat_actor.intended_effects:
-                            v = get_crits_actor_tags(str(i.value))
-                            if v:
-                                il.append(v)
-                        update_actor_tags(res['id'],
-                                            'ActorIntendedEffect',
-                                            il,
-                                            analyst)
-                        obj = Actor.objects(id=res['id']).first()
-                        self.imported[threat_actor.id_] = (Actor._meta['crits_type'],
-                                                           obj.id, name or obj.id)
-                        self.updates[obj.id] = obj
+                    if not self.preview:
+                        description = str(threat_actor.description)
+                        res = add_new_actor(name=name,
+                                            description=description,
+                                            source=[self.source],
+                                            analyst=analyst)
+                        self.parsed.append(threat_actor.id_)
+                        if res['success']:
+                            sl = ml = tl = il = []
+                            for s in threat_actor.sophistications:
+                                v = get_crits_actor_tags(str(s.value))
+                                if v:
+                                    sl.append(v)
+                            update_actor_tags(res['id'],
+                                                'ActorSophistication',
+                                                sl,
+                                                analyst)
+                            for m in threat_actor.motivations:
+                                v = get_crits_actor_tags(str(m.value))
+                                if v:
+                                    ml.append(v)
+                            update_actor_tags(res['id'],
+                                                'ActorMotivation',
+                                                ml,
+                                                analyst)
+                            for t in threat_actor.types:
+                                v = get_crits_actor_tags(str(t.value))
+                                if v:
+                                    tl.append(v)
+                            update_actor_tags(res['id'],
+                                                'ActorThreatType',
+                                                tl,
+                                                analyst)
+                            for i in threat_actor.intended_effects:
+                                v = get_crits_actor_tags(str(i.value))
+                                if v:
+                                    il.append(v)
+                            update_actor_tags(res['id'],
+                                                'ActorIntendedEffect',
+                                                il,
+                                                analyst)
+                            obj = Actor.objects(id=res['id']).first()
+                            self.updates[obj.id] = obj
+                            self.imported[threat_actor.id_] = (Actor._meta['crits_type'],
+                                                               obj.id, name or obj.id)
+                        else: #preview only
+                            self.imported[threat_actor.id_] = (Actor._meta['crits_type'],
+                                                               None, name)
                     else:
                         self.failed.append((res['message'],
                                             "Threat Actor (%s)" % name,
@@ -285,6 +302,7 @@ class STIXParser():
     def parse_indicators(self, indicators, parent_description=''):
         """
         Parse list of indicators.
+
         :param indicators: List of STIX indicators.
         :type indicators: List of STIX indicators.
         :param parent_description: The description of the parent indicator.
@@ -310,6 +328,10 @@ class STIXParser():
                 cie = indicator.composite_indicator_expression
                 self.parse_indicators(cie, p_description)
                 rel_ids = []
+
+                if self.preview: # no need to store relationship if just a preview
+                    continue
+
                 for com_ind in cie:
                     if com_ind.observables: # this contains an indicator
                         rel_ids.append(com_ind.id_)
@@ -325,20 +347,21 @@ class STIXParser():
                         for iid2 in rel_ids:
                             if iid != iid2:
                                 self.relationships.append((iid,
-                                                           "Related_To",
+                                                           RelationshipTypes.RELATED_TO,
                                                            iid2, "High"))
                 continue
 
             # store relationships
-            for rel in getattr(indicator, 'related_indicators', ()):
-                if rel.confidence:
-                    conf = rel.confidence.value.value
-                else:
-                    conf = 'Unknown'
-                self.relationships.append((indicator.id_,
-                                           rel.relationship.value,
-                                           rel.item.idref,
-                                           conf))
+            if not self.preview:
+                for rel in getattr(indicator, 'related_indicators', ()):
+                    if rel.confidence:
+                        conf = rel.confidence.value.value
+                    else:
+                        conf = 'Unknown'
+                    self.relationships.append((indicator.id_,
+                                               rel.relationship.value,
+                                               rel.item.idref,
+                                               conf))
 
             try: # create CRITs Indicator from observable
                 # handled indicator-wrapped observable
@@ -368,6 +391,7 @@ class STIXParser():
     def parse_observables(self, observables, description='', ind_id=None):
         """
         Parse list of observables in STIX doc.
+
         :param observables: List of STIX observables.
         :type observables: List of STIX observables.
         :param description: Parent-level (e.g. Indicator) description.
@@ -385,6 +409,10 @@ class STIXParser():
                     self.parse_observables(ob._observable_composition.observables,
                                            description, ind_id)
                     rel_ids = []
+
+                    if self.preview: # no need to store relationship if just a preview
+                        continue
+
                     for com_ob in ob._observable_composition.observables:
                         if com_ob.object_:
                             rel_ids.append(com_ob.object_.id_)
@@ -418,6 +446,7 @@ class STIXParser():
         Parse a CybOX object form a STIX doc. An object can contain
         multiple related_objects, which in turn can have their own
         related_objects, so this handles those recursively.
+
         :param cbx_obj: The CybOX object to parse.
         :type cbx_obj: A CybOX object.
         :param description: Parent-level (e.g. Observable) description.
@@ -453,23 +482,29 @@ class STIXParser():
                     imp_type = "IP"
                     for value in item.address_value.values:
                         val = str(value).strip()
-                        iptype = get_crits_ip_type(item.category)
-                        if iptype:
-                            res = ip_add_update(val,
-                                                iptype,
-                                                [self.source],
-                                                analyst=analyst,
-                                                is_add_indicator=True)
+                        if self.preview:
+                            res = None
                         else:
-                            res = {'success': False, 'reason': 'No IP Type'}
+                            iptype = get_crits_ip_type(item.category)
+                            if iptype:
+                                res = ip_add_update(val,
+                                                    iptype,
+                                                    [self.source],
+                                                    analyst=analyst,
+                                                    is_add_indicator=True)
+                            else:
+                                res = {'success': False, 'reason': 'No IP Type'}
                         self.parse_res(imp_type, val, cbx_obj, res, ind_id)
             if (not ind_id and (isinstance(item, DomainName) or
                 (isinstance(item, URI) and item.type_ == 'Domain Name'))):
                 imp_type = "Domain"
                 for val in item.value.values:
-                    res = upsert_domain(str(val),
-                                        [self.source],
-                                        username=analyst)
+                    if self.preview:
+                        res = None
+                    else:
+                        res = upsert_domain(str(val),
+                                            [self.source],
+                                            username=analyst)
                     self.parse_res(imp_type, str(val), cbx_obj, res, ind_id)
 
             elif isinstance(item, HTTPSession):
@@ -483,29 +518,36 @@ class STIXParser():
                         title = "HTTP Header from STIX: %s" % self.package.id_
                         method = self.source_instance.method
                         ref = self.source_instance.reference
-                        res = handle_raw_data_file(data,
-                                                self.source.name,
-                                                user=analyst,
-                                                description=description,
-                                                title=title,
-                                                data_type="HTTP Header",
-                                                tool_name="STIX",
-                                                tool_version=None,
-                                                method=method,
-                                                reference=ref)
+                        if self.preview:
+                            res = None
+                            val = title
+                        else:
+                            res = handle_raw_data_file(data,
+                                                    self.source.name,
+                                                    user=analyst,
+                                                    description=description,
+                                                    title=title,
+                                                    data_type="HTTP Header",
+                                                    tool_name="STIX",
+                                                    tool_version=None,
+                                                    method=method,
+                                                    reference=ref)
                     else:
                         imp_type = "Indicator"
                         ind_type = "HTTP Request Header Fields - User-Agent"
                         val = hdr.parsed_header.user_agent.value
                         val = ','.join(val) if isinstance(val, list) else val
-                        res = handle_indicator_ind(val,
-                                                self.source,
-                                                ind_type,
-                                                IndicatorThreatTypes.UNKNOWN,
-                                                IndicatorAttackTypes.UNKNOWN,
-                                                analyst,
-                                                add_relationship=True,
-                                                description=description)
+                        if self.preview:
+                            res = None
+                        else:
+                            res = handle_indicator_ind(val,
+                                                    self.source,
+                                                    ind_type,
+                                                    IndicatorThreatTypes.UNKNOWN,
+                                                    IndicatorAttackTypes.UNKNOWN,
+                                                    analyst,
+                                                    add_relationship=True,
+                                                    description=description)
                 except:
                     msg = "Unsupported use of 'HTTPSession' object."
                     res = {'success': False, 'reason': msg}
@@ -518,16 +560,20 @@ class STIXParser():
                 if item.remarks:
                     data = item.remarks.value
                     title = "WHOIS Entry from STIX: %s" % self.package.id_
-                    res = handle_raw_data_file(data,
-                                            self.source.name,
-                                            user=analyst,
-                                            description=description,
-                                            title=title,
-                                            data_type="Text",
-                                            tool_name="WHOIS",
-                                            tool_version=None,
-                                            method=self.source_instance.method,
-                                            reference=self.source_instance.reference)
+                    if self.preview:
+                        res = None
+                        val = title
+                    else:
+                        res = handle_raw_data_file(data,
+                                                self.source.name,
+                                                user=analyst,
+                                                description=description,
+                                                title=title,
+                                                data_type="Text",
+                                                tool_name="WHOIS",
+                                                tool_version=None,
+                                                method=self.source_instance.method,
+                                                reference=self.source_instance.reference)
                 else:
                     msg = "Unsupported use of 'WhoisEntry' object."
                     res = {'success': False, 'reason': msg}
@@ -542,16 +588,20 @@ class STIXParser():
                 # TODO: find out proper ways to determine title, datatype,
                 #       tool_name, tool_version
                 title = "Artifact for Event: STIX Document %s" % self.package.id_
-                res = handle_raw_data_file(rawdata,
-                                        self.source.name,
-                                        user=analyst,
-                                        description=description,
-                                        title=title,
-                                        data_type="Text",
-                                        tool_name="STIX",
-                                        tool_version=None,
-                                        method=self.source_instance.method,
-                                        reference=self.source_instance.reference)
+                if self.preview:
+                    res = None
+                    val = title
+                else:
+                    res = handle_raw_data_file(rawdata,
+                                            self.source.name,
+                                            user=analyst,
+                                            description=description,
+                                            title=title,
+                                            data_type="Text",
+                                            tool_name="STIX",
+                                            tool_version=None,
+                                            method=self.source_instance.method,
+                                            reference=self.source_instance.reference)
                 self.parse_res(imp_type, val, cbx_obj, res, ind_id)
             elif (isinstance(item, File) and
                   item.custom_properties and
@@ -560,30 +610,36 @@ class STIXParser():
                 imp_type = "Certificate"
                 val = str(item.file_name)
                 data = None
-                for rel_obj in item.parent.related_objects:
-                    if isinstance(rel_obj.properties, Artifact):
-                        data = rel_obj.properties.data
-                        self.parsed.append(rel_obj.id_)
-                res = handle_cert_file(val,
-                                       data,
-                                       self.source,
-                                       user=analyst,
-                                       description=description)
+                if self.preview:
+                    res = None
+                else:
+                    for rel_obj in item.parent.related_objects:
+                        if isinstance(rel_obj.properties, Artifact):
+                            data = rel_obj.properties.data
+                            self.parsed.append(rel_obj.id_)
+                    res = handle_cert_file(val,
+                                           data,
+                                           self.source,
+                                           user=analyst,
+                                           description=description)
                 self.parse_res(imp_type, val, cbx_obj, res, ind_id)
             elif isinstance(item, File) and self.has_network_artifact(item):
                 imp_type = "PCAP"
                 val = str(item.file_name)
                 data = None
-                for rel_obj in item.parent.related_objects:
-                    if (isinstance(rel_obj.properties, Artifact) and
-                        rel_obj.properties.type_ == Artifact.TYPE_NETWORK):
-                        data = rel_obj.properties.data
-                        self.parsed.append(rel_obj.id_)
-                res = handle_pcap_file(val,
-                                       data,
-                                       self.source,
-                                       user=analyst,
-                                       description=description)
+                if self.preview:
+                    res = None
+                else:
+                    for rel_obj in item.parent.related_objects:
+                        if (isinstance(rel_obj.properties, Artifact) and
+                            rel_obj.properties.type_ == Artifact.TYPE_NETWORK):
+                            data = rel_obj.properties.data
+                            self.parsed.append(rel_obj.id_)
+                    res = handle_pcap_file(val,
+                                           data,
+                                           self.source,
+                                           user=analyst,
+                                           description=description)
                 self.parse_res(imp_type, val, cbx_obj, res, ind_id)
             elif isinstance(item, File):
                 imp_type = "Sample"
@@ -604,24 +660,30 @@ class STIXParser():
                         self.parsed.append(rel_obj.id_)
                 if not md5 and not data and val and val != "None":
                     imp_type = "Indicator"
-                    res = handle_indicator_ind(val,
-                                               self.source,
-                                               "Win File",
-                                               IndicatorThreatTypes.UNKNOWN,
-                                               IndicatorAttackTypes.UNKNOWN,
-                                               analyst,
-                                               add_domain=True,
-                                               add_relationship=True,
-                                               description=description)
+                    if self.preview:
+                        res = None
+                    else:
+                        res = handle_indicator_ind(val,
+                                                   self.source,
+                                                   "Win File",
+                                                   IndicatorThreatTypes.UNKNOWN,
+                                                   IndicatorAttackTypes.UNKNOWN,
+                                                   analyst,
+                                                   add_domain=True,
+                                                   add_relationship=True,
+                                                   description=description)
                 elif md5 or data:
-                    res = handle_file(val,
-                                      data,
-                                      self.source,
-                                      user=analyst,
-                                      md5_digest=md5,
-                                      is_return_only_md5=False,
-                                      size=size,
-                                      description=description)
+                    if self.preview:
+                        res = None
+                    else:
+                        res = handle_file(val,
+                                          data,
+                                          self.source,
+                                          user=analyst,
+                                          md5_digest=md5,
+                                          is_return_only_md5=False,
+                                          size=size,
+                                          description=description)
                 else:
                     val = cbx_obj.id_
                     msg = "CybOX 'File' object has no MD5, data, or filename"
@@ -656,11 +718,14 @@ class STIXParser():
                     data['source'] = self.source.name
                     data['source_method'] = self.source_instance.method
                     data['source_reference'] = self.source_instance.reference
-                    res = handle_email_fields(data,
-                                              analyst,
-                                              "STIX")
+                    if self.preview:
+                        res = None
+                    else:
+                        res = handle_email_fields(data,
+                                                  analyst,
+                                                  "STIX")
                     self.parse_res(imp_type, val, cbx_obj, res, ind_id)
-                    if res.get('status'):
+                    if not self.preview and res.get('status'):
                         id_list.append(cbx_obj.id_) # save ID for atchmnt rels
                         get_attach = True
                 else: # Can't be an Email TLO, so save fields
@@ -675,23 +740,29 @@ class STIXParser():
                                     d_type = "Email Body"
                                 imp_type = 'RawData'
                                 title = title % cbx_obj.id_
-                                res = handle_raw_data_file(data[key],
-                                                           self.source,
-                                                           analyst,
-                                                           description,
-                                                           title,
-                                                           d_type,
-                                                           "STIX",
-                                                           self.stix_version)
+                                if self.preview:
+                                    res = None
+                                else:
+                                    res = handle_raw_data_file(data[key],
+                                                               self.source,
+                                                               analyst,
+                                                               description,
+                                                               title,
+                                                               d_type,
+                                                               "STIX",
+                                                               self.stix_version)
                                 self.parse_res(imp_type, title, cbx_obj,
                                                res, ind_id)
                             elif key == 'to':
                                 imp_type = 'Target'
                                 for y, addr in enumerate(data[key]):
                                     tgt_dict = {'email_address': addr}
-                                    res = upsert_target(tgt_dict, analyst)
-                                    if res['success']:
-                                        get_attach = True
+                                    if self.preview:
+                                        res = None
+                                    else:
+                                        res = upsert_target(tgt_dict, analyst)
+                                        if res['success']:
+                                            get_attach = True
                                     tmp_obj = copy(cbx_obj)
                                     tmp_obj.id_ = '%s-%s-%s' % (cbx_obj.id_,
                                                                 x, y)
@@ -710,17 +781,20 @@ class STIXParser():
                                     ind_type = "Email Message"
                                 else:
                                     ind_type = "String"
-                                res = handle_indicator_ind(data[key],
-                                                      self.source,
-                                                      ind_type,
-                                                      IndicatorThreatTypes.UNKNOWN,
-                                                      IndicatorAttackTypes.UNKNOWN,
-                                                      analyst,
-                                                      add_domain=True,
-                                                      add_relationship=True,
-                                                      description=description)
-                                if res['success']:
-                                    get_attach = True
+                                if self.preview:
+                                    res = None
+                                else:
+                                    res = handle_indicator_ind(data[key],
+                                                          self.source,
+                                                          ind_type,
+                                                          IndicatorThreatTypes.UNKNOWN,
+                                                          IndicatorAttackTypes.UNKNOWN,
+                                                          analyst,
+                                                          add_domain=True,
+                                                          add_relationship=True,
+                                                          description=description)
+                                    if res['success']:
+                                        get_attach = True
                                 tmp_obj = copy(cbx_obj)
                                 tmp_obj.id_ = '%s-%s' % (cbx_obj.id_, x)
                                 self.parse_res(imp_type, data[key], tmp_obj,
@@ -729,22 +803,23 @@ class STIXParser():
                                                         []).append(tmp_obj.id_)
                                 id_list.append(tmp_obj.id_)
 
-                # Setup relationships between all Email attributes
-                for oid in id_list:
-                    for oid2 in id_list:
-                        if oid != oid2:
-                            self.relationships.append((oid,
-                                                       RelationshipTypes.RELATED_TO,
-                                                       oid2, "High"))
+                if not self.preview:
+                    # Setup relationships between all Email attributes
+                    for oid in id_list:
+                        for oid2 in id_list:
+                            if oid != oid2:
+                                self.relationships.append((oid,
+                                                           RelationshipTypes.RELATED_TO,
+                                                           oid2, "High"))
 
-                # Should check for attachments and add them here.
-                if get_attach and item.attachments:
-                    for attach in item.attachments:
-                        rel_id = attach.to_dict()['object_reference']
-                        for oid in id_list:
-                            self.relationships.append((oid,
-                                                       RelationshipTypes.CONTAINS,
-                                                       rel_id, "High"))
+                    # Should check for attachments and add them here.
+                    if get_attach and item.attachments:
+                        for attach in item.attachments:
+                            rel_id = attach.to_dict()['object_reference']
+                            for oid in id_list:
+                                self.relationships.append((oid,
+                                                           RelationshipTypes.CONTAINS,
+                                                           rel_id, "High"))
 
             else: # try to parse all other possibilities as Indicator
                 imp_type = "Indicator"
@@ -760,15 +835,18 @@ class STIXParser():
                             if c_obj.object_type == 'URI' and '/' not in val:
                                 ind_type = "Domain"
 
-                            res = handle_indicator_ind(val,
-                                                    self.source,
-                                                    ind_type,
-                                                    IndicatorThreatTypes.UNKNOWN,
-                                                    IndicatorAttackTypes.UNKNOWN,
-                                                    analyst,
-                                                    add_domain=True,
-                                                    add_relationship=True,
-                                                    description=description)
+                            if self.preview:
+                                res = None
+                            else:
+                                res = handle_indicator_ind(val,
+                                                        self.source,
+                                                        ind_type,
+                                                        IndicatorThreatTypes.UNKNOWN,
+                                                        IndicatorAttackTypes.UNKNOWN,
+                                                        analyst,
+                                                        add_domain=True,
+                                                        add_relationship=True,
+                                                        description=description)
                             self.parse_res(imp_type, val, cbx_obj, res, ind_id)
 
         except Exception, e: # probably caused by cybox object we don't handle
@@ -784,6 +862,10 @@ class STIXParser():
 
 
     def parse_res(self, imp_type, val, obj, res, ind_id=None):
+        if res is None: #this is likely part of a preview
+            self.imported[obj.id_] = (imp_type, None, val)
+            return
+
         self.parsed.append(obj.id_)
         s = res.get('success', None)
         if s is None:
@@ -812,6 +894,7 @@ class STIXParser():
         """
         Determine if the CybOX File object has a related Artifact of
         'Network' type.
+
         :param file_obj: A CybOX File object
         :return: True if the File has a Network Traffic Artifact
         """
@@ -828,9 +911,13 @@ class STIXParser():
         related_indicators attribute is used to relate objects to the event.
         Any objects without an explicit relationship to the event are
         related using type "Related_To".
+
         Objects are related to each other using the relationships listed in
         their related_indicators attribute.
         """
+        if self.preview: # Previews don't include relationships
+            return
+
         analyst = self.source_instance.analyst
 
         # relate objects to Event
@@ -845,7 +932,7 @@ class STIXParser():
                     confidence = self.event_rels[self.obj2ind[id_]][1]
                 elif self.imported[id_][0] != 'Event':
                     rel_type = RelationshipTypes.RELATED_TO
-                    confidence = 'Unknown'
+                    confidence='Unknown'
                 else:
                     continue
                 evt.add_relationship(self.updates[self.imported[id_][1]],
