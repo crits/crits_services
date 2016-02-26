@@ -1,0 +1,154 @@
+{% load url from future %}
+
+{% block content %}
+
+
+<style>
+    #ta_results tbody td:nth-child(2) {
+        text-align: center;
+    }
+    #ta_results tbody td:nth-child(3) {
+        text-align: center;
+    }
+    #ta_results tbody td:nth-child(8) {
+        text-align: center;
+    }
+</style>
+
+{% with polls.unimported as upolls %}
+<div class="content_box">
+    <h3 class="titleheader">
+        <span>Unimported Polls - Count: {{ upolls|length }}</span>
+    </h3>
+    {% if upolls %}
+        <table class="chart" id="ta_results" width="100%">
+            <colgroup>
+                <col width="175px">
+                <col width="75px">
+                <col width="85px">
+                <col>
+                <col>
+                <col width="275px">
+                <col>
+                <col width="45px">
+            </colgroup>
+            <thead>
+                <th>Timestamp</th>
+                <th>Message ID</th>
+                <th>Block Count</th>
+                <th>Server Hostname</th>
+                <th>Feed Name</th>
+                <th>Time Range</th>
+                <th>Analyst</th>
+                <th>Delete</th>
+            </thead>
+            <tbody>
+                {% for time, meta in upolls.items %}
+                <tr>
+                    <td>{{ time }}</td>
+                    <td><a class="msgid" href="#" id="{{ meta.msg_id }}">{{ meta.msg_id }}</a></td>
+                    <td>{{ meta.count }}</td><td>{{ meta.host }}</td>
+                    <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
+                    <td>{{ meta.analyst }}</td>
+                    <td><a class='delete_poll' href="#" id="{{ meta.msg_id }}">Delete</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+{% endwith %}
+<br>
+{% with polls.errored as epolls %}
+<div class="content_box">
+    <h3 class="titleheader">
+        <span>Polls With Errors During Import - Count: {{ epolls|length }}</span>
+    </h3>
+    {% if epolls %}
+        <table class="chart" id="ta_results" width="100%">
+            <colgroup>
+                <col width="175px">
+                <col width="75px">
+                <col width="85px">
+                <col>
+                <col>
+                <col width="275px">
+                <col>
+                <col width="45px">
+            </colgroup>
+            <thead>
+                <th>Timestamp</th>
+                <th>Message ID</th>
+                <th>Block Count</th>
+                <th>Server Hostname</th>
+                <th>Feed Name</th>
+                <th>Time Range</th>
+                <th>Analyst</th>
+                <th>Delete</th>
+            </thead>
+            <tbody>
+                {% for time, meta in epolls.items %}
+                <tr>
+                    <td>{{ time }}</td>
+                    <td><a class="msgid" href="#" id="{{ meta.msg_id }}">{{ meta.msg_id }}</a></td>
+                    <td>{{ meta.count }}</td><td>{{ meta.host }}</td>
+                    <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
+                    <td>{{ meta.analyst }}</td>
+                    <td><a class='delete_poll' href="#" id="{{ meta.msg_id }}">Delete</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+</div>
+{% endwith %}
+{% endblock %}
+
+<script>
+    $('a.msgid').click(function() {
+		$("#current_state").text("Processing...");
+		$("#taxii-loader").show();
+        var mid = $(this).text();
+		$.ajax({
+			type: "GET",
+			url: "{% url 'taxii_service.views.get_import_preview' '1234' %}".replace(/1234/, mid),
+		}).done(function(data) { // run on successful request
+			if (data.success) { // at least some feeds were successfully processed
+				$("#results_container").html(data.html);
+				$("#current_state").text("TAXII Import Preview");
+                $("#view_saved").prop('hidden', false);
+			} else { // some issue occurred
+				$("#error_container").children(".taxii_notice").html(data.msg);
+				$("#current_state").text("Problems");
+			}
+		}).fail(function(data) { // server error
+			$("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+			$("#current_state").text("Problems");
+		}).always(function() {
+			$("#taxii-loader").hide();
+		});
+    });
+
+    $('a.delete_poll').click(function() {
+		$.ajax({
+			type: "POST",
+			url: "{% url 'taxii_service.views.list_saved_polls' %}",
+			data: this.id,
+			dataType: "json"
+		}).done(function(data) { // run on successful request
+			if (data.success) { // at least some feeds were successfully processed
+				$("#results_container").html(data.html);
+				show_container("Saved TAXII Polls", result_ctr);
+                view_saved.prop('hidden', true);
+			} else { // some issue occurred
+				error_ctr.children(".taxii_notice").html(data.msg);
+				show_container("Problems", error_ctr);
+			}
+		}).fail(function(data) { // server error
+			error_ctr.children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+			show_container("Problems", error_ctr);
+		}).always(function() {
+			$("#taxii-loader").hide();
+		});
+    });
+</script>

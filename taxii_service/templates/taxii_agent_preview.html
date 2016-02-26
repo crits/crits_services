@@ -1,0 +1,189 @@
+{% load url from future %}
+
+{% block content %}
+
+
+<div style="text-align: center; padding-bottom: 10px; margin-top: 15px;">
+	<button id="import_delete" class="import_btn">Import Selected & Delete Others</button>
+	<button id="import_keep" class="import_btn">Import Selected & Keep Others</button>
+</div>
+
+{% if result.msg %}
+<div class="content_box">
+    <h3 class="titleheader">
+    <span>Poll Results:</span>
+    </h3>
+    <div class="content_body">
+        {% if result.status %}
+            Status: <b>Success</b><br>
+            Message: {{ result.msg }}<br>
+        {% else %}
+            Status: <b>Failure</b><br>
+            Reason: {{ result.msg }}<br>
+        {% endif %}
+    </div>
+</div>
+<br><hr><br>
+{% endif %}
+
+<style>
+    #poll_data tbody td:nth-child(2) {
+        text-align: center;
+    }
+    #poll_data tbody td:nth-child(3) {
+        text-align: center;
+    }
+    #block_data tbody td:nth-child(2) {
+        text-align: center;
+    }
+</style>
+
+{% for poll in result.polls %}
+<h3 class="titleheader">
+    <span>Poll {{ forloop.counter }}
+    {% if poll.failures %}
+         - <font color="red">{{ poll.failures }}</font></span>
+    {% endif %}
+</h3>
+<table class="chart" id="poll_data" width="100%">
+    <colgroup>
+        <col width="175px">
+        <col width="75px">
+        <col width="85px">
+        <col>
+        <col>
+        <col width="275px">
+        <col>
+    </colgroup>
+    <thead>
+        <th>Timestamp</th>
+        <th>Message ID</th>
+        <th>Block Count</th>
+        <th>Server Hostname</th>
+        <th>Feed Name</th>
+        <th>Time Range</th>
+        <th>Analyst</th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ poll.poll_time }}</td><td>{{ poll.taxii_msg_id }}</td>
+            <td>{{ poll.blocks|length }}</td><td>{{ poll.host }}</td>
+            <td>{{ poll.feed }}</td><td>{{ poll.start }} to {{ poll.end }}</td>
+            <td>{{ poll.analyst }}</td>
+        </tr>
+    </tbody>
+</table>
+
+{% if poll.blocks %}
+<br>
+<a href="#" id="sa_{{ poll.taxii_msg_id }}">Select All</a> |
+<a href="#" id="sn_{{ poll.taxii_msg_id }}">Select None</a>
+<script>
+	    $('#sa_{{ poll.taxii_msg_id }}').click(function() {
+            $('.cbx_{{ poll.taxii_msg_id }}').prop('checked', true);
+	    });
+
+	    $('#sn_{{ poll.taxii_msg_id }}').click(function() {
+            $('.cbx_{{ poll.taxii_msg_id }}').prop('checked', false);
+	    });
+</script>
+{% endif %}
+
+    {% for block in poll.blocks %}
+    <div class="content_box">
+        <h3 class="titleheader">
+            <input id="{{ block.id }}" class="cbx_{{ poll.taxii_msg_id }} cbx" type="checkbox" value="{{ block.id }}" checked />
+            <span>Block {{ forloop.counter }}: {{ block.timestamp }}</span>
+        </h3>
+        <table class="chart" id="block_data" width="100%">
+            <colgroup>
+                <col width="150px">
+                <col width="50px" class='ccount'>
+                <col>
+            </colgroup>
+            <thead>
+                <th>Type</th>
+                <th>Count</th>
+                <th>Results</th>
+            </thead>
+            <tbody>
+                {% if block.failures %}
+                <tr>
+                    <td><font color="red">Failures</font></td><td>{{ block.failures|length }}</td>
+                    <td>
+                        <ul>
+                        {% for failure in block.failures %}
+                            <li>
+                                <b><font color="red">{{failure.1}}</b>: {{failure.0}}</font>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+                {% endif %}
+                {% for tlo_type, tlos_of_type in block.tlos.items %}
+                <tr>
+                    <td>{{ tlo_type }}</td><td>{{ tlos_of_type|length }}</td>
+                    <td>
+                        <ul>
+                        {% for tlo in tlos_of_type %}
+                            <li>
+                                {{ tlo.1 }}
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+<br><hr><br>
+{% endfor %}
+{% endblock %}
+
+<script>
+    $(".import_btn").click(function() {
+        var idSelector = function() { return this.id; };
+        var checked = $(":checkbox:checked.cbx").map(idSelector).get();
+        if (checked.length === 0) {
+            alert("You must select at least one block to import");
+        }
+        else {
+		    $("#taxii-loader").show();
+		    if ($("#results_container").is(":visible")) {
+                $("#results_container").slideToggle();
+		    }
+
+            import_blocks(checked, this.id);
+        }
+	});
+
+    function import_blocks(ids, action) {
+		$("#current_state").text("Processing...");
+		$("#taxii-loader").show();
+        var data = JSON.stringify({"ids": ids, "action": action});
+		$.ajax({
+			type: "POST",
+			url: "{% url 'taxii_service.views.import_taxii_data' %}",
+			data: data,
+			dataType: "json"
+		}).done(function(data) { // run on successful request
+			if (data.success) { // at least some feeds were successfully processed
+				$("#results_container").html(data.html);
+				$("#current_state").text("TAXII Import Results");
+                $("#view_saved").prop('hidden', false);
+				$("#results_container").slideToggle();
+			} else { // some issue occurred
+				$("#error_container").children(".taxii_notice").html(data.msg);
+				$("#current_state").text("Problems");
+			}
+		}).fail(function(data) { // server error
+			$("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+			$("#current_state").text("Problems");
+		}).always(function() {
+			$("#taxii-loader").hide();
+		});
+    }
+</script>

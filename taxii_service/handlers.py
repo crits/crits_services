@@ -54,8 +54,26 @@ from crits.vocabulary.relationships import RelationshipTypes
 
 logger = logging.getLogger(__name__)
 
-def poll_taxii_feeds(feeds, analyst, method, begin=None, end=None):
-    results = {}
+def poll_taxii_feeds(feeds, analyst, begin=None, end=None):
+    """
+    Given a list of feeds, individually poll each, save the data to
+    the DB, and return a preview for each and status.
+
+    :param feeds: Feeds to poll represented as [server_name, feed#]
+    :type feeds: list
+    :param analyst: Userid of the analyst initiating the poll
+    :type analyst: string
+    :param begin: Exclusive begin component of the timerange to be polled
+    :type begin: :class:`datetime.datetime`
+    :param end: Inclusive end component of the timerange to be polled
+    :type end: :class:`datetime.datetime`
+    :returns: dict with keys:
+              "polls" (list) - The preview and metadata for each poll
+              "status" (bool) - False if any poll failed
+              "msg" (str) - Status message
+              "all_fail" (bool) - True if no feeds were successful
+    """
+    results = {'polls': []}
     success_feeds = []
     sc = get_config('taxii_service').taxii_servers
     for feed in feeds:
@@ -71,32 +89,30 @@ def poll_taxii_feeds(feeds, analyst, method, begin=None, end=None):
         acert = str(svrc['lcert'])
         feedc = svrc['feeds'][feed[1]]
         feed_name = feedc['feedname']
-        source = feedc['source']
         subID = feedc.get('subID')
         ecert = feedc.get('fcert')
         ekey = feedc.get('fkey')
 
         result = execute_taxii_agent(hostname, https, port, path, version,
-                                     feed_name, akey, acert, subID, source,
-                                     method, analyst, user, pword,
-                                     ecert, ekey, begin, end)
-        if results:
-            for k in result:
-                if isinstance(result[k], list):
-                    results[k].extend(result[k])
-                elif isinstance(result[k], bool):
-                    results[k] = result[k]
-                elif isinstance(result[k], int):
-                    results[k] += result[k]
-        else:
-            results = result
+                                     feed_name, akey, acert, subID, analyst,
+                                     user, pword, ecert, ekey, begin, end)
 
-        if result['status']:
+        results['polls'].append(result)
+        result['failures'] = ", ".join(result['failures'])
+
+        if not result['failures']:
             success_feeds.append("%s - %s" % (feed[0], feedc['feedname']))
         else:
             results['status'] = False
-            msg = " Feed '%s' failed. %s feeds were processed successfully: %s"
+            msg = " Feed '%s' failed - %s<br>"
+            if len(success_feeds) == 0:
+                msg += "%s feeds were processed successfully%s"
+            elif len(success_feeds) == 1:
+                msg += "%s feed was processed successfully: %s"
+            else:
+                msg += "%s feeds were processed successfully: %s"
             msg = msg % (("%s - %s" % (feed[0], feedc['feedname'])),
+                         cgi.escape(result['failures']),
                          len(success_feeds), ", ".join(success_feeds))
             results['msg'] = result['msg'] + msg
             results['all_fail'] = len(success_feeds) == False
@@ -110,24 +126,67 @@ def poll_taxii_feeds(feeds, analyst, method, begin=None, end=None):
 
 def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
                         version="0", feed=None, akey=None, acert=None,
-                        subID=None, source=None, method=None, analyst=None,
-                        user=None, pword=None, ecert=None, ekey=None,
-                        start=None, end=None):
+                        subID=None, analyst=None, user=None, pword=None,
+                        ecert=None, ekey=None, start=None, end=None):
+    """
+    Poll a single feed using the provided parameters, save the data,
+    and generate the preview.
+
+    :param hostname: Hostname of the TAXII server
+    :type hostname: string
+    :param https: If True, instruct client to use HTTPS
+    :type https: bool
+    :param port: TAXII server port to which to connect
+    :type port: string
+    :param path: Path component of the TAXII server URL
+    :type path: string
+    :param version: TAXII version to be used
+    :type version: string
+    :param feed: Name of the TAXII feed/collection
+    :type feed: string
+    :param akey: Path to the authentication key file
+    :type akey: string
+    :param acert: Path to the authentication certificate file
+    :type acert: string
+    :param subID: Subscription ID for the selected TAXII feed
+    :type subID: string
+    :param analyst: Userid of the anaylst making this request
+    :type analyst: string
+    :param user: Username used to authenticate to the TAXII server
+    :type user: string
+    :param pword: Password used to authenticate to the TAXII server
+    :type pword: string
+    :param ecert: Path to a certificate file used for encryption of TAXII content
+    :type ecert: string
+    :param ekey: Path to a key file used for encryption of TAXII content
+    :type ekey: string
+    :param start: Exclusive begin component of the timerange to be polled
+    :type start: :class:`datetime.datetime`
+    :param end: Inclusive end component of the timerange to be polled
+    :type end: :class:`datetime.datetime`
+    :returns: dict with keys:
+              "successes" (int) - Count of successful preview objects
+              "failures" (list) - Failure messages
+              "blocks" (list) - Content blocks, their metadata, and preview objects
+              "start" (string) - Exclusive begin component of the timerange that was polled
+              "end" (string) - Inclusive end component of the timerange that was polled
+              "poll_time" (:class:`datetime.datetime`) - Datetime the feed was polled
+              "taxii_msg_id" (string) - TAXII Message ID of the poll
+              "host" (string) - Hostname of the TAXII server that was polled
+              "feed" (string) - Name of the TAXII feed/collection that was polled
+              "analyst" (string) - Userid of the anaylst that initiated the poll
+              "msg" (string) - OPTIONAL - Error message
+    """
+
     ret = {
-            'Certificate': [],
-            'Domain': [],
-            'Email': [],
-            'Event': [],
-            'Indicator': [],
-            'IP': [],
-            'PCAP': [],
-            'RawData': [],
-            'Sample': [],
             'successes': 0,
             'failures': [],
+            'blocks': [],
             'start': start,
             'end': end,
-            'status': False,
+            'host': hostname,
+            'feed': feed,
+            'analyst': analyst,
             'msg': ''
           }
 
@@ -163,14 +222,15 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     elif isinstance(end, datetime) and not end.tzinfo:
         end = end.replace(tzinfo=pytz.utc)
 
-    ret['start'] = start
-    ret['end'] = end
+    ret['start'] = start.strftime('%Y-%m-%d %H:%M:%S')
+    ret['end'] = end.strftime('%Y-%m-%d %H:%M:%S')
+    ret['poll_time'] = runtime
 
     # compare start and end to make sure:
     # 1) start time is before end time
     # 2) end time is not in the future
     if (start != None and start >= end) and end > runtime:
-        ret['msg'] = "Bad timestamp(s)"
+        ret['failures'].append("Bad timestamp(s)")
         return ret
 
     # subID must be none if not provided
@@ -193,7 +253,7 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         client.setAuthType(tc.HttpClient.AUTH_BASIC)
         client.setAuthCredentials({'username': user, 'password': pword})
     else:
-        ret['msg'] = "Insufficient Authentication Data"
+        ret['failures'].append("Insufficient Authentication Data")
         return ret
 
     if not port:
@@ -203,7 +263,7 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         proxy = settings.HTTP_PROXY
         if not proxy.startswith('http://'):
             proxy = 'http://' + proxy
-        client.setProxy(proxy)
+        client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
 
     crits_taxii = taxii.Taxii()
     crits_taxii.runtime = runtime
@@ -237,10 +297,10 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
                                                 poll_msg.to_xml(), port)
         except Exception as e:
             if "alert unknown ca" in str(e):
-                ret['msg'] = ("Certficate Error - TAXII Server does not "
-                              "recognize your certificate: %s" % e)
+                ret['failures'].append("Certficate Error - TAXII Server does not "
+                                       "recognize your certificate: %s" % e)
             else:
-                ret['msg'] = "TAXII Server Communication Error: %s" % e
+                ret['failures'].append("TAXII Server Communication Error: %s" % e)
             return ret
 
         taxii_msg = t.get_message_from_http_response(response,
@@ -249,7 +309,8 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         # If this is a TAXII 1.0 server, but TAXII 1.1 is selected, notify
         if (version == '1.1' and
             response.info().getheader('X-TAXII-Content-Type') == t.VID_TAXII_XML_10):
-            return {'msg': 'Error - TAXII 1.1 selected, but server is TAXII 1.0'}
+            ret['failures'].append('Error - TAXII 1.1 selected, but server is TAXII 1.0')
+            return ret
 
         if response.getcode() != 200 or taxii_msg.message_type == tm_.MSG_STATUS_MESSAGE:
             status = "%s: %s" % (taxii_msg.status_type, taxii_msg.message)
@@ -260,51 +321,56 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
             status = 'TAXII 1.1 ' + status + '<br><br>TAXII 1.0 '
             version = '1.0' # try '1.0'
         else:
-            return {'msg': status, 'status': False}
+            ret['failures'].append(status)
+            return ret
 
     valid = tm_.validate_xml(taxii_msg.to_xml())
     if valid != True:
-        ret['msg'] = "Invalid XML: %s" % valid
+        ret['failures'].append("Invalid XML: %s" % valid)
         return ret
 
     if taxii_msg.message_type != tm_.MSG_POLL_RESPONSE:
         msg = "No poll response. Unexpected message type: %s"
-        ret['msg'] = msg % taxii_msg.message_type
-        return ret
-
-    ret['status'] = True
-
-    if not taxii_msg.content_blocks and save_datetimes:
-        crits_taxii.save()
+        ret['failures'].append(msg % taxii_msg.message_type)
         return ret
 
     mid = taxii_msg.message_id
+    if not taxii_msg.content_blocks:
+        ret['taxii_msg_id'] = mid
+        if save_datetimes:
+            crits_taxii.save()
+        return ret
+
     for content_block in taxii_msg.content_blocks:
+        timestamp = content_block.timestamp_label
         data = parse_content_block(content_block, tm_, ekey, ecert)
-        if not data[0]:
-            ret['failures'].append((data[1],
-                                    'TAXII Content Block'))
-            continue
 
-        objs = import_standards_doc(data[0], analyst, method, ref=mid,
-                                    make_event=create_events, source=source)
+        errors = ["%s: %s" % ("Content Block", data[1])] if data[1] else []
 
-        if not objs['success']:
-            ret['failures'].append((objs['reason'],
-                                   'STIX Package'))
-        for k in objs['imported']:
-            ret['successes'] += 1
-            ret[objs['imported'][k][0]].append((objs['imported'][k][1],
-                                                objs['imported'][k][2]))
-        for k in objs['failed']:
-            ret['failures'].append(k)
+        save_standards_doc(data[0], analyst, mid, hostname, feed, timestamp,
+                           start, end, poll_time=runtime, errors=errors)
 
-    if ret['successes'] > 0 and save_datetimes:
+    if save_datetimes:
         crits_taxii.save()
+    ret = generate_import_preview(mid, analyst)
 
     return ret
 
 def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
+    """
+    Given a content_block, parse its data based on its content_binding.
+    Decrypt the content_block if it is encrypted as x-pkcs7-mime.
+
+    :param content_block: The TAXII content_block of data to be processed
+    :type content_block: :class:`libtaxii.messages_10.ContentBlock`
+    :param tm_: One of two possible libtaxii messages modules
+    :type tm_:  :module:`libtaxii.messages` or :module:`libtaxii.messages_11`
+    :param privkey: Path to a key file used for decryption of TAXII content
+    :type privkey: string
+    :param pubkey: Path to a certificate file used for decryption of TAXII content
+    :type pubkey: string
+    :returns: tuple: (parsed_data or None, error_message or None)
+    """
     binding = str(content_block.content_binding)
     if binding == 'application/x-pkcs7-mime':
         if not privkey or not pubkey:
@@ -323,7 +389,7 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
         new_block = f.read()
         f.close()
         return parse_content_block(tm_.ContentBlock.from_xml(new_block),
-                                   privkey, pubkey)
+                                   tm_, privkey, pubkey)
     elif binding == t.CB_STIX_XML_111:
         f = BytesIO(content_block.content)
         data = f.read()
@@ -332,6 +398,275 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
     else:
         msg = 'Unknown content binding "%s"' % binding
         return (None, msg)
+
+def save_standards_doc(data, analyst, message_id, hostname, feed,
+                       timestamp, begin, end, poll_time=None, errors=[]):
+    """
+    Take the given standards data and save it in the DB
+
+    :param data: Content being saved
+    :type data: string
+    :param analyst: Userid of the analyst who polled the data
+    :type analyst: string
+    :param message_id: ID of the TAXII message from which this content came
+    :type message_id: string
+    :param hostname: Hostname of the TAXII server from which this content came
+    :type hostname: string
+    :param feed: Feed/collection from which this data was polled
+    :type feed: string
+    :param timestamp: When the content was submitted to the TAXII server
+    :type timestamp: :class:`datetime.datetime`
+    :param begin: Exclusive begin component of the timerange that was polled
+    :type begin: :class:`datetime.datetime`
+    :param end: Inclusive end component of the timerange that was polled
+    :type end: :class:`datetime.datetime`
+    :param poll_time: Timestamp representing when this data was polled
+    :type poll_time: :class:`datetime.datetime`
+    :param errors: List of errors
+    :type errors: list
+    :returns: Nothing
+    """
+
+    if data or errors:
+        taxii_content = taxii.TaxiiContent()
+        taxii_content.taxii_msg_id = message_id
+        taxii_content.hostname = hostname
+        taxii_content.feed = feed
+        taxii_content.timestamp = timestamp
+        taxii_content.poll_time = poll_time or datetime.now()
+        begin = begin.strftime('%Y-%m-%d %H:%M:%S')
+        end = end.strftime('%Y-%m-%d %H:%M:%S')
+        taxii_content.timerange = '%s to %s' % (begin, end)
+        taxii_content.analyst = analyst
+        taxii_content.content = data or ""
+        taxii_content.errors = errors
+        taxii_content.import_failed = False
+        taxii_content.save()
+
+def generate_import_preview(taxii_msg_id, analyst):
+    """
+    Given a TAXII Message ID, parse all associated content blocks and
+    generate preview data for the CRITs TLOs that can be imported into CRITs
+
+    :param taxii_msg_id: ID of the desired TAXII message
+    :type taxii_msg_id: string
+    :param analyst: Userid of the analyst requesting the preview
+    :type analyst: string
+    :returns: dict with keys:
+              "successes" (int) - Count of successful preview objects
+              "failures" (list) - Failure messages
+              "blocks" (list) - Content blocks, their metadata, and preview objects
+              "start" (string) - Exclusive begin component of the timerange that was polled
+              "end" (string) - Inclusive end component of the timerange that was polled
+              "poll_time" (:class:`datetime.datetime`) - Datetime the feed was polled
+              "taxii_msg_id" (string) - TAXII Message ID of the poll
+              "host" (string) - Hostname of the TAXII server that was polled
+              "feed" (string) - Name of the TAXII feed/collection that was polled
+              "analyst" (string) - Userid of the anaylst that initiated the poll
+    """
+    tsvc = get_config('taxii_service')
+    create_events = tsvc['create_events']
+    blocks = taxii.TaxiiContent.objects(taxii_msg_id=taxii_msg_id)
+    if not blocks:
+        ret = {
+          'failures': ['No data exists for TAXII Message ID %s' % taxii_msg_id],
+          'msg': '',
+        }
+        return ret
+
+    times = blocks[0].timerange.split(' to ')
+    ret = {
+            'successes': 0,
+            'failures': [],
+            'blocks': [],
+            'start': times[0],
+            'end': times[1],
+            'poll_time': blocks[0].poll_time,
+            'taxii_msg_id': blocks[0].taxii_msg_id,
+            'host': blocks[0].hostname,
+            'feed': blocks[0].feed,
+            'analyst': blocks[0].analyst
+          }
+
+    for block in blocks:
+        tlos = {}
+        failures = []
+
+        for e in block.errors:
+            err = e.split(': ')
+            failures.append((err[1], err[0]))
+
+        if block.content:
+            objs = import_standards_doc(block.content, analyst, None, None,
+                                        create_events, preview_only=True)
+
+            if not objs['success']:
+                failures.append((objs['reason'], 'STIX Package'))
+
+            for k in objs['failed']:
+                failures.append(k)
+
+            for sid in objs['imported']:
+                ret['successes'] += 1
+                tlo_meta = objs['imported'][sid]
+                tlos.setdefault(tlo_meta[0], []).append((tlo_meta[1],
+                                                         tlo_meta[2]))
+
+        ret['blocks'].append({'id': block.id,
+                              'timestamp': block.timestamp,
+                              'tlos': tlos,
+                              'failures': failures})
+
+    return ret
+
+def get_saved_polls(action, msg_id=None):
+    """
+    If action is 'list', get metadata for all saved TAXII polls. If action
+    is 'delete' and a TAXII message ID is provided, delete all content
+    related to that poll before returning the remaining poll metadata.
+
+    :param action: If 'list', return metadata.
+                   If 'delete', delete a set of data, then return metadata
+    :type action: string
+    :param msg_id: ID of the TAXII message for which content should be deleted
+    :type msg_id: string
+    :returns: dict with keys:
+              "unimported" (dict) - Polls that have not yet been imported
+              "errored" (dict) - Polls that errored during import
+              "success" (bool) - True if poll data was successfully retrieved
+    """
+    if action == 'delete':
+        taxii.TaxiiContent.objects(taxii_msg_id=msg_id).delete()
+    elif action != 'list':
+        return {'success': False, 'msg': 'Invalid action type'}
+
+    content = taxii.TaxiiContent.objects()
+    polls = {}
+    ret = {'unimported': {}, 'errored': {}}
+    for block in content:
+        time = str(block.poll_time)
+        if time not in polls:
+            polls[time] = {'msg_id': block.taxii_msg_id,
+                           'host': block.hostname,
+                           'feed': block.feed,
+                           'timerange': block.timerange,
+                           'analyst': block.analyst,
+                           'count': 1,
+                           'errors': block.errors,
+                           'import_failed': block.import_failed}
+        else:
+            polls[time]['count'] += 1
+            polls[time]['errors'].extend(block.errors)
+            if block.import_failed:
+                polls[time]['import_failed'] = True
+
+    for poll in polls:
+        if polls[poll]['import_failed']:
+            ret['errored'][poll] = polls[poll]
+        else:
+            ret['unimported'][poll] = polls[poll]
+    ret['success'] = True
+    return ret
+
+def import_content_blocks(block_ids, action, analyst):
+    """
+    Given a list of Mongo ObjectIDs, parse and import the associated
+    content blocks. User can select whether to delete or keep
+    unimported blocks from the same poll via the 'action' key. An action
+    of "import_delete" directs the parser to delete unimported content
+    from the same poll, while any other value for 'action' keeps the
+    unimported content.
+
+    :param block_ids: Mongo ObjectIDs of the blocks to import
+    :type block_ids: list
+    :param action: If 'import_delete', delete unimported content
+    :type action: string
+    :param analyst: Userid of the analyst requesting the import
+    :type analyst: string
+    :returns: dict with keys:
+              "successes" (int) - Count of successfully imported objects
+              "failures" (list) - Individual failure messages
+              "status" (bool) - True if import was generally successful
+              "msg" (string) - General error messages
+              "Certificate" (list) - IDs and values of imported Certificates
+              "Domain" (list) - IDs and values of imported Domains
+                ...and so on for each TLO type
+    """
+    ret = {
+            'successes': 0,
+            'failures': [],
+            'status': False,
+            'msg': ''
+          }
+    tlos = {
+            'Certificate': [],
+            'Domain': [],
+            'Email': [],
+            'Event': [],
+            'Indicator': [],
+            'IP': [],
+            'PCAP': [],
+            'RawData': [],
+            'Sample': [],
+           }
+
+    if not block_ids:
+        return {'status': False, 'msg': 'No content was selected for import'}
+
+    method = "TAXII Import"
+    blocks = taxii.TaxiiContent.objects(id__in=block_ids)
+
+    tsvc = get_config('taxii_service')
+    create_events = tsvc['create_events']
+    tsrvs = tsvc.taxii_servers
+    msg_ids = {}
+
+    for block in blocks:
+        reference = block.taxii_msg_id
+        timestamp = block.timestamp
+        data = block.content
+
+        for svr in tsrvs:
+            if tsrvs[svr].get('hostname') == block.hostname:
+                for feed in tsrvs[svr]['feeds']:
+                    if tsrvs[svr]['feeds'][feed]['feedname'] == block.feed:
+                        source = tsrvs[svr]['feeds'][feed]['source']
+
+        objs = import_standards_doc(data, analyst, method, ref=reference,
+                                    make_event=create_events, source=source)
+
+        if not objs['success']:
+            ret['failures'].append((objs['reason'],
+                                   'STIX Package'))
+            block.import_failed = True
+            block.errors.append('STIX Package: %s' % objs['reason'])
+
+        for sid in objs['imported']:
+            ret['successes'] += 1
+            tlo_meta = objs['imported'][sid]
+            tlos.setdefault(tlo_meta[0], []).append((tlo_meta[1],
+                                                     tlo_meta[2]))
+
+        for k in objs['failed']:
+            ret['failures'].append(k)
+            block.import_failed = True
+            block.errors.append('%s: %s' % (k[1], k[0]))
+
+        if block.import_failed:
+            block.save()
+        else:
+            block.delete()
+
+        msg_ids[block.taxii_msg_id] = 1 # save unique TAXII message IDs
+
+    if action == "import_delete":
+        taxii.TaxiiContent.objects(taxii_msg_id__in=msg_ids.keys(), errors=[]).delete()
+
+    ret.update(tlos) # add the TLO lists to the return dict
+
+    ret['status'] = True
+
+    return ret
 
 def to_cybox_observable(obj, exclude=None, bin_fmt="raw"):
     """
@@ -727,7 +1062,7 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
 
     return stix_msg
 
- run_taxii_service(analyst, obj, rcpts, preview,
+def run_taxii_service(analyst, obj, rcpts, preview,
                       relation_choices=[], confirmed=False):
     """
     :param analyst The analyst triggering this TAXII service call
@@ -790,7 +1125,7 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
         proxy = settings.HTTP_PROXY
         if not proxy.startswith('http://'):
             proxy = 'http://' + proxy
-        client.setProxy(proxy)
+        client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
 
     # The minimum required info has been provided by user via the TAXII form.
     # Form configuration and validation ensures the form is valid.
@@ -1281,7 +1616,7 @@ def update_taxii_service_config(post_data, analyst):
     return status
 
 def import_standards_doc(data, analyst, method, ref=None, make_event=False,
-                         source=None):
+                         source=None, preview_only=False):
     """
     Import a standards document into CRITs.
 
@@ -1298,6 +1633,8 @@ def import_standards_doc(data, analyst, method, ref=None, make_event=False,
     :type make_event: bool
     :param source: The name of the source who provided this document.
     :type source: str
+    :param preview_only: If True, nothing is imported and a preview is returned
+    :type preview_only: boolean
     :returns: dict with keys:
               "success" (boolean),
               "reason" (str),
@@ -1313,7 +1650,7 @@ def import_standards_doc(data, analyst, method, ref=None, make_event=False,
           }
 
     try:
-        parser = STIXParser(data, analyst, method)
+        parser = STIXParser(data, analyst, method, preview_only)
         parser.parse_stix(reference=ref, make_event=make_event, source=source)
         parser.relate_objects()
     except STIXParserException, e:

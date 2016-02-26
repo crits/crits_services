@@ -17,7 +17,14 @@ from . import forms
 logger = logging.getLogger(__name__)
 
 @user_passes_test(user_can_view_data)
-def taxii_agent(request):
+def taxii_poll(request):
+    """
+    Poll TAXII Feed(s). Should be a GET or an AJAX POST.
+
+    :param request: Django request object (Required)
+    :type request: :class:`django.http.HttpRequest`
+    :returns: :class:`django.http.HttpResponse`
+    """
     analyst = request.user.username
     form = forms.TAXIIPollForm(analyst, request.POST or None)
     if form.is_valid():
@@ -34,14 +41,13 @@ def taxii_agent(request):
                                     mimetype="application/json")
         try:
             result = handlers.poll_taxii_feeds(feeds, analyst,
-                                               method="TAXII Agent Web",
                                                begin=begin, end=end)
 
             if 'all_fail' in result and result['all_fail']:
                 data = {'success': False, 'msg': result['msg']}
             else:
                 data = {'success': True}
-                data['html'] = render_to_string("taxii_agent_results.html",
+                data['html'] = render_to_string("taxii_agent_preview.html",
                                                 {'result' : result})
         except Exception as e:
             data = {'success': False, 'msg': str(type(e)) + str(e)}
@@ -59,6 +65,72 @@ def taxii_agent(request):
     return render_to_response('taxii_agent_form.html',
                               {'form': form, 'errors': form.errors},
                               RequestContext(request))
+
+@user_passes_test(user_can_view_data)
+def list_saved_polls(request):
+    """
+    Get data for all saved TAXII polls. If is a POST and a TAXII message
+    ID is provided, delete all content related to that poll before
+    returning the list of polls. Should be an AJAX POST.
+
+    :param request: Django request object (Required)
+    :type request: :class:`django.http.HttpRequest`
+    :returns: :class:`django.http.HttpResponse`
+    """
+    if request.POST and request.body:
+        polls = handlers.get_saved_polls('delete', request.body)
+    else:
+        polls = handlers.get_saved_polls('list')
+
+    data = {'success': polls['success'], 'msg': polls.get('msg')}
+    data['html'] = render_to_string("taxii_saved_polls.html",
+                                    {'polls' : polls})
+    return HttpResponse(json.dumps(data), mimetype="application/json")
+
+@user_passes_test(user_can_view_data)
+def get_import_preview(request, taxii_msg_id):
+    """
+    Given a particular TAXII poll, get a preview of the content that is
+    available for import from that poll's data. Should be an AJAX GET.
+
+    :param request: Django request object (Required)
+    :type request: :class:`django.http.HttpRequest`
+    :param taxii_msg_id: The message ID of the desired TAXII poll
+    :param taxii_msg_id: string
+    :returns: :class:`django.http.HttpResponse`
+    """
+    analyst = request.user.username
+    content = handlers.generate_import_preview(taxii_msg_id, analyst)
+    content = {'polls': [content]}
+    data = {'success': True}
+    data['html'] = render_to_string("taxii_agent_preview.html",
+                                    {'result' : content})
+    return HttpResponse(json.dumps(data), mimetype="application/json")
+
+@user_passes_test(user_can_view_data)
+def import_taxii_data(request):
+    """
+    Given a list of Mongo objectIDs, parse and import the associated
+    content blocks. User can select whether to delete or keep
+    unimported blocks from the same poll via the 'action' key. An action
+    of "import_delete" directs the parser to delete unimported content
+    from the same poll, while any other value for 'action' keeps the
+    unimported content. Should be an AJAX POST.
+
+    :param request: Django request object (Required)
+    :type request: :class:`django.http.HttpRequest`
+    :returns: :class:`django.http.HttpResponse`
+    """
+    analyst = request.user.username
+    post_data = json.loads(request.body)
+    ids = post_data.get('ids')
+    action = post_data.get('action')
+    result = handlers.import_content_blocks(ids, action, analyst)
+
+    data = {'success': result['status'], 'msg': result['msg']}
+    data['html'] = render_to_string("taxii_agent_results.html",
+                                    {'result' : result})
+    return HttpResponse(json.dumps(data), mimetype="application/json")
 
 @user_passes_test(user_can_view_data)
 def get_taxii_config_form(request, crits_type, crits_id):
@@ -244,7 +316,7 @@ def upload_standards(request):
                                   {'response': json.dumps(response)},
                                   RequestContext(request))
 
-    data = ''
+    data = u''
     for chunk in request.FILES['filedata']:
         data += chunk
 
