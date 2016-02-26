@@ -11,7 +11,7 @@
             {% else %}
                 <a href="{% url 'crits.core.views.details' 'Sample' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
             {% endif %}
-        {% else %}
+        {% elif no_import  %}
             <span class="ui-icon ui-icon-alert" title="Not enough data to import" style="display:inline-block; float: right";></span>
         {% endif %}
         <button class="import" name="import" style="float: right;" data-id="{{data.id}}" data-type="{{type}}">Import</button>
