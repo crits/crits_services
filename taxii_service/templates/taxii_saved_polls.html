@@ -45,12 +45,12 @@
             <tbody>
                 {% for time, meta in upolls.items %}
                 <tr>
-                    <td>{{ time }}</td>
-                    <td><a class="msgid" href="#" id="{{ meta.msg_id }}">{{ meta.msg_id }}</a></td>
+                    <td><a class="pollid" href="#" id="{{ meta.poll_id }}">{{ time }}</a></td>
+                    <td>{{ meta.msg_id }}</td>
                     <td>{{ meta.count }}</td><td>{{ meta.host }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
                     <td>{{ meta.analyst }}</td>
-                    <td><a class='delete_poll' href="#" id="{{ meta.msg_id }}">Delete</a></td>
+                    <td><a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -89,12 +89,12 @@
             <tbody>
                 {% for time, meta in epolls.items %}
                 <tr>
-                    <td>{{ time }}</td>
-                    <td><a class="msgid" href="#" id="{{ meta.msg_id }}">{{ meta.msg_id }}</a></td>
+                    <td><a class="pollid" href="#" id="{{ meta.poll_id }}">{{ time }}</a></td>
+                    <td>{{ meta.msg_id }}</td>
                     <td>{{ meta.count }}</td><td>{{ meta.host }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
                     <td>{{ meta.analyst }}</td>
-                    <td><a class='delete_poll' href="#" id="{{ meta.msg_id }}">Delete</a></td>
+                    <td><a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -105,13 +105,13 @@
 {% endblock %}
 
 <script>
-    $('a.msgid').click(function() {
+    $('a.pollid').click(function() {
 		$("#current_state").text("Processing...");
 		$("#taxii-loader").show();
-        var mid = $(this).text();
+        var pid = $(this).attr('id');
 		$.ajax({
 			type: "GET",
-			url: "{% url 'taxii_service.views.get_import_preview' '1234' %}".replace(/1234/, mid),
+			url: "{% url 'taxii_service.views.get_import_preview' '1234' %}".replace(/1234/, pid),
 		}).done(function(data) { // run on successful request
 			if (data.success) { // at least some feeds were successfully processed
 				$("#results_container").html(data.html);

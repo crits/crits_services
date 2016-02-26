@@ -352,7 +352,8 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
 
     if save_datetimes:
         crits_taxii.save()
-    ret = generate_import_preview(mid, analyst)
+    poll_id = (runtime.replace(tzinfo=None)-datetime(1970,1,1)).total_seconds()
+    ret = generate_import_preview(poll_id, analyst)
 
     return ret
 
@@ -443,13 +444,13 @@ def save_standards_doc(data, analyst, message_id, hostname, feed,
         taxii_content.import_failed = False
         taxii_content.save()
 
-def generate_import_preview(taxii_msg_id, analyst):
+def generate_import_preview(poll_id, analyst):
     """
-    Given a TAXII Message ID, parse all associated content blocks and
+    Given a Poll ID (unix timestamp), parse all associated content blocks and
     generate preview data for the CRITs TLOs that can be imported into CRITs
 
-    :param taxii_msg_id: ID of the desired TAXII message
-    :type taxii_msg_id: string
+    :param poll_id: ID of the desired TAXII poll (unix timestamp)
+    :type poll_id: string
     :param analyst: Userid of the analyst requesting the preview
     :type analyst: string
     :returns: dict with keys:
@@ -466,10 +467,11 @@ def generate_import_preview(taxii_msg_id, analyst):
     """
     tsvc = get_config('taxii_service')
     create_events = tsvc['create_events']
-    blocks = taxii.TaxiiContent.objects(taxii_msg_id=taxii_msg_id)
+    p_time = datetime.utcfromtimestamp(float(poll_id))
+    blocks = taxii.TaxiiContent.objects(poll_time=p_time)
     if not blocks:
         ret = {
-          'failures': ['No data exists for TAXII Message ID %s' % taxii_msg_id],
+          'failures': ['No data exists for Timestamp %s' % p_time],
           'msg': '',
         }
         return ret
@@ -519,24 +521,25 @@ def generate_import_preview(taxii_msg_id, analyst):
 
     return ret
 
-def get_saved_polls(action, msg_id=None):
+def get_saved_polls(action, poll_id=None):
     """
     If action is 'list', get metadata for all saved TAXII polls. If action
-    is 'delete' and a TAXII message ID is provided, delete all content
+    is 'delete' and a Poll ID is provided, delete all content
     related to that poll before returning the remaining poll metadata.
 
     :param action: If 'list', return metadata.
                    If 'delete', delete a set of data, then return metadata
     :type action: string
-    :param msg_id: ID of the TAXII message for which content should be deleted
-    :type msg_id: string
+    :param poll_id: ID of the poll for which content should be deleted
+    :type poll_id: string
     :returns: dict with keys:
               "unimported" (dict) - Polls that have not yet been imported
               "errored" (dict) - Polls that errored during import
               "success" (bool) - True if poll data was successfully retrieved
     """
     if action == 'delete':
-        taxii.TaxiiContent.objects(taxii_msg_id=msg_id).delete()
+        p_time = datetime.utcfromtimestamp(float(poll_id))
+        taxii.TaxiiContent.objects(poll_time=p_time).delete()
     elif action != 'list':
         return {'success': False, 'msg': 'Invalid action type'}
 
@@ -545,8 +548,10 @@ def get_saved_polls(action, msg_id=None):
     ret = {'unimported': {}, 'errored': {}}
     for block in content:
         time = str(block.poll_time)
+        poll_id = '%.3f' % (block.poll_time-datetime(1970,1,1)).total_seconds()
         if time not in polls:
-            polls[time] = {'msg_id': block.taxii_msg_id,
+            polls[time] = {'poll_id': poll_id,
+                           'msg_id': block.taxii_msg_id,
                            'host': block.hostname,
                            'feed': block.feed,
                            'timerange': block.timerange,
@@ -619,7 +624,7 @@ def import_content_blocks(block_ids, action, analyst):
     tsvc = get_config('taxii_service')
     create_events = tsvc['create_events']
     tsrvs = tsvc.taxii_servers
-    msg_ids = {}
+    pids = {}
 
     for block in blocks:
         reference = block.taxii_msg_id
@@ -657,10 +662,10 @@ def import_content_blocks(block_ids, action, analyst):
         else:
             block.delete()
 
-        msg_ids[block.taxii_msg_id] = 1 # save unique TAXII message IDs
+        pids[block.poll_time] = 1 # save unique poll timestamps
 
     if action == "import_delete":
-        taxii.TaxiiContent.objects(taxii_msg_id__in=msg_ids.keys(), errors=[]).delete()
+        taxii.TaxiiContent.objects(poll_time__in=pids.keys(), errors=[]).delete()
 
     ret.update(tlos) # add the TLO lists to the return dict
 
