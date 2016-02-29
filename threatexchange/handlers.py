@@ -6,6 +6,7 @@ from urlparse import (
 
 from pytx import (
     access_token,
+    connection,
     Broker,
     Malware,
     ThreatDescriptor,
@@ -43,7 +44,11 @@ from crits.vocabulary.indicators import (
 
 def setup_access():
     sc = get_config('ThreatExchange')
-    access_token.access_token(app_id=sc['app_id'], app_secret=sc['app_secret'])
+    access_token.access_token(app_id=sc['app_id'],
+                              app_secret=sc['app_secret'])
+    connection(headers=sc['headers'],
+               proxies=sc['proxies'],
+               verify=sc['verify'])
     return
 
 def submit_query(request, url, type_, params=None):

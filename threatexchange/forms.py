@@ -13,6 +13,20 @@ class ThreatExchangeConfigForm(forms.Form):
                              initial='',
                              widget=forms.PasswordInput(),
                              help_text="Facebook ThreatExchange App Secret.")
+    headers = forms.CharField(required=False,
+                              label="Headers",
+                              initial='',
+                              widget=forms.TextInput(),
+                              help_text="Custom headers for requests.")
+    proxies = forms.CharField(required=False,
+                              label="Proxies",
+                              initial='',
+                              widget=forms.TextInput(),
+                              help_text="Custom proxies for requests.")
+    verify = forms.BooleanField(required=False,
+                                label="Verify",
+                                initial=False,
+                                help_text="Verify requests.")
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('label_suffix', ':')
