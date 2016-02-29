@@ -78,9 +78,11 @@ def export_object(request):
     if request.method == "POST" and request.is_ajax():
         params = dict(request.POST.copy().dict())
         type_ = params.get('tlo_type', None)
+        id_ = params.get('oid', None)
         if type_:
             del params['tlo_type']
-        results = handlers.export_object(request, type_, params)
+            del params['oid']
+        results = handlers.export_object(request, type_, id_, params)
         return HttpResponse(json.dumps(results),
                             content_type="application/json")
     else:

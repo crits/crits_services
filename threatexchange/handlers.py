@@ -25,12 +25,15 @@ from pytx.vocabulary import (
     Status,
     ThreatDescriptor as td,
     ThreatPrivacyGroup as tpg,
+    ThreatType,
+    Types
 )
 
 from django.template.loader import render_to_string
 from django.template import RequestContext
 
 from crits.config.config import CRITsConfig
+from crits.core.handlers import add_releasability, add_releasability_instance
 from crits.indicators.handlers import handle_indicator_ind
 from crits.indicators.indicator import Indicator
 from crits.samples.handlers import handle_file
@@ -194,37 +197,26 @@ def get_groups():
     return {'success': True,
             'html': html}
 
+def get_class_attribute_values(klass):
+    result = []
+    for k,v in klass.__dict__.iteritems():
+        if not k.startswith('__') and not k.endswith('__'):
+            result.append(v)
+    return sorted(result)
+
 def get_dropdowns():
     result = {}
-    result['precision'] = [Precision.UNKNOWN,
-                           Precision.LOW,
-                           Precision.MEDIUM,
-                           Precision.HIGH]
-    result['privacy_type'] = [PrivacyType.HAS_PRIVACY_GROUP,
-                              PrivacyType.HAS_WHITELIST,
-                              PrivacyType.VISIBLE]
-    result['review_status'] = [ReviewStatus.UNKNOWN,
-                               ReviewStatus.UNREVIEWED,
-                               ReviewStatus.PENDING,
-                               ReviewStatus.REVIEWED_MANUALLY,
-                               ReviewStatus.REVIEWED_AUTOMATICALLY]
-    result['severity'] = [Severity.UNKNOWN,
-                          Severity.INFO,
-                          Severity.WARNING,
-                          Severity.SUSPICIOUS,
-                          Severity.SEVERE,
-                          Severity.APOCALYPSE]
-    result['share_level'] = [ShareLevel.WHITE,
-                             ShareLevel.GREEN,
-                             ShareLevel.AMBER,
-                             ShareLevel.RED]
-    result['status'] = [Status.MALICIOUS,
-                        Status.NON_MALICIOUS,
-                        Status.SUSPICIOUS,
-                        Status.UNKNOWN]
+    result['precision'] = get_class_attribute_values(Precision)
+    result['privacy_type'] = get_class_attribute_values(PrivacyType)
+    result['review_status'] = get_class_attribute_values(ReviewStatus)
+    result['severity'] = get_class_attribute_values(Severity)
+    result['share_level'] = get_class_attribute_values(ShareLevel)
+    result['status'] = get_class_attribute_values(Status)
+    result['threat_type'] = get_class_attribute_values(ThreatType)
+    result['types'] = get_class_attribute_values(Types)
     return result
 
-def export_object(request, type_, params):
+def export_object(request, type_, id_, params):
     setup_access()
     if type_ == "Indicator":
         klass = ThreatDescriptor
@@ -235,6 +227,9 @@ def export_object(request, type_, params):
                 'message': "Invalid Type"}
     try:
         result = klass.new(params=params)
+        add_releasability(type_, id_, "ThreatExchange", request.user.username)
+        add_releasability_instance(type_, id_, "ThreatExchange",
+                                   request.user.username)
         return {'success': True,
                 'results': result}
     except pytxFetchError, e:
@@ -259,8 +254,9 @@ def import_object(request, type_, id_):
             None,
             request.user.username,
             method="ThreatExchange Service",
-            reference="id: %s, owner: %s" % (obj.get(td.ID),
-                                             obj.get(td.OWNER)['name']),
+            reference="id: %s, owner: %s, share_level: %s" % (obj.get(td.ID),
+                                                              obj.get(td.OWNER)['name'],
+                                                              obj.get(td.SHARE_LEVEL)),
             add_domain=True,
             add_relationship=True,
             confidence=build_ci(obj.get(td.CONFIDENCE)),
@@ -283,7 +279,8 @@ def import_object(request, type_, id_):
             data,
             "ThreatExchange",
             method="ThreatExchange Service",
-            reference="id: %s" % obj.get(m.ID),
+            reference="id: %s, share_level: %s" % (obj.get(td.ID),
+                                                   obj.get(td.SHARE_LEVEL)),
             user=request.user.username,
             md5_digest = obj.get(m.MD5),
             sha1_digest = obj.get(m.SHA1),
