@@ -408,7 +408,7 @@ function get_results(data) {
                 $('#next_url').val(data.next_url);
                 toggle_loader();
              } else {
-                $('#results').append(data.message);
+                $('#results').append('<tr><td>' + data.message + '</td></tr>');
                 toggle_loader();
              }
          }

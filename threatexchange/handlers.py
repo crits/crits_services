@@ -46,8 +46,26 @@ def setup_access():
     sc = get_config('ThreatExchange')
     access_token.access_token(app_id=sc['app_id'],
                               app_secret=sc['app_secret'])
-    connection(headers=sc['headers'],
-               proxies=sc['proxies'],
+    headers = None
+    if len(sc['headers']) > 0:
+        hlist = sc['headers'].split(',')
+        headers = {}
+        for h in hlist:
+            tmp = h.split(':')
+            if len(tmp) == 2:
+                headers[tmp[0].strip()] = tmp[1].strip()
+    proxies = None
+    if len(sc['proxies']) > 0:
+        plist = sc['proxies'].split(',')
+        proxies = {}
+        for p in plist:
+            p.strip()
+            if 'https' in p:
+                proxies['https'] = p
+            else:
+                proxies['http'] = p
+    connection(headers=headers,
+               proxies=proxies,
                verify=sc['verify'])
     return
 
