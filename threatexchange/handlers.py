@@ -30,6 +30,7 @@ from pytx.vocabulary import (
 from django.template.loader import render_to_string
 from django.template import RequestContext
 
+from crits.config.config import CRITsConfig
 from crits.indicators.handlers import handle_indicator_ind
 from crits.indicators.indicator import Indicator
 from crits.samples.handlers import handle_file
@@ -44,6 +45,7 @@ from crits.vocabulary.indicators import (
 
 def setup_access():
     sc = get_config('ThreatExchange')
+    config = CRITsConfig.objects().first()
     access_token.access_token(app_id=sc['app_id'],
                               app_secret=sc['app_secret'])
     headers = None
@@ -54,16 +56,8 @@ def setup_access():
             tmp = h.split(':')
             if len(tmp) == 2:
                 headers[tmp[0].strip()] = tmp[1].strip()
-    proxies = None
-    if len(sc['proxies']) > 0:
-        plist = sc['proxies'].split(',')
-        proxies = {}
-        for p in plist:
-            p.strip()
-            if 'https' in p:
-                proxies['https'] = p
-            else:
-                proxies['http'] = p
+    proxies = {'http': config.http_proxy,
+               'https': config.http_proxy}
     connection(headers=headers,
                proxies=proxies,
                verify=sc['verify'])
