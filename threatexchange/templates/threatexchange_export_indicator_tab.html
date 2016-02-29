@@ -11,6 +11,12 @@
         overflow-y: auto;
         float: right;
     }
+    #tx_type_warn {
+        display: inline-block;
+    }
+    #tx_threat_type_warn {
+        display: inline-block;
+    }
 </style>
 <div id="threatexchange_export" width="50%">
     <div class='threatexchange_members content_box content_details'>
@@ -53,15 +59,19 @@
                         Type
                     </td>
                     <td>
-                        <input type="text" id="tx_type" name="tx_type" size=25 value="{{indicator.ind_type.split|join:"_"|upper}}" />
+                        <select id="tx_type" name="tx_type">
+                        </select>
+                        <span id="tx_type_warn" class="ui-icon ui-icon-alert"
+                            title="Indicator type was not a valid Type for ThreatExchange"></span>
                     </td>
                 </tr>
                 <tr id="threat_type_row">
                     <td>
                         Threat Type
-                    </td>
                     <td>
-                        <input type="text" id="tx_threat_type" name="tx_threat_type" size=25 value="{{indicator.threat_type.split|join:"_"|upper}}" />
+                        <select id="tx_threat_type" name="tx_threat_type">
+                        </select>
+                        <span id="tx_threat_type_warn" class="ui-icon ui-icon-alert" title="Indicator threat type was not a valid Threat Type for ThreatExchange"></span> </td>
                     </td>
                 </tr>
                 <tr id="description_row">
@@ -165,6 +175,10 @@ $(document).ready(function() {
             var severity = data.severity;
             var share_level = data.share_level;
             var status = data.status;
+            var threat_type = data.threat_type;
+            var types = data.types;
+            var t = "{{ indicator.ind_type }}".toUpperCase().replace(' ', '_');
+            var tt = "{{ indicator.threat_type }}".toUpperCase().replace(' ', '_');
             for (var i=0; i < precision.length; i++) {
                 $('#tx_precision').append($('<option>', {
                     value: precision[i],
@@ -201,6 +215,30 @@ $(document).ready(function() {
                     text : status[i]
                 }));
             }
+            for (var i=0; i < threat_type.length; i++) {
+                $('#tx_threat_type').append($('<option>', {
+                    value: threat_type[i],
+                    text : threat_type[i]
+                }));
+            }
+            if ($("#tx_threat_type option[value='" + tt + "']").length > 0) {
+                $("#tx_threat_type option[value='" + tt + "']").prop('selected', true);
+                $("#tx_threat_type_warn").hide();
+            } else {
+                $("#tx_export_submit").prop('disabled', true);
+            }
+            for (var i=0; i < types.length; i++) {
+                $('#tx_type').append($('<option>', {
+                    value: types[i],
+                    text : types[i]
+                }));
+            }
+            if ($("#tx_type option[value='" + t + "']").length > 0) {
+                $("#tx_type option[value='" + t + "']").prop('selected', true);
+                $("#tx_type_warn").hide();
+            } else {
+                $("#tx_export_submit").prop('disabled', true);
+            }
         }
     });
     $.ajax({
@@ -221,6 +259,10 @@ $(document).ready(function() {
             }
         }
     });
+    $(document).on('change', '#tx_type, #tx_threat_type', function(e) {
+        $("#tx_export_submit").prop('disabled', false);
+
+    });
     $(document).on('click', '.add_privacy_member', function(e) {
          var id = $(this).data('id');
          $('#tx_privacy_members').val($('#tx_privacy_members').val() + id + ',');
@@ -229,6 +271,7 @@ $(document).ready(function() {
         var res = $('#tx_export_results');
         data = {
              tlo_type: "Indicator",
+             oid: "{{ indicator.id }}",
              indicator: $('#tx_indicator').val(),
              type: $('#tx_type').val(),
              threat_type: $('#tx_threat_type').val(),
