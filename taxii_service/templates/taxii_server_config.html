@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Configure a TAXII Server{% endblock %}
+
+{% block content %}
+
+
+<style type="text/css">
+    #taxii-config {
+        width: 600px;
+        text-align: right;
+    }
+    #taxii-config-table textarea {
+        width: 97%;
+    }
+    #taxii-config-table th, td {
+        font-size: 10pt;
+    }
+    #taxii-config-table td {
+        font-weight: normal;
+    }
+    #taxii-config-results {
+        font-family: "Courier New", Courier, monospace;
+    }
+    #config-submit-btn{
+        width: 125px;
+        height: 30px;
+        margin: 5px 0 0 0;
+        font-weight: bold;
+        font-size: 12pt;
+    }
+</style>
+
+<a href='{% url "crits.services.views.edit_config" "taxii_service" %}'>Back to TAXII Service Configuration</a>
+
+<h2>TAXII Server Configuration</h2>
+{% if error %}
+    <p><font color="red">{{ error|safe }}</font></p>
+{% endif %}
+    <section id="server_config_container" class="taxii-container">
+        <form id="form-taxii-config" action='{% url "taxii_service.views.configure_taxii" %}' method='POST'>
+        {% csrf_token %}
+            <table id="taxii-config-table" class="form">
+                {{ form }}
+            </table>
+        <input type="submit" value="Submit" name="config-submit-btn" />
+        </form>
+
+    </section>
+
+    <section id="feed_config_container" class="taxii-container" style="display: none;">
+        <form id="form-feed-config" action='{% url "taxii_service.views.configure_taxii" %}' method='POST'>
+        {% csrf_token %}
+            <table id="taxii-feed-table" class="form">
+                {{ form2.as_table }}
+            </table>
+        <input type="button" value="Submit" name="feed-submit-btn" id="feed-submit-btn" />
+        <input type="button" value="Cancel" name="feed-cancel-btn" id="feed-cancel-btn" />
+        </form>
+    </section>
+
+	    <br/>
+	    <div id="error_box" class="taxii_notice"></div>
+	    <br/>
+
+
+<script>
+$('#add').click(function() {
+    $("#error_box").html('');
+	if ($("#server_config_container").is(":visible")) {
+            $("#form-feed-config")[0].reset();
+            $('#id_fid').val('')
+		    $("#server_config_container").slideToggle();
+            $("#feed_config_container").slideToggle();
+	}});
+$('#edit').click(function() {
+    $("#error_box").html('');
+    if ($('#id_cur_sname').val()) {
+        var data = {'edit_feed': $('#id_feeds').val(), 'srv_name': $('#id_cur_sname').val()};
+    }
+    else {var data = {'edit_feed': $('#id_feeds').val(), 'srv_name': $('#id_servername').val()};}
+    var url = '/services/taxii_service/configure/';
+    $.ajax({async: false, type: 'POST', url: url, data: data, datatype: 'json',
+            success: function(data) {
+                if (data.success) {
+                    $('#id_feedname').val(data.feedname);
+                    $('#id_fid').val(data.fid);
+                    $('#id_source').val(data.source);
+                    $('#id_fcert').val(data.fcert);
+                    $('#id_fkey').val(data.fkey);
+                    $('#id_subID').val(data.subID);
+                    $('#id_last_poll').val(data.last_poll);
+                }
+                else {$('#error_box').text('Failed to edit feed.');}}});
+	if ($("#server_config_container").is(":visible")) {
+		    $("#server_config_container").slideToggle();
+            $("#feed_config_container").slideToggle();
+	}});
+$('#remove').click(function() {
+    if ($('#id_cur_sname').val()) {
+        var data = {'remove_feed': $('#id_feeds').val(), 'srv_name': $('#id_cur_sname').val()};
+    }
+    else {var data = {'remove_feed': $('#id_feeds').val(), 'srv_name': $('#id_servername').val()};}
+    var url = '/services/taxii_service/configure/';
+    $.ajax({async: false, type: 'POST', url: url, data: data, datatype: 'json',
+            success: function(data) {
+                if (data.success) {$('#id_feeds').html(data.html);}
+                else {$('#error_box').text('Failed to remove feed.');}}});});
+$('#feed-submit-btn').click(function() {
+    $("#error_box").html('');
+    $('#id_srv_name').val($('#id_cur_sname').val());
+    if (!$('#id_srv_name').val()) {
+        $('#id_srv_name').val($('#id_servername').val());
+    }
+    var data = $('#form-feed-config').serialize();
+    var url = '/services/taxii_service/configure/';
+    $.ajax({async: false, type: 'POST', url: url, data: data, datatype: 'json',
+            success: function(data) {
+                        if (data.success) {
+                               $('#id_feeds').html(data.html);
+                               if ($("#feed_config_container").is(":visible")) {
+			                       $("#server_config_container").slideToggle();
+                                   $("#feed_config_container").slideToggle();
+			                   }
+                        }
+                        else {
+                            $("#error_box").html(data.error);
+                        }
+           }});});
+$('#feed-cancel-btn').click(function() {
+			if ($("#feed_config_container").is(":visible")) {
+				    $("#server_config_container").slideToggle();
+                    $("#error_box").html('');
+                    $("#feed_config_container").slideToggle();
+			}});
+</script>
+
+{% endblock %}

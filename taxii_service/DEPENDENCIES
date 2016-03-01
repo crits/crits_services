@@ -1,6 +1,8 @@
 The TAXII service requires:
 
 - M2Crypto
-- libtaxii-1.1.102 and its dependencies
+- libtaxii-1.1.105 and its dependencies
 - cybox==2.1.0.11
 - stix==1.1.1.5
+- stix-ramrod==1.1.0
+- lxml>=2.3
