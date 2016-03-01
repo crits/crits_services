@@ -1,9 +1,11 @@
 import logging
 import json
 
+from django.http import HttpResponseRedirect
 from django.template import RequestContext
 from django.template.loader import render_to_string
 from django.shortcuts import render_to_response, HttpResponse
+from django.core.urlresolvers import reverse
 from django.contrib.auth.decorators import user_passes_test
 
 from crits.core.class_mapper import class_from_id
@@ -15,24 +17,135 @@ from . import forms
 logger = logging.getLogger(__name__)
 
 @user_passes_test(user_can_view_data)
-def taxii_agent(request):
+def taxii_poll(request):
+    """
+    Poll TAXII Feed(s). Should be a GET or an AJAX POST.
 
-    # Use service configuration from DB.
-    result = handlers.execute_taxii_agent(analyst=request.user.username, method="TAXII Agent Web")
+    :param request: Django request object (Required)
+    :type request: :class:`django.http.HttpRequest`
+    :returns: :class:`django.http.HttpResponse`
+    """
+    analyst = request.user.username
+    form = forms.TAXIIPollForm(analyst, request.POST or None)
+    if form.is_valid():
+        # Use service configuration from DB.
+        feeds = [feed.split(' - ') for feed in form.cleaned_data['feeds']]
+        begin = end = None
+        if not form.cleaned_data['use_last']:
+            begin = form.cleaned_data['begin']
+            end = form.cleaned_data['end']
+            if not begin:
+                data = {'success': False,
+                        'msg': 'Exclusive Begin Timestamp is required'}
+                return HttpResponse(json.dumps(data),
+                                    mimetype="application/json")
+        try:
+            result = handlers.poll_taxii_feeds(feeds, analyst,
+                                               begin=begin, end=end)
 
-    return render_to_response('taxii_agent_results.html', {'result': result}, RequestContext(request))
+            if 'all_fail' in result and result['all_fail']:
+                data = {'success': False, 'msg': result['msg']}
+            else:
+                data = {'success': True}
+                data['html'] = render_to_string("taxii_agent_preview.html",
+                                                {'result' : result})
+        except Exception as e:
+            data = {'success': False, 'msg': str(type(e)) + str(e)}
+
+        return HttpResponse(json.dumps(data), mimetype="application/json")
+
+    if request.is_ajax():
+        msg = "<b>Form Validation Error</b><br>"
+        for fld in form.errors:
+            msg += "%s: %s<br>" % (form[fld].label,
+                                   form.errors[fld].as_text())
+        data = {'success': False, 'msg': msg}
+        return HttpResponse(json.dumps(data), mimetype="application/json")
+
+    return render_to_response('taxii_agent_form.html',
+                              {'form': form, 'errors': form.errors},
+                              RequestContext(request))
+
+@user_passes_test(user_can_view_data)
+def list_saved_polls(request):
+    """
+    Get data for all saved TAXII polls. If is a POST and a TAXII message
+    ID is provided, delete all content related to that poll before
+    returning the list of polls. Should be an AJAX POST.
+
+    :param request: Django request object (Required)
+    :type request: :class:`django.http.HttpRequest`
+    :returns: :class:`django.http.HttpResponse`
+    """
+    if request.POST and request.body:
+        polls = handlers.get_saved_polls('delete', request.body)
+    else:
+        polls = handlers.get_saved_polls('list')
+
+    data = {'success': polls['success'], 'msg': polls.get('msg')}
+    data['html'] = render_to_string("taxii_saved_polls.html",
+                                    {'polls' : polls})
+    return HttpResponse(json.dumps(data), mimetype="application/json")
+
+@user_passes_test(user_can_view_data)
+def get_import_preview(request, taxii_msg_id):
+    """
+    Given a particular TAXII poll, get a preview of the content that is
+    available for import from that poll's data. Should be an AJAX GET.
+
+    :param request: Django request object (Required)
+    :type request: :class:`django.http.HttpRequest`
+    :param taxii_msg_id: The message ID of the desired TAXII poll
+    :param taxii_msg_id: string
+    :returns: :class:`django.http.HttpResponse`
+    """
+    analyst = request.user.username
+    content = handlers.generate_import_preview(taxii_msg_id, analyst)
+    content = {'polls': [content]}
+    data = {'success': True}
+    data['html'] = render_to_string("taxii_agent_preview.html",
+                                    {'result' : content})
+    return HttpResponse(json.dumps(data), mimetype="application/json")
+
+@user_passes_test(user_can_view_data)
+def import_taxii_data(request):
+    """
+    Given a list of Mongo objectIDs, parse and import the associated
+    content blocks. User can select whether to delete or keep
+    unimported blocks from the same poll via the 'action' key. An action
+    of "import_delete" directs the parser to delete unimported content
+    from the same poll, while any other value for 'action' keeps the
+    unimported content. Should be an AJAX POST.
+
+    :param request: Django request object (Required)
+    :type request: :class:`django.http.HttpRequest`
+    :returns: :class:`django.http.HttpResponse`
+    """
+    analyst = request.user.username
+    post_data = json.loads(request.body)
+    ids = post_data.get('ids')
+    action = post_data.get('action')
+    result = handlers.import_content_blocks(ids, action, analyst)
+
+    data = {'success': result['status'], 'msg': result['msg']}
+    data['html'] = render_to_string("taxii_agent_results.html",
+                                    {'result' : result})
+    return HttpResponse(json.dumps(data), mimetype="application/json")
 
 @user_passes_test(user_can_view_data)
 def get_taxii_config_form(request, crits_type, crits_id):
     if request.method == "GET":
         obj = class_from_id(crits_type, crits_id)
         if not obj:
-            ret = {'success': False, 'reason': "Could not locate object in the database."}
+            ret = {'success': False,
+                   'reason': "Could not locate object in the database."}
             return HttpResponse(json.dumps(ret), content_type="application/json")
 
-        tform = forms.TAXIIForm(request.user.username, obj)
-        taxii_form = {'form' : render_to_string("_taxii_form_template.html", {'form' : tform})}
-        return HttpResponse(json.dumps(taxii_form), content_type="application/json")
+        tform = forms.TAXIISendForm(request.user.username, obj)
+        taxii_form = {'form' : render_to_string("_taxii_form_template.html",
+                                                {'form' : tform})}
+        return HttpResponse(json.dumps(taxii_form),
+                            mimetype="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
@@ -48,11 +161,11 @@ def preview_taxii_service(request, crits_type, crits_id):
     :param crits_type The type of the crits object that will be converted
     :param crits_id The ID of the crits object that will be converted
     """
-    if request.method == "GET":
+    if request.method == "POST":
         return get_taxii_result(request, crits_type, crits_id, True)
     else:
         return render_to_response('error.html',
-                                  {'error': "Must be GET request."},
+                                  {'error': "Must be POST request."},
                                   RequestContext(request))
 
 @user_passes_test(user_can_view_data)
@@ -65,12 +178,16 @@ def execute_taxii_service(request, crits_type, crits_id):
     :param crits_type The type of the crits object that will be converted
     :param crits_id The ID of the crits object that will be converted
     """
-    if request.method == "POST" and request.is_ajax():
-        return get_taxii_result(request, crits_type, crits_id, False)
-    else:
-        return render_to_response('error.html',
-                                  {'error': "Must be AJAX."},
-                                  RequestContext(request))
+    try:
+        if request.method == "POST" and request.is_ajax():
+	        return get_taxii_result(request, crits_type, crits_id, False)
+        else:
+	        return render_to_response('error.html',
+	                              {'error': "Must be AJAX."},
+	                              RequestContext(request))
+    except Exception as e:
+        data = {'success': False, 'reason': str(type(e)) + str(e)}
+        return HttpResponse(json.dumps(data), mimetype="application/json")
 
 def get_taxii_result(request, crits_type, crits_id, preview):
     """
@@ -81,31 +198,94 @@ def get_taxii_result(request, crits_type, crits_id, preview):
     :param request The request object
     :param crits_type The type of the crits object that will be converted
     :param crits_id The ID of the crits object that will be converted
-    :param preview Boolean flag indicating if this is a preview generation or message send req
+    :param preview Boolean indicates if preview generation or message send req
     """
     obj = class_from_id(crits_type, crits_id)
     if not obj:
-        ret = {'success': False, 'reason': "Could not locate object in the database."}
+        ret = {'success': False,
+               'reason': "Could not locate object in the database."}
         return HttpResponse(json.dumps(ret), content_type="application/json")
 
     # did user accept responsibility for potential releasability updates?
     confirm_rel = True if "updates_confirmed" in request.POST else False
 
-    form = forms.TAXIIForm(request.user.username, obj, request.GET if preview else request.POST)
-    if form.is_valid(): # is_valid seems to ensure that multiselect data was all in original form
+    form = forms.TAXIISendForm(request.user.username, obj, request.POST)
+    if form.is_valid(): # ensures multiselect data was all in original form
         rcpts = form.cleaned_data.get('rcpts', [])
         relation_choices = form.get_chosen_relations()
 
-        data = handlers.run_taxii_service(request.user.username, obj, rcpts, preview, relation_choices, confirm_rel)
-        if preview and data and 'preview' in data: # if doing preview and data available, download as file
-            resp = HttpResponse(data['preview'], content_type="application/xml")
-            resp['Content-Disposition'] = 'attachment; filename="STIX_preview.xml"'
+        data = handlers.run_taxii_service(request.user.username, obj, rcpts,
+                                          preview, relation_choices, confirm_rel)
+
+        # if doing preview and data available, download as file
+        if preview and data and 'preview' in data:
+            resp = HttpResponse(data['preview'],
+                                content_type="application/xml")
+            c_disp = 'attachment; filename="STIX_preview.xml"'
+            resp['Content-Disposition'] = c_disp
             return resp
         else: # else show success/error message that has been generated
             return HttpResponse(json.dumps(data), content_type="application/json")
     else: # form doesn't validate
-        data = {'success': False, 'reason': "Invalid options provided. Please fix and try again."}
+        data = {'success': False,
+                'reason': "Invalid options provided. Please fix and try again."}
         return HttpResponse(json.dumps(data), content_type="application/json")
+
+@user_passes_test(user_can_view_data)
+def configure_taxii(request, server=None):
+    analyst = request.user.username
+    srvr_form = forms.TAXIIServerConfigForm([(x,'') for x in range(100)],
+                                            request.POST or None)
+    feed_form = forms.TAXIIFeedConfigForm(request.POST or None)
+    if request.method == "POST" and request.is_ajax():
+        if ('remove_server' in request.POST or
+            'remove_feed' in request.POST or
+            'edit_feed' in request.POST):
+            results = handlers.update_taxii_server_config(request.POST,
+                                                          analyst)
+        elif 'namespace' in request.POST:
+            results = handlers.update_taxii_service_config(request.POST,
+                                                           analyst)
+        elif feed_form.is_valid():
+            results = handlers.update_taxii_server_config(feed_form.cleaned_data,
+                                                          analyst)
+        else:
+            msg = "<b>Form Validation Error</b><br>"
+            for fld in feed_form.errors:
+                msg += "%s: %s<br>" % (feed_form[fld].label,
+                                       feed_form.errors[fld].as_text())
+            results = {'success': False, 'error': msg}
+
+        if 'service' in results:
+            del results['service']
+        return HttpResponse(json.dumps(results), mimetype="application/json")
+
+    if srvr_form.is_valid(): # server form passed django validation
+        result = handlers.update_taxii_server_config(srvr_form.cleaned_data,
+                                                     analyst)
+        if result['success']:
+            return HttpResponseRedirect(reverse('crits.services.views.detail',
+                                                kwargs={'name':'taxii_service'}))
+        srvr_form = handlers.add_feed_config_buttons(srvr_form)
+        return render_to_response('taxii_server_config.html',
+                                  {'form': srvr_form, 'results': result,
+                                   'error': result['error']},
+                                  RequestContext(request))
+    elif request.method == "POST": # django form validation error occurred
+        srvr_form = handlers.add_feed_config_buttons(srvr_form)
+        return render_to_response('taxii_server_config.html',
+                          {'form': srvr_form},
+                          RequestContext(request))
+
+    result = handlers.get_taxii_server_config(server)
+    if result['success']:
+        return render_to_response('taxii_server_config.html',
+                          {'form': result['html'],
+                           'form2': feed_form,
+                           'errors': result['form'].errors},
+                          RequestContext(request))
+    else:
+        return HttpResponseRedirect(reverse('taxii_service.views.configure_taxii'))
 
 @user_passes_test(user_can_view_data)
 def upload_standards(request):
@@ -136,7 +316,7 @@ def upload_standards(request):
                                   {'response': json.dumps(response)},
                                   RequestContext(request))
 
-    data = ''
+    data = u''
     for chunk in request.FILES['filedata']:
         data += chunk
 
@@ -147,7 +327,7 @@ def upload_standards(request):
 
 
     # XXX: Add reference to form and handle here?
-    status = handlers.import_standards_doc(data, request.user.username, "Upload",
+    status = handlers.import_standards_doc(data, request.user.username, "STIX Upload",
                                  ref=reference, make_event=make_event, source=source)
 
     if not status['success']:

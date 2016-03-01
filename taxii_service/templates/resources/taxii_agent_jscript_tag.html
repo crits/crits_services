@@ -1,0 +1,112 @@
+<script>
+        $(document).ready(function() {
+
+		// cache jQuery references to containers
+		var current_state = $("#current_state");
+		var view_saved = $("#view_saved");
+		var form_ctr = $("#taxii_config_container");
+		var result_ctr = $("#results_container");
+		var error_ctr = $("#error_container");
+		show_hide_timestamps();
+
+	    $("#taxii_submit").click(function() {
+			$("#taxii-loader").show();
+			if ($("#taxii_config_container").is(":visible")) {
+				$("#taxii_config_container").slideToggle();
+			}
+	    	execute_taxii_service();
+		});
+		$("#view_saved").click(function() {
+			$("#taxii-loader").show();
+			if ($("#taxii_config_container").is(":visible")) {
+				$("#taxii_config_container").slideToggle();
+			}
+			show_saved_poll_list();
+		});
+		$(".back_to_cfg ").click(function() {
+			show_container("Poll for TAXII Messages", form_ctr);
+		});
+
+		function show_hide_timestamps() {
+			if ($("#id_use_last").is(":checked")) {
+				if ($("#timestamp_container").is(":visible")) {
+					$("#timestamp_container").slideToggle();
+				}
+			}
+			else {
+				if ($("#timestamp_container").is(":hidden")) {
+					$("#timestamp_container").slideToggle();
+				}
+			}
+		}
+
+		$('#id_use_last').click(show_hide_timestamps);
+
+		/*
+		* Show only the specified container.
+		* Update the page header to the given title.
+		*/
+		function show_container(title, ctr) {
+			current_state.text(title);
+			form_ctr[ctr == form_ctr ? "show" : "hide"]();
+			result_ctr[ctr == result_ctr ? "show" : "hide"]();
+			error_ctr[ctr == error_ctr ? "show" : "hide"]();
+			$(".content").scrollTop(0);
+		}
+
+	    /*
+	     * Send configuration data to server in attempt to send a TAXII message.
+	     */
+	    function execute_taxii_service() {
+			view_saved.prop('hidden', true);
+			current_state.text("Processing...");
+			$("#taxii-loader").show();
+			var form_data = $('#taxii_config_form').serialize();
+			$.ajax({
+				type: "POST",
+				url: "{% url 'taxii_service.views.taxii_poll' %}",
+				data: form_data,
+				dataType: "json"
+			}).done(function(data) { // run on successful request
+				if (data.success) { // at least some feeds were successfully processed
+					$("#results_container").html(data.html);
+					show_container("TAXII Import Preview", result_ctr);
+					view_saved.prop('hidden', false);
+				} else { // some issue occurred
+					error_ctr.children(".taxii_notice").html(data.msg);
+					show_container("Problems", error_ctr);
+				}
+			}).fail(function(data) { // server error
+				error_ctr.children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+				show_container("Problems", error_ctr);
+			}).always(function() {
+				$("#taxii-loader").hide();
+			});
+		}
+
+
+		function show_saved_poll_list() {
+			view_saved.prop('hidden', true);
+			current_state.text("Building List...");
+			$("#taxii-loader").show();
+			$.ajax({
+				type: "GET",
+				url: "{% url 'taxii_service.views.list_saved_polls' %}",
+			}).done(function(data) { // run on successful request
+				if (data.success) { // at least some feeds were successfully processed
+					$("#results_container").html(data.html);
+					show_container("Saved TAXII Polls", result_ctr);
+					view_saved.prop('hidden', true);
+				} else { // some issue occurred
+					error_ctr.children(".taxii_notice").html(data.msg);
+					show_container("Problems", error_ctr);
+				}
+			}).fail(function(data) { // server error
+				error_ctr.children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+				show_container("Problems", error_ctr);
+			}).always(function() {
+				$("#taxii-loader").hide();
+			});
+	    }
+	});
+</script>
