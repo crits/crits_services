@@ -169,23 +169,38 @@ class STIXParser():
             event_type = EventTypes.INTEL_SHARING
             date = datetime.datetime.now()
             description = str(date)
-            header = self.package.stix_header
-            if isinstance(header, STIXHeader):
-                if header.title:
-                    title = header.title
-                if header.package_intents:
-                    try:
-                        stix_type = str(header.package_intents[0])
-                        event_type = get_crits_event_type(stix_type)
-                    except:
-                        pass
-                if header.description:
-                    description = header.description
+            if self.package.incidents:
+                incdnt = self.package.incidents[0]
+                title = incdnt.title
+                if incdnt.description:
+                    description = incdnt.description
                     if isinstance(description, StructuredText):
                         try:
                             description = description.to_dict()
                         except:
                             pass
+                if incdnt.short_description in EventTypes.values():
+                    event_type = incdnt.short_description
+                elif incdnt.categories and incdnt.categories[0].value:
+                    event_type = get_crits_event_type(incdnt.categories[0].value)
+            else: #package contains no incidents
+                header = self.package.stix_header
+                if isinstance(header, STIXHeader):
+                    if header.title:
+                        title = header.title
+                    if header.package_intents:
+                        try:
+                            stix_type = str(header.package_intents[0])
+                            event_type = get_crits_event_type(stix_type)
+                        except:
+                            pass
+                    if header.description:
+                        description = header.description
+                        if isinstance(description, StructuredText):
+                            try:
+                                description = description.to_dict()
+                            except:
+                                pass
             if self.preview:
                 self.imported[self.package.id_] = ('Event',
                                                    None,
