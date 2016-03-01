@@ -1,0 +1,5 @@
+The ThreatExchange service provides an interface which allows you to
+send/receive information through Facebook's ThreatExchange.
+
+You will need to contact Facebook to sign up for ThreatExchange and acquire the
+necessary information to configure this service.

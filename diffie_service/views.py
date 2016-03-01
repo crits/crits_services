@@ -35,7 +35,7 @@ def diffie_results(request, type_, id_):
                     data['second'] = second_html
             else:
                 data = {'success': False, 'message': "Invalid form data"}
-        return HttpResponse(json.dumps(data), mimetype="application/json")
+        return HttpResponse(json.dumps(data), content_type="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
@@ -53,7 +53,7 @@ def get_diffie_config_form(request, type_, id_):
             results['form'] = render_to_string('diffie_service_form.html',
                                                {'form': results['form']},
                                                RequestContext(request))
-        return HttpResponse(json.dumps(results), mimetype="application/json")
+        return HttpResponse(json.dumps(results), content_type="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},

@@ -1,0 +1,530 @@
+{% extends "base.html" %}
+
+
+{% block title %}ThreatExchange Query{% endblock %}
+
+{% block content %}
+
+<style>
+    .share_level { min-height: 50px; min-width: 5px; max-width: 5px; }
+    .tlp_WHITE { background-color: white; }
+    .tlp_GREEN { background-color: #9FF781; }
+    .tlp_AMBER { background-color: #F3F781; }
+    .tlp_RED { background-color: #F78181; }
+    .query_builder {
+        display: inline-block;
+    }
+    .query_results {
+        font-size: "80%";
+    }
+    .query_results tr td {
+        vertical-align: top;
+        border-bottom: 1pt solid #ddd;
+        word-break: break-all;
+        overflow-wrap: break-word;
+    }
+    .query_results tr td td {
+        border: none;
+    }
+    #results_div {
+        max-height: 500px;
+        overflow-y: auto;
+        word-break: break-all;
+        overflow-wrap: break-word;
+    }
+    #escapingBallG{
+        position:relative;
+        width:38px;
+        height:13px;
+        margin:auto;
+        padding-top: -3px;
+    }
+
+    .escapingBallG{
+        background-color:rgba(41,133,204,0.72);
+        position:absolute;
+        top:3px;
+        left:0;
+        width:13px;
+        height:13px;
+        border-radius:7px;
+            -o-border-radius:7px;
+            -ms-border-radius:7px;
+            -webkit-border-radius:7px;
+            -moz-border-radius:7px;
+        animation-name:bounce_escapingBallG;
+            -o-animation-name:bounce_escapingBallG;
+            -ms-animation-name:bounce_escapingBallG;
+            -webkit-animation-name:bounce_escapingBallG;
+            -moz-animation-name:bounce_escapingBallG;
+        animation-duration:1.5s;
+            -o-animation-duration:1.5s;
+            -ms-animation-duration:1.5s;
+            -webkit-animation-duration:1.5s;
+            -moz-animation-duration:1.5s;
+        animation-iteration-count:infinite;
+            -o-animation-iteration-count:infinite;
+            -ms-animation-iteration-count:infinite;
+            -webkit-animation-iteration-count:infinite;
+            -moz-animation-iteration-count:infinite;
+        animation-timing-function:linear;
+            -o-animation-timing-function:linear;
+            -ms-animation-timing-function:linear;
+            -webkit-animation-timing-function:linear;
+            -moz-animation-timing-function:linear;
+        animation-delay:0s;
+            -o-animation-delay:0s;
+            -ms-animation-delay:0s;
+            -webkit-animation-delay:0s;
+            -moz-animation-delay:0s;
+        transform:scale(0.5, 1);
+            -o-transform:scale(0.5, 1);
+            -ms-transform:scale(0.5, 1);
+            -webkit-transform:scale(0.5, 1);
+            -moz-transform:scale(0.5, 1);
+    }
+
+
+
+    @keyframes bounce_escapingBallG{
+        0%{
+            left:0px;
+            transform:scale(0.5, 1);
+        }
+
+        25%{
+            left:13px;
+            transform:scale(1, 0.5);
+        }
+
+        50%{
+            left:32px;
+            transform:scale(0.5, 1);
+        }
+
+        75%{
+            left:13px;
+            transform:scale(1, 0.5);
+        }
+
+        100%{
+            left:0px;
+            transform:scale(0.5, 1);
+        }
+    }
+
+    @-o-keyframes bounce_escapingBallG{
+        0%{
+            left:0px;
+            -o-transform:scale(0.5, 1);
+        }
+
+        25%{
+            left:13px;
+            -o-transform:scale(1, 0.5);
+        }
+
+        50%{
+            left:32px;
+            -o-transform:scale(0.5, 1);
+        }
+
+        75%{
+            left:13px;
+            -o-transform:scale(1, 0.5);
+        }
+
+        100%{
+            left:0px;
+            -o-transform:scale(0.5, 1);
+        }
+    }
+
+    @-ms-keyframes bounce_escapingBallG{
+        0%{
+            left:0px;
+            -ms-transform:scale(0.5, 1);
+        }
+
+        25%{
+            left:13px;
+            -ms-transform:scale(1, 0.5);
+        }
+
+        50%{
+            left:32px;
+            -ms-transform:scale(0.5, 1);
+        }
+
+        75%{
+            left:13px;
+            -ms-transform:scale(1, 0.5);
+        }
+
+        100%{
+            left:0px;
+            -ms-transform:scale(0.5, 1);
+        }
+    }
+
+    @-webkit-keyframes bounce_escapingBallG{
+        0%{
+            left:0px;
+            -webkit-transform:scale(0.5, 1);
+        }
+
+        25%{
+            left:13px;
+            -webkit-transform:scale(1, 0.5);
+        }
+
+        50%{
+            left:32px;
+            -webkit-transform:scale(0.5, 1);
+        }
+
+        75%{
+            left:13px;
+            -webkit-transform:scale(1, 0.5);
+        }
+
+        100%{
+            left:0px;
+            -webkit-transform:scale(0.5, 1);
+        }
+    }
+
+    @-moz-keyframes bounce_escapingBallG{
+        0%{
+            left:0px;
+            -moz-transform:scale(0.5, 1);
+        }
+
+        25%{
+            left:13px;
+            -moz-transform:scale(1, 0.5);
+        }
+
+        50%{
+            left:32px;
+            -moz-transform:scale(0.5, 1);
+        }
+
+        75%{
+            left:13px;
+            -moz-transform:scale(1, 0.5);
+        }
+
+        100%{
+            left:0px;
+            -moz-transform:scale(0.5, 1);
+        }
+    }
+</style>
+
+<p>
+Query Facebook's ThreatExchange for information. Scroll down results to acquire
+more results if there are any. Documentation can be found <a href="https://developers.facebook.com/docs/threat-exchange/" target="new">here</a>.
+</p>
+<div class="content_box">
+    <h3 class="titleheader">
+        <span id="qb" class="collapsible">Query Builder:</span>
+        <span style="float: right;" class="ui-icon ui-icon-triangle-1-s collapsible"></span>
+    </h3>
+    <div class="content_body">
+        <table class="query_builder">
+            <tr id="type_row">
+                <td>
+                    Type
+                </td>
+                <td>
+                    <select id="type" name="type">
+                        <option>Threat Descriptors</option>
+                        <option>Malware Analyses</option>
+                    </select>
+                </td>
+            </tr>
+            <tr id="text_row">
+                <td>
+                    Text
+                </td>
+                <td>
+                    <input type="text" id="text" name="text" size=25 placeholder="foo" />
+                </td>
+            </tr>
+            <tr id="strict_row">
+                <td>
+                    Strict
+                </td>
+                <td>
+                    <input type="checkbox" id="strict" name="strict" />
+                </td>
+            </tr>
+            <tr id="threat_type_row">
+                <td>
+                    Threat Type
+                </td>
+                <td>
+                    <select id="threat_type" name="threat_type">
+                    </select>
+                </td>
+            </tr>
+            <tr id="sample_type_row">
+                <td>
+                    Sample Type
+                </td>
+                <td>
+                    <select id="sample_type" name="sample_type">
+                    </select>
+                </td>
+            </tr>
+            <tr id="limit_row">
+                <td>
+                    Limit
+                </td>
+                <td>
+                    <input type="text" id="limit" name="limit" size=5 placeholder="25">
+                </td>
+            </tr>
+            <tr id="since_row">
+                <td>
+                    Since
+                </td>
+                <td>
+                    <input type="text" id="since" name="since" size=25 placeholder="foo">
+                </td>
+            </tr>
+            <tr id="until_row">
+                <td>
+                    Until
+                </td>
+                <td>
+                    <input type="text" id="until" name="until" size=25 placeholder="foo">
+                </td>
+            </tr>
+        </table>
+        <table class="query_builder">
+            <tr id="include_expired_row">
+                <td>
+                    Include Expired
+                </td>
+                <td>
+                    <input type="checkbox" id="include_expired" name="include_expired" />
+                </td>
+            </tr>
+            <tr id="max_confidence_row">
+                <td>
+                    Max Confidence
+                </td>
+                <td>
+                    <input type="text" id="max_confidence" name="max_confidence" size=3 placeholder="100">
+                </td>
+            </tr>
+            <tr id="min_confidence_row">
+                <td>
+                    Min Confidence
+                </td>
+                <td>
+                    <input type="text" id="min_confidence" name="min_confidence" size=3 placeholder="0">
+                </td>
+            </tr>
+            <tr id="owner_row">
+                <td>
+                    Owner ID
+                </td>
+                <td>
+                    <input type="text" id="owner" name="owner" size=25 placeholder="foo">
+                </td>
+            </tr>
+            <tr id="status_row">
+                <td>
+                    Status
+                </td>
+                <td>
+                    <input type="text" id="text" name="text" size=25 placeholder="foo">
+                </td>
+            </tr>
+            <tr id="review_status_row">
+                <td>
+                    Review Status
+                </td>
+                <td>
+                    <input type="text" id="review_status" name="review_status" size=25 placeholder="foo">
+                </td>
+            </tr>
+            <tr id="share_level_row">
+                <td>
+                    Share Level
+                </td>
+                <td>
+                    <input type="text" id="share_level" name="share_level" size=25 placeholder="foo">
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <button id="submit" name="submit" type="submit">Submit</button>
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+<div class="content_box">
+    <h3 class="titleheader">
+        <span class="collapsible">Results:</span>
+        <span id="escapingBallG" style="display: none;">
+            <span id="escapingBall_1" class="escapingBallG"></span>
+        </span>
+        <span style="float: right;" class="ui-icon ui-icon-triangle-1-s collapsible"></span>
+    </h3>
+    <div class="content_body">
+        <div id="results_div">
+            <table class="query_results">
+                <colgroup>
+                    <col width="5px">
+                    <col width="90%">
+                    <col width="50px">
+                </colgroup>
+                <tbody id="results">
+                </tbody>
+            </table>
+            <input type="hidden" id="next_url" value="">
+        </div>
+    </div>
+</div>
+
+<script>
+function toggle_loader() {
+    $('#escapingBallG').toggle();
+}
+
+function get_results(data) {
+    $.ajax({
+         type: "POST",
+         url: "{% url 'threatexchange.views.submit_query' %}",
+         data: data,
+         success: function(data) {
+             if (data.html) {
+                $('#results').append(data.html);
+                $('#next_url').val(data.next_url);
+                toggle_loader();
+             } else {
+                $('#results').append('<tr><td>' + data.message + '</td></tr>');
+                toggle_loader();
+             }
+         }
+    });
+}
+
+$(document).ready(function() {
+    var sorted = []
+    $.ajax({
+         type: "POST",
+         url: "{% url 'threatexchange.views.get_threat_types' %}",
+         success: function(data) {
+            $.each(data, function (i, item) {
+                sorted.push(item);
+            });
+            $('#threat_type').append($('<option>', {
+                value: '',
+                text : ''
+            }));
+            sorted.sort();
+            var len = sorted.length;
+            for (var i=0; i < len; i++) {
+                $('#threat_type').append($('<option>', {
+                    value: sorted[i],
+                    text : sorted[i]
+                }));
+            }
+         }
+    });
+    sorted = [];
+    $.ajax({
+         type: "POST",
+         url: "{% url 'threatexchange.views.get_sample_types' %}",
+         success: function(data) {
+            $.each(data, function (i, item) {
+                sorted.push(item);
+            });
+            $('#sample_type').append($('<option>', {
+                value: '',
+                text : ''
+            }));
+            sorted.sort();
+            var len = sorted.length;
+            for (var i=0; i < len; i++) {
+                $('#sample_type').append($('<option>', {
+                    value: sorted[i],
+                    text : sorted[i]
+                }));
+            }
+         }
+    });
+    $(document).on('click', '#submit', function(e) {
+        toggle_loader();
+        $('#qb').click();
+        $('#results').html('');
+        $('#next_url').val('');
+        data = {
+             type: $('#type').val(),
+             text: $('#text').val(),
+             strict_text: $('#strict_text').prop('checked'),
+             threat_type: $('#threat_type').val(),
+             sample_type: $('#sample_type').val(),
+             limit: $('#limit').val(),
+             since: $('#since').val(),
+             until: $('#until').val(),
+             include_expired: $('#include_expired').prop('checked'),
+             max_confidence: $('#max_confidence').val(),
+             min_confidence: $('#min_confidence').val(),
+             owner: $('#owner').val(),
+             status: $('#status').val(),
+             review_status: $('#review_status').val(),
+             share_level: $('#share_level').val()
+        }
+        get_results(data);
+    });
+    $(document).on('click', '.import', function(e) {
+        var me = $(this);
+        var res = me.next().find('span');
+        var type_ = me.data('type');
+        data = {
+             type: type_,
+             id: me.data('id')
+        }
+        $.ajax({
+             type: "POST",
+             url: "{% url 'threatexchange.views.import_object' %}",
+             data: data,
+             success: function(data) {
+                 if (data.success) {
+                     res.addClass("ui-icon").addClass("ui-icon-check");
+                     if (type_ == "Threat Descriptors") {
+                         var url_mask = "{% url 'crits.indicators.views.indicator' '12345' %}".replace(/12345/, data.objectid);
+                     } else {
+                         var url_mask = "{% url 'crits.samples.views.detail' '12345' %}".replace(/12345/, data.md5);
+                     }
+                     $(res).parent().attr("href", url_mask);
+                 } else {
+                     res.addClass("ui-icon").addClass("ui-icon-cross").attr("title", data.message);
+                 }
+             }
+        });
+    });
+    $('#results_div').on('scroll', function(e) {
+        if ($(this)[0].scrollHeight - $(this).scrollTop() === $(this).outerHeight()) {
+            var next_url = $('#next_url').val();
+            if (typeof(next_url !== 'undefined') && next_url.length > 0) {
+                toggle_loader();
+                data = {
+                     type: $('#type').val(),
+                     url: $('#next_url').val()
+                }
+                get_results(data);
+            }
+        }
+    })
+});
+</script>
+
+{% endblock %}
