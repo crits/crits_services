@@ -24,7 +24,7 @@ def get_pcap_pdml(request, pcap_md5):
             data = {'html': result['html'], 'object_html': object_html}
         else:
             data = {'html': result['html']}
-        return HttpResponse(json.dumps(data), mimetype="application/json")
+        return HttpResponse(json.dumps(data), content_type="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
@@ -40,7 +40,7 @@ def get_pcap_tcpdump(request, pcap_md5):
                                                   request.user.username)}
         else:
             data = {'html': "Invalid form data"}
-        return HttpResponse(json.dumps(data), mimetype="application/json")
+        return HttpResponse(json.dumps(data), content_type="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
@@ -50,7 +50,7 @@ def get_pcap_tcpdump(request, pcap_md5):
 def get_tcpdump_config_form(request):
     if request.method == "GET" and request.is_ajax():
         tcp_form = {'form': forms.TCPDumpForm().as_table()}
-        return HttpResponse(json.dumps(tcp_form), mimetype="application/json")
+        return HttpResponse(json.dumps(tcp_form), content_type="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},

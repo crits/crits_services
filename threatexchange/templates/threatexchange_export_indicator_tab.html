@@ -1,0 +1,304 @@
+<style>
+    .threatexchange_members {
+        max-width: 250px;
+        max-height: 300px;
+        overflow-y: auto;
+        float: right;
+    }
+    .threatexchange_groups {
+        max-width: 250px;
+        max-height: 300px;
+        overflow-y: auto;
+        float: right;
+    }
+    #tx_type_warn {
+        display: inline-block;
+    }
+    #tx_threat_type_warn {
+        display: inline-block;
+    }
+</style>
+<div id="threatexchange_export" width="50%">
+    <div class='threatexchange_members content_box content_details'>
+        <h3 class="titleheader">
+            <span>Members</span>
+        </h3>
+        <div id="member_content">
+        </div>
+    </div>
+    <div class='threatexchange_groups content_box content_details'>
+        <h3 class="titleheader">
+            <span>Groups</span>
+        </h3>
+        <div id="group_content">
+        </div>
+    </div>
+
+    <div class='content_box content_details' style="width: 50%;">
+        <h3 class="titleheader" width="50%">
+            <span>Share this indicator via ThreatExchange</span>
+        </h3>
+        <div>
+            <p>
+            Remember to properly set your Privacy Type, Privacy Members, and
+            Share Level! Hit the "+" in the areas to the right to automatically
+            add that group/member to the Privacy Members list. Documentation can
+            be found <a href="https://developers.facebook.com/docs/threat-exchange/" target="new">here</a>.
+            </p>
+            <table class="export_builder">
+                <tr id="indicator_row">
+                    <td>
+                        Indicator
+                    </td>
+                    <td>
+                        <input type="text" id="tx_indicator" name="tx_indicator" size=25 value="{{indicator.value}}" />
+                    </td>
+                </tr>
+                <tr id="type_row">
+                    <td>
+                        Type
+                    </td>
+                    <td>
+                        <select id="tx_type" name="tx_type">
+                        </select>
+                        <span id="tx_type_warn" class="ui-icon ui-icon-alert"
+                            title="Indicator type was not a valid Type for ThreatExchange"></span>
+                    </td>
+                </tr>
+                <tr id="threat_type_row">
+                    <td>
+                        Threat Type
+                    <td>
+                        <select id="tx_threat_type" name="tx_threat_type">
+                        </select>
+                        <span id="tx_threat_type_warn" class="ui-icon ui-icon-alert" title="Indicator threat type was not a valid Threat Type for ThreatExchange"></span> </td>
+                    </td>
+                </tr>
+                <tr id="description_row">
+                    <td>
+                        Description
+                    </td>
+                    <td>
+                        <input type="text" id="tx_description" name="tx_description" size=25 value="{{indicator.description}}">
+                    </td>
+                </tr>
+                <tr id="status_row">
+                    <td>
+                        Status
+                    </td>
+                    <td>
+                        <select id="tx_status" name="tx_status">
+                        </select>
+                    </td>
+                </tr>
+                <tr id="confidence_row">
+                    <td>
+                        Confidence
+                    </td>
+                    <td>
+                        <input type="text" id="tx_confidence" name="tx_confidence" size=5 placeholder="25">
+                    </td>
+                </tr>
+                <tr id="severity_row">
+                    <td>
+                        Severity
+                    </td>
+                    <td>
+                        <select id="tx_severity" name="tx_severity">
+                        </select>
+                    </td>
+                </tr>
+                <tr id="review_status_row">
+                    <td>
+                        Review Status
+                    </td>
+                    <td>
+                        <select id="tx_review_status" name="tx_review_status">
+                        </select>
+                    </td>
+                </tr>
+                <tr id="precision_row">
+                    <td>
+                        Precision
+                    </td>
+                    <td>
+                        <select id="tx_precision" name="tx_precision">
+                        </select>
+                    </td>
+                </tr>
+                <tr id="privacy_type_row">
+                    <td>
+                        Privacy Type
+                    </td>
+                    <td>
+                        <select id="tx_privacy_type" name="tx_privacy_type">
+                        </select>
+                    </td>
+                </tr>
+                <tr id="privacy_members_row">
+                    <td>
+                        Privacy Members
+                    </td>
+                    <td>
+                        <input type="text" id="tx_privacy_members" name="tx_privacy_members" size=50 placeholder="foo">
+                    </td>
+                </tr>
+                <tr id="share_level_row">
+                    <td>
+                        Share Level
+                    </td>
+                    <td>
+                        <select id="tx_share_level" name="tx_share_level">
+                        </select>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <button id="tx_export_submit" name="submit" type="submit">Submit</button>
+                        <span id="tx_export_results" style="display: inline-block;"></span>
+                        <span id="tx_export_results_message" style="display: inline-block;"></span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+$(document).ready(function() {
+    $.ajax({
+        type: "POST",
+        url: "{% url 'threatexchange.views.get_dropdowns' %}",
+        success: function(data) {
+            var precision = data.precision;
+            var privacy_type = data.privacy_type;
+            var review_status = data.review_status;
+            var severity = data.severity;
+            var share_level = data.share_level;
+            var status = data.status;
+            var threat_type = data.threat_type;
+            var types = data.types;
+            var t = "{{ indicator.ind_type }}".toUpperCase().replace(' ', '_');
+            var tt = "{{ indicator.threat_type }}".toUpperCase().replace(' ', '_');
+            for (var i=0; i < precision.length; i++) {
+                $('#tx_precision').append($('<option>', {
+                    value: precision[i],
+                    text : precision[i]
+                }));
+            }
+            for (var i=0; i < privacy_type.length; i++) {
+                $('#tx_privacy_type').append($('<option>', {
+                    value: privacy_type[i],
+                    text : privacy_type[i]
+                }));
+            }
+            for (var i=0; i < review_status.length; i++) {
+                $('#tx_review_status').append($('<option>', {
+                    value: review_status[i],
+                    text : review_status[i]
+                }));
+            }
+            for (var i=0; i < severity.length; i++) {
+                $('#tx_severity').append($('<option>', {
+                    value: severity[i],
+                    text : severity[i]
+                }));
+            }
+            for (var i=0; i < share_level.length; i++) {
+                $('#tx_share_level').append($('<option>', {
+                    value: share_level[i],
+                    text : share_level[i]
+                }));
+            }
+            for (var i=0; i < status.length; i++) {
+                $('#tx_status').append($('<option>', {
+                    value: status[i],
+                    text : status[i]
+                }));
+            }
+            for (var i=0; i < threat_type.length; i++) {
+                $('#tx_threat_type').append($('<option>', {
+                    value: threat_type[i],
+                    text : threat_type[i]
+                }));
+            }
+            if ($("#tx_threat_type option[value='" + tt + "']").length > 0) {
+                $("#tx_threat_type option[value='" + tt + "']").prop('selected', true);
+                $("#tx_threat_type_warn").hide();
+            } else {
+                $("#tx_export_submit").prop('disabled', true);
+            }
+            for (var i=0; i < types.length; i++) {
+                $('#tx_type').append($('<option>', {
+                    value: types[i],
+                    text : types[i]
+                }));
+            }
+            if ($("#tx_type option[value='" + t + "']").length > 0) {
+                $("#tx_type option[value='" + t + "']").prop('selected', true);
+                $("#tx_type_warn").hide();
+            } else {
+                $("#tx_export_submit").prop('disabled', true);
+            }
+        }
+    });
+    $.ajax({
+        type: "POST",
+        url: "{% url 'threatexchange.views.get_members' %}",
+        success: function(data) {
+            if (data.success) {
+                $('#member_content').append(data.html);
+            }
+        }
+    });
+    $.ajax({
+        type: "POST",
+        url: "{% url 'threatexchange.views.get_groups' %}",
+        success: function(data) {
+            if (data.success) {
+                $('#group_content').append(data.html);
+            }
+        }
+    });
+    $(document).on('change', '#tx_type, #tx_threat_type', function(e) {
+        $("#tx_export_submit").prop('disabled', false);
+
+    });
+    $(document).on('click', '.add_privacy_member', function(e) {
+         var id = $(this).data('id');
+         $('#tx_privacy_members').val($('#tx_privacy_members').val() + id + ',');
+    });
+    $(document).on('click', '#tx_export_submit', function(e) {
+        var res = $('#tx_export_results');
+        data = {
+             tlo_type: "Indicator",
+             oid: "{{ indicator.id }}",
+             indicator: $('#tx_indicator').val(),
+             type: $('#tx_type').val(),
+             threat_type: $('#tx_threat_type').val(),
+             description: $('#tx_description').val(),
+             status: $('#tx_status').val(),
+             confidence: $('#tx_confidence').val(),
+             severity: $('#tx_severity').val(),
+             review_status: $('#tx_review_status').val(),
+             precision: $('#tx_precision').val(),
+             privacy_type: $('#tx_privacy_type').val(),
+             privacy_members: $('#tx_privacy_members').val(),
+             share_level: $('#tx_share_level').val()
+        }
+        $.ajax({
+             type: "POST",
+             url: "{% url 'threatexchange.views.export_object' %}",
+             data: data,
+             success: function(data) {
+                 if (data.success) {
+                     res.removeClass('ui-icon-alert');
+                     res.addClass("ui-icon").addClass("ui-icon-check").attr("title", "success");
+                     $('#tx_export_results_message').text("Graph Object ID for exported object: " + data.results.id);
+                 } else {
+                     res.addClass("ui-icon").addClass("ui-icon-alert").attr("title", data.message);
+                 }
+             }
+        });
+    });
+});
+</script>

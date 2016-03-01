@@ -18,7 +18,7 @@ def run_filecarver(request, pcap_md5):
                                             request.user.username)
         else:
             data = {'success': False, 'message': "Invalid form data"}
-        return HttpResponse(json.dumps(data), mimetype="application/json")
+        return HttpResponse(json.dumps(data), content_type="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
@@ -28,7 +28,7 @@ def run_filecarver(request, pcap_md5):
 def get_filecarver_config_form(request):
     if request.method == "GET" and request.is_ajax():
         tcp_form = {'form': forms.FileCarverForm().as_table()}
-        return HttpResponse(json.dumps(tcp_form), mimetype="application/json")
+        return HttpResponse(json.dumps(tcp_form), content_type="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
