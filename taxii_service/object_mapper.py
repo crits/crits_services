@@ -22,14 +22,16 @@ from cybox.objects.process_object import Process
 from cybox.objects.uri_object import URI
 from cybox.objects.win_registry_key_object import WinRegistryKey
 
+from stix.common.vocabs import IncidentCategory
+
 class UnsupportedCybOXObjectTypeError(Exception):
     """
     Exception to return if we've detected an unknown CybOX object type.
     """
 
-    def __init__(self, type_, name, **kwargs):
-        self.message = ('"%s - %s" is currently unsupported'
-                   " for output to CybOX." % (type_, name))
+    def __init__(self, type_, **kwargs):
+        self.message = ('"%s" is currently unsupported'
+                        ' for output to CybOX.' % type_)
 
     def __str__(self):
         return repr(self.message)
@@ -64,13 +66,28 @@ def get_crits_ip_type(type_):
     else:
         return None
 
-def get_crits_event_type(type_):
+def get_crits_event_type(category):
     """
-    Currently I am not sure what the best matches are and I think it's best to
-    leave this up to CybOX/STIX people to map to CRITs vocabulary.
-    """
+    Converts a STIX Incident Category to a CRITs Event Type.
 
-    return EventTypes.INTEL_SHARING
+    :param category: A STIX Incident Category
+    :type category: str
+    :returns: CRITs Event Type (str)
+    """
+    if category == IncidentCategory.TERM_DENIAL_OF_SERVICE:
+        return EventTypes.DENIAL_OF_SERVICE
+    elif category == IncidentCategory.TERM_EXERCISEORNETWORK_DEFENSE_TESTING:
+        return EventTypes.UNKNOWN
+    elif category == IncidentCategory.TERM_IMPROPER_USAGE:
+        return EventTypes.EXPLOITATION
+    elif category == IncidentCategory.TERM_INVESTIGATION:
+        return EventTypes.INTEL_SHARING
+    elif category == IncidentCategory.TERM_MALICIOUS_CODE:
+        return EventTypes.MALICIOUS_CODE
+    elif category == IncidentCategory.TERM_SCANSORPROBESORATTEMPTED_ACCESS:
+        return EventTypes.SCANNING
+    elif category == IncidentCategory.TERM_UNAUTHORIZED_ACCESS:
+        return EventTypes.UNAUTHORIZED_INFORMATION_ACCESS
 
 def get_crits_actor_tags(type_):
     if type_ == "Innovator":
@@ -188,6 +205,44 @@ def get_crits_actor_tags(type_):
     else:
         return None
 
+def get_incident_category(type_):
+    """
+    Converts a CRITs Event Type to a STIX Incident Category.
+
+    :param type_: The type of a CRITs event
+    :type type_: str
+    :returns: STIX Incident Category (str)
+    """
+    #if type_ == EventTypes.APPLICATION_COMPROMISE:
+    if type_ == EventTypes.DENIAL_OF_SERVICE:
+        return IncidentCategory.TERM_DENIAL_OF_SERVICE
+    elif type_ == EventTypes.DISTRIBUTED_DENIAL_OF_SERVICE:
+        return IncidentCategory.TERM_DENIAL_OF_SERVICE
+    #elif type_ == EventTypes.EXPLOITATION:
+    #elif type_ == EventTypes.INTEL_SHARING:
+    elif type_ == EventTypes.MALICIOUS_CODE:
+        return IncidentCategory.TERM_MALICIOUS_CODE
+    elif type_ == EventTypes.PHISHING:
+        return IncidentCategory.TERM_SCANSORPROBESORATTEMPTED_ACCESS
+    elif type_ == EventTypes.PRIVILEGED_ACCOUNT_COMPROMISE:
+        return IncidentCategory.TERM_UNAUTHORIZED_ACCESS
+    elif type_ == EventTypes.SCANNING:
+        return IncidentCategory.TERM_SCANSORPROBESORATTEMPTED_ACCESS
+    elif type_ == EventTypes.SENSOR_ALERT:
+        return IncidentCategory.TERM_SCANSORPROBESORATTEMPTED_ACCESS
+    elif type_ == EventTypes.SOCIAL_ENGINEERING:
+        return IncidentCategory.TERM_SCANSORPROBESORATTEMPTED_ACCESS
+    elif type_ == EventTypes.SNIFFING:
+        return IncidentCategory.TERM_SCANSORPROBESORATTEMPTED_ACCESS
+    #elif type_ == EventTypes.SPAM:
+    #elif type_ == EventTypes.STRATEGIC_WEB_COMPROMISE:
+    elif type_ == EventTypes.UNAUTHORIZED_INFORMATION_ACCESS:
+        return IncidentCategory.TERM_UNAUTHORIZED_ACCESS
+    #elif type_ == EventTypes.UNKNOWN:
+    #elif type_ == EventTypes.WEBSITE_DEFACEMENT:
+    else:
+        return None
+
 def make_cybox_object(type_, value=None):
     """
     Converts type_, name, and value to a CybOX object instance.
@@ -220,6 +275,7 @@ def make_cybox_object(type_, value=None):
     elif type_ == IndicatorTypes.DOMAIN:
         obj = DomainName()
         obj.value = value
+        return obj
     elif type_ == IndicatorTypes.USER_AGENT:
         obj = HTTPRequestHeaderFields()
         obj.user_agent = value
@@ -299,7 +355,7 @@ def make_cybox_object(type_, value=None):
     #elif type_ == "Win System Restore": # No CybOX API
     #elif type_ == "Win Thread": # No good mapping between CybOX/CRITs
     #elif type_ == "Win Waitable Timer": # No CybOX API
-    raise UnsupportedCybOXObjectTypeError(type_, name)
+    raise UnsupportedCybOXObjectTypeError(type_)
 
 def make_crits_object(cybox_obj):
     """

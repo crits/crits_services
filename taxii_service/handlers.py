@@ -39,7 +39,8 @@ from . import taxii
 from . import formats
 from . import forms
 from .parsers import STIXParser, STIXParserException
-from .object_mapper import make_cybox_object
+from .object_mapper import make_cybox_object, UnsupportedCybOXObjectTypeError
+from .object_mapper import get_incident_category
 
 from crits.events.event import Event
 from crits.core.class_mapper import class_from_id, class_from_type
@@ -884,7 +885,12 @@ def to_stix_incident(obj):
     releasability list.
     """
     from stix.incident import Incident
-    inc = Incident(title=obj.title, description=obj.description)
+    inc = Incident(title=obj.title,
+                   short_description=obj.event_type,
+                   description=obj.description)
+    category = get_incident_category(obj.event_type)
+    if category:
+        inc.add_category(category)
 
     return (inc, obj.releasability)
 
@@ -896,7 +902,7 @@ def has_cybox_repr(obj):
     :return The CybOX representation if possible, else False.
     """
     try:
-        rep = make_cybox_object(obj)
+        rep = make_cybox_object(obj.ind_type, obj.value)
         return rep
     except:
         return False
@@ -1048,16 +1054,14 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
         tools=tool_list)
 
     if obj._meta['crits_type'] == "Event":
-        stix_desc = obj.description()
-        stix_int = obj.event_type()
-        stix_title = obj.title()
+        stix_desc = obj.description
+        stix_title = obj.title
     else:
         stix_desc = "STIX from %s" % settings.COMPANY_NAME
-        stix_int = "Collective Threat Intelligence"
         stix_title = "Threat Intelligence Sharing"
     header = STIXHeader(information_source=i_s,
                         description=StructuredText(value=stix_desc),
-                        package_intents=[stix_int],
+                        package_intents=["Collective Threat Intelligence"],
                         title=stix_title)
 
     stix_msg['stix_obj'] = STIXPackage(incidents=stix_msg['stix_incidents'],
@@ -1110,8 +1114,12 @@ def run_taxii_service(analyst, obj, rcpts, preview,
         rcpt_srcs.append(sc['taxii_servers'][svr]['feeds'][fid]['source'])
 
     # Convert object and chosen related items to STIX/CybOX
-    stix_msg = to_stix(obj, relation_choices, bin_fmt="base64")
-    stix_doc = stix_msg['stix_obj']
+    try:
+        stix_msg = to_stix(obj, relation_choices, bin_fmt="base64")
+        stix_doc = stix_msg['stix_obj']
+    except UnsupportedCybOXObjectTypeError as e:
+        ret['reason'] = e.message
+        return ret
 
     # if doing a preview of content, return content now
     if preview:
