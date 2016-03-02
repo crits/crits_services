@@ -1100,7 +1100,7 @@ def run_taxii_service(analyst, obj, rcpts, preview,
         ret['reason'] = "No object found."
         return ret
 
-    if not rcpts: # no sources selected in TAXII form (validation prevents this, anyway)
+    if not rcpts and not preview: # no recipients selected in TAXII form (ok for preview)
         ret['reason'] = "No recipients selected."
         return ret
 
