@@ -223,7 +223,10 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     elif isinstance(end, datetime) and not end.tzinfo:
         end = end.replace(tzinfo=pytz.utc)
 
-    ret['start'] = start.strftime('%Y-%m-%d %H:%M:%S')
+    if start:
+        ret['start'] = start.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        ret['start'] = 'None'
     ret['end'] = end.strftime('%Y-%m-%d %H:%M:%S')
     ret['poll_time'] = runtime
 
@@ -436,7 +439,11 @@ def save_standards_doc(data, analyst, message_id, hostname, feed,
         taxii_content.feed = feed
         taxii_content.timestamp = timestamp
         taxii_content.poll_time = poll_time or datetime.now()
-        begin = begin.strftime('%Y-%m-%d %H:%M:%S')
+        if begin:
+            begin = begin.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            begin = 'None'
+        end = end.strftime('%Y-%m-%d %H:%M:%S')
         end = end.strftime('%Y-%m-%d %H:%M:%S')
         taxii_content.timerange = '%s to %s' % (begin, end)
         taxii_content.analyst = analyst
