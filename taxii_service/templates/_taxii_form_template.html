@@ -1,30 +1,36 @@
-<tr>
-	<td colspan="2">
-		<strong class="taxii_ctype_label required">
-			{{ form.rcpts.label }} 
-		</strong>
-		<em>({{ form.rcpts.field.choices|length }})</em>
-		<br/>
-		{{ form.rcpts }}
-	</td>
-</tr>
-{% for item in form %}
-	{% if forloop.counter != 1 %}
-		{% if forloop.counter|divisibleby:2 %}
-			<tr>
-		{% endif %}
-
-		<td>
-			<strong class="taxii_ctype_label">
-				{{ item.label }}
+{% if form.rcpts.field.choices|length == 0 %}
+	<tr><td colspan="2">
+		<h3 style="color:red;">Before sending a TAXII message, you must first <a href="{% url 'crits.services.views.detail' 'taxii_service' %}">configure a TAXII server</a> and feed.</h3>
+	</td></tr>
+{% else %}
+	<tr>
+		<td colspan="2">
+			<strong class="taxii_ctype_label required">
+				{{ form.rcpts.label }}
 			</strong>
-			<em>({{ item.field.choices|length }})</em>
+			<em>({{ form.rcpts.field.choices|length }})</em>
 			<br/>
-			{{ item }}
+			{{ form.rcpts }}
 		</td>
+	</tr>
+	{% for item in form %}
+		{% if forloop.counter != 1 %}
+			{% if forloop.counter|divisibleby:2 %}
+				<tr>
+			{% endif %}
 
-		{% if not forloop.counter|divisibleby:2 %}
-			</tr>
+			<td>
+				<strong class="taxii_ctype_label">
+					{{ item.label }}
+				</strong>
+				<em>({{ item.field.choices|length }})</em>
+				<br/>
+				{{ item }}
+			</td>
+
+			{% if not forloop.counter|divisibleby:2 %}
+				</tr>
+			{% endif %}
 		{% endif %}
-	{% endif %}
-{% endfor %}
+	{% endfor %}
+{% endif %}
