@@ -32,7 +32,7 @@ def get_taxii_feeds(user_srcs):
     return taxii_feeds
 
 class TAXIISendForm(forms.Form):
-    rcpts = forms.MultipleChoiceField(required=True,
+    rcpts = forms.MultipleChoiceField(required=False,
                                       label="Recipient",
                                       help_text="Recipient Feeds",
                                       widget=forms.SelectMultiple)
