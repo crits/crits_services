@@ -268,6 +268,7 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         if not proxy.startswith('http://'):
             proxy = 'http://' + proxy
         client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
+        client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTP)
 
     crits_taxii = taxii.Taxii()
     crits_taxii.runtime = runtime
