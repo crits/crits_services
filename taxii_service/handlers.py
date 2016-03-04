@@ -447,7 +447,6 @@ def save_standards_doc(data, analyst, message_id, hostname, feed,
         else:
             begin = 'None'
         end = end.strftime('%Y-%m-%d %H:%M:%S')
-        end = end.strftime('%Y-%m-%d %H:%M:%S')
         taxii_content.timerange = '%s to %s' % (begin, end)
         taxii_content.analyst = analyst
         taxii_content.content = data or ""
