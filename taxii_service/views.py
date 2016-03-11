@@ -38,7 +38,7 @@ def taxii_poll(request):
                 data = {'success': False,
                         'msg': 'Exclusive Begin Timestamp is required'}
                 return HttpResponse(json.dumps(data),
-                                    mimetype="application/json")
+                                    content_type="application/json")
         try:
             result = handlers.poll_taxii_feeds(feeds, analyst,
                                                begin=begin, end=end)
@@ -52,7 +52,7 @@ def taxii_poll(request):
         except Exception as e:
             data = {'success': False, 'msg': str(type(e)) + str(e)}
 
-        return HttpResponse(json.dumps(data), mimetype="application/json")
+        return HttpResponse(json.dumps(data), content_type="application/json")
 
     if request.is_ajax():
         msg = "<b>Form Validation Error</b><br>"
@@ -60,7 +60,7 @@ def taxii_poll(request):
             msg += "%s: %s<br>" % (form[fld].label,
                                    form.errors[fld].as_text())
         data = {'success': False, 'msg': msg}
-        return HttpResponse(json.dumps(data), mimetype="application/json")
+        return HttpResponse(json.dumps(data), content_type="application/json")
 
     return render_to_response('taxii_agent_form.html',
                               {'form': form, 'errors': form.errors},
@@ -85,7 +85,7 @@ def list_saved_polls(request):
     data = {'success': polls['success'], 'msg': polls.get('msg')}
     data['html'] = render_to_string("taxii_saved_polls.html",
                                     {'polls' : polls})
-    return HttpResponse(json.dumps(data), mimetype="application/json")
+    return HttpResponse(json.dumps(data), content_type="application/json")
 
 @user_passes_test(user_can_view_data)
 def get_import_preview(request, taxii_msg_id):
@@ -105,7 +105,7 @@ def get_import_preview(request, taxii_msg_id):
     data = {'success': True}
     data['html'] = render_to_string("taxii_agent_preview.html",
                                     {'result' : content})
-    return HttpResponse(json.dumps(data), mimetype="application/json")
+    return HttpResponse(json.dumps(data), content_type="application/json")
 
 @user_passes_test(user_can_view_data)
 def import_taxii_data(request):
@@ -130,7 +130,7 @@ def import_taxii_data(request):
     data = {'success': result['status'], 'msg': result['msg']}
     data['html'] = render_to_string("taxii_agent_results.html",
                                     {'result' : result})
-    return HttpResponse(json.dumps(data), mimetype="application/json")
+    return HttpResponse(json.dumps(data), content_type="application/json")
 
 @user_passes_test(user_can_view_data)
 def get_taxii_config_form(request, crits_type, crits_id):
@@ -145,7 +145,7 @@ def get_taxii_config_form(request, crits_type, crits_id):
         taxii_form = {'form' : render_to_string("_taxii_form_template.html",
                                                 {'form' : tform})}
         return HttpResponse(json.dumps(taxii_form),
-                            mimetype="application/json")
+                            content_type="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
@@ -187,7 +187,7 @@ def execute_taxii_service(request, crits_type, crits_id):
 	                              RequestContext(request))
     except Exception as e:
         data = {'success': False, 'reason': str(type(e)) + str(e)}
-        return HttpResponse(json.dumps(data), mimetype="application/json")
+        return HttpResponse(json.dumps(data), content_type="application/json")
 
 def get_taxii_result(request, crits_type, crits_id, preview):
     """
@@ -258,7 +258,7 @@ def configure_taxii(request, server=None):
 
         if 'service' in results:
             del results['service']
-        return HttpResponse(json.dumps(results), mimetype="application/json")
+        return HttpResponse(json.dumps(results), content_type="application/json")
 
     if srvr_form.is_valid(): # server form passed django validation
         result = handlers.update_taxii_server_config(srvr_form.cleaned_data,
