@@ -9,14 +9,17 @@ from pytx import (
     connection,
     Broker,
     Malware,
+    MalwareFamily,
     ThreatDescriptor,
     ThreatExchangeMember,
+    ThreatIndicator,
     ThreatPrivacyGroup,
 )
 
 from pytx.errors import pytxFetchError
 from pytx.vocabulary import (
     Malware as m,
+    MalwareFamilies as mf,
     Precision,
     PrivacyType,
     ReviewStatus,
@@ -24,6 +27,7 @@ from pytx.vocabulary import (
     ShareLevel,
     Status,
     ThreatDescriptor as td,
+    ThreatIndicator as ti,
     ThreatPrivacyGroup as tpg,
     ThreatType,
     Types
@@ -34,6 +38,7 @@ from django.template import RequestContext
 
 from crits.config.config import CRITsConfig
 from crits.core.handlers import add_releasability, add_releasability_instance
+from crits.backdoors.backdoor import Backdoor
 from crits.indicators.handlers import handle_indicator_ind
 from crits.indicators.indicator import Indicator
 from crits.samples.handlers import handle_file
@@ -72,7 +77,10 @@ def submit_query(request, url, type_, params=None):
     setup_access()
 
     if url is not None and len(url) > 0:
-        url = url + "&access_token=" + access_token.get_access_token()
+        if url[-1] == "/":
+            url = url + "?access_token=" + access_token.get_access_token()
+        else:
+            url = url + "&access_token=" + access_token.get_access_token()
         try:
             results = Broker.get(url)
         except pytxFetchError, e:
@@ -84,21 +92,24 @@ def submit_query(request, url, type_, params=None):
         lookup_value = "value"
         ref_value = td.RAW_INDICATOR
         template = "tx_threat_descriptor.html"
-    #elif type_ == "Threat Indicators":
-    #    klass = ThreatIndicator
-    #    lookup = Indicator
-    #    lookup_value = "value"
-    #    ref_value = td.RAW_INDICATOR
-    #    template = "tx_threat_indicator.html"
+    elif type_ == "Threat Indicators":
+        klass = ThreatIndicator
+        lookup = Indicator
+        lookup_value = "value"
+        ref_value = ti.INDICATOR
+        template = "tx_threat_indicator.html"
     elif type_ == "Malware Analyses":
         klass = Malware
         lookup = Sample
         lookup_value = "md5"
         ref_value = m.MD5
         template = "tx_malware.html"
-    #elif type_ == "Malware Families":
-    #    klass = MalwareFamily
-    #    template = "tx_malware_family.html"
+    elif type_ == "Malware Families":
+        klass = MalwareFamily
+        lookup = Backdoor
+        lookup_value = "name,aliases"
+        ref_value = mf.NAME
+        template = "tx_malware_family.html"
     else:
         return {'success': False,
                 'message': "Invalid Type"}
@@ -128,7 +139,8 @@ def submit_query(request, url, type_, params=None):
             no_import = False
             objectid = None
             if d.get(ref_value):
-                tmp = lookup.objects(**{lookup_value: d[ref_value]}).first()
+                ld = {l:d[ref_value] for l in lookup_value.split(',')}
+                tmp = lookup.objects(**ld).first()
                 if tmp is not None:
                     exists = True
                     objectid = str(tmp.id)

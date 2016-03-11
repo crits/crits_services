@@ -26,6 +26,9 @@
     .query_results tr td td {
         border: none;
     }
+    .find_related_span {
+        vertical-align: bottom;
+    }
     #results_div {
         max-height: 500px;
         overflow-y: auto;
@@ -240,7 +243,9 @@ more results if there are any. Documentation can be found <a href="https://devel
                 <td>
                     <select id="type" name="type">
                         <option>Threat Descriptors</option>
+                        <option>Threat Indicators</option>
                         <option>Malware Analyses</option>
+                        <option>Malware Families</option>
                     </select>
                 </td>
             </tr>
@@ -415,6 +420,37 @@ function get_results(data) {
     });
 }
 
+function get_related_results(data) {
+    var rid = data.id;
+    var rtype = data.related_type;
+    $.ajax({
+         type: "POST",
+         url: "{% url 'threatexchange.views.submit_related_query' %}",
+         data: data,
+         success: function(data) {
+             if (data.html) {
+                var res = data.html;
+                var rdiv = $('<div/>')
+                           .attr('title', rtype + " of " + rid)
+                if (res === "") {
+                    rdiv.attr('title', 'No results found');
+                } else {
+                    var rtable = $('<table/>')
+                                 .addClass('query_results')
+                                 .append(res);
+                    rdiv.append(rtable);
+                }
+                rdiv.dialog({
+                     width: '80%',
+                     height: '500',
+                });
+             } else {
+                var rdiv = $('<div/>').append(data.message).dialog();
+             }
+         }
+    });
+}
+
 $(document).ready(function() {
     var sorted = []
     $.ajax({
@@ -459,6 +495,13 @@ $(document).ready(function() {
                 }));
             }
          }
+    });
+    $(document).on('change', '.find_related', function(e) {
+        data = {
+            related_type: $(this).val(),
+            id: $(this).data('id')
+        }
+        get_related_results(data);
     });
     $(document).on('click', '#submit', function(e) {
         toggle_loader();
