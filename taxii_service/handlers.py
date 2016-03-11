@@ -223,7 +223,10 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     elif isinstance(end, datetime) and not end.tzinfo:
         end = end.replace(tzinfo=pytz.utc)
 
-    ret['start'] = start.strftime('%Y-%m-%d %H:%M:%S')
+    if start:
+        ret['start'] = start.strftime('%Y-%m-%d %H:%M:%S')
+    else:
+        ret['start'] = 'None'
     ret['end'] = end.strftime('%Y-%m-%d %H:%M:%S')
     ret['poll_time'] = runtime
 
@@ -264,7 +267,10 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         proxy = settings.HTTP_PROXY
         if not proxy.startswith('http://'):
             proxy = 'http://' + proxy
-        client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
+        if https:
+            client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
+        else:
+            client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTP)
 
     crits_taxii = taxii.Taxii()
     crits_taxii.runtime = runtime
@@ -436,7 +442,10 @@ def save_standards_doc(data, analyst, message_id, hostname, feed,
         taxii_content.feed = feed
         taxii_content.timestamp = timestamp
         taxii_content.poll_time = poll_time or datetime.now()
-        begin = begin.strftime('%Y-%m-%d %H:%M:%S')
+        if begin:
+            begin = begin.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            begin = 'None'
         end = end.strftime('%Y-%m-%d %H:%M:%S')
         taxii_content.timerange = '%s to %s' % (begin, end)
         taxii_content.analyst = analyst
@@ -1093,7 +1102,7 @@ def run_taxii_service(analyst, obj, rcpts, preview,
         ret['reason'] = "No object found."
         return ret
 
-    if not rcpts: # no sources selected in TAXII form (validation prevents this, anyway)
+    if not rcpts and not preview: # no recipients selected in TAXII form (ok for preview)
         ret['reason'] = "No recipients selected."
         return ret
 
@@ -1138,7 +1147,10 @@ def run_taxii_service(analyst, obj, rcpts, preview,
         proxy = settings.HTTP_PROXY
         if not proxy.startswith('http://'):
             proxy = 'http://' + proxy
-        client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
+        if https:
+            client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
+        else:
+            client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTP)
 
     # The minimum required info has been provided by user via the TAXII form.
     # Form configuration and validation ensures the form is valid.
