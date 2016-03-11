@@ -7,6 +7,7 @@ from django.template import RequestContext
 
 from pytx.vocabulary import ThreatType as tt
 from pytx.vocabulary import MalwareAnalysisTypes as mat
+from pytx.vocabulary import ThreatExchange as tx
 
 from crits.core.user_tools import user_can_view_data
 from . import handlers
@@ -36,6 +37,35 @@ def get_sample_types(request):
         sample_types = {k:v for k,v in mat.__dict__.items() if not k.startswith('__') and not callable(k)}
         return HttpResponse(json.dumps(sample_types),
                             content_type="application/json")
+    else:
+        return render_to_response('error.html',
+                                  {'error': "Must be AJAX."},
+                                  RequestContext(request))
+
+@user_passes_test(user_can_view_data)
+def submit_related_query(request):
+    if request.method == "POST" and request.is_ajax():
+        id_ = request.POST.get('id', None)
+        related_type = request.POST.get('related_type', None)
+        td = {
+            'descriptors': "Threat Descriptors",
+            'dropped': "Malware Analyses",
+            'dropped_by': "Malware Analyses",
+            'families': "Malware Families",
+            'related': "Threat Indicators",
+            'threat_indicators': "Threat Indicators",
+            'variants': "Malware Analyses"
+        }
+        type_ = td.get(related_type, None)
+        if id_ and related_type and type_:
+            url = tx.URL + tx.VERSION + id_ + '/' + related_type + '/'
+            results = handlers.submit_query(request, url, type_)
+            return HttpResponse(json.dumps(results),
+                                content_type="application/json")
+        else:
+            return HttpResponse({'success': False,
+                                 'message': "Need ID and valid related type."},
+                                content_type="application/json")
     else:
         return render_to_response('error.html',
                                   {'error': "Must be AJAX."},
