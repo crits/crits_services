@@ -428,22 +428,25 @@ function get_related_results(data) {
          url: "{% url 'threatexchange.views.submit_related_query' %}",
          data: data,
          success: function(data) {
-             if (data.html) {
-                var res = data.html;
+             if ('html' in data) {
                 var rdiv = $('<div/>')
                            .attr('title', rtype + " of " + rid)
-                if (res === "") {
+                if (data.html === "") {
                     rdiv.attr('title', 'No results found');
+                    rdiv.dialog({
+                         width: '200',
+                         height: '100',
+                    });
                 } else {
                     var rtable = $('<table/>')
                                  .addClass('query_results')
-                                 .append(res);
+                                 .append(data.html);
                     rdiv.append(rtable);
+                    rdiv.dialog({
+                         width: '80%',
+                         height: '500',
+                    });
                 }
-                rdiv.dialog({
-                     width: '80%',
-                     height: '500',
-                });
              } else {
                 var rdiv = $('<div/>').append(data.message).dialog();
              }
