@@ -239,9 +239,10 @@ def export_object(request, type_, id_, params):
                 'message': "Invalid Type"}
     try:
         result = klass.new(params=params)
+        note = result.get('id', None)
         add_releasability(type_, id_, "ThreatExchange", request.user.username)
         add_releasability_instance(type_, id_, "ThreatExchange",
-                                   request.user.username)
+                                   request.user.username, note=note)
         return {'success': True,
                 'results': result}
     except pytxFetchError, e:

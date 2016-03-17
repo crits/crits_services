@@ -239,6 +239,20 @@ $(document).ready(function() {
             } else {
                 $("#tx_export_submit").prop('disabled', true);
             }
+            $("#tx_status").val("UNKNOWN");
+            $("#tx_severity").val("UNKNOWN");
+            $("#tx_review_status").val("UNKNOWN");
+            $("#tx_precision").val("UNKNOWN");
+            $("#tx_share_level").val("UNKNOWN");
+            $("#tx_privacy_type").val("HAS_WHITELIST");
+            ci = {
+                 unknown: 0,
+                 benign: 25,
+                 low: 50,
+                 medium: 75,
+                 high: 100
+            }
+            $("#tx_confidence").val(ci["{{indicator.confidence.rating}}"]);
         }
     });
     $.ajax({
