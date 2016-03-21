@@ -9,6 +9,7 @@ import logging
 import sys
 
 from . import forms
+from crits.config.config import CRITsConfig
 from crits.services.core import Service, ServiceConfigError
 from django.template.loader import render_to_string
 from future.utils import iteritems
@@ -164,6 +165,13 @@ class PassiveTotalService(Service):
         explicit way. Loading via a string is helpful to reduce the code per
         call.
         """
+        crits_config = CRITsConfig.objects().first()
+
+        http_proxy_value = None
+
+        if crits_config.http_context:
+            http_proxy_value = crits_config.http_context
+
         class_lookup = {'dns': 'DnsRequest', 'whois': 'WhoisRequest',
                         'ssl': 'SslRequest', 'enrichment': 'EnrichmentRequest',
                         'attributes': 'AttributeRequest'}
@@ -171,7 +179,9 @@ class PassiveTotalService(Service):
         mod = __import__('passivetotal.libs.%s' % request_type,
                          fromlist=[class_name])
         loaded = getattr(mod, class_name)
-        authenticated = loaded(self.username, self.api_key)
+        authenticated = loaded(self.username, self.api_key,
+            http_proxy=http_proxy_value, https_proxy=http_proxy_value)
+
         return authenticated
 
     def _check_response(self, response):
