@@ -169,8 +169,8 @@ class PassiveTotalService(Service):
 
         http_proxy_value = None
 
-        if crits_config.http_context:
-            http_proxy_value = crits_config.http_context
+        if crits_config.http_proxy:
+            http_proxy_value = crits_config.http_proxy
 
         class_lookup = {'dns': 'DnsRequest', 'whois': 'WhoisRequest',
                         'ssl': 'SslRequest', 'enrichment': 'EnrichmentRequest',
