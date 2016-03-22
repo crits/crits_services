@@ -228,6 +228,21 @@ def get_dropdowns():
     result['types'] = get_class_attribute_values(Types)
     return result
 
+def get_mapped_itype(type_):
+    try:
+        itype = getattr(IndicatorTypes, type_)
+        return itype
+    except AttributeError:
+        pass
+    if type_ == Types.IP_ADDRESS:
+        # Really should validate that it's IPv4 and not IPv6
+        return IndicatorTypes.IPV4_ADDRESS
+    elif type_ == Types.IP_SUBNET:
+        # Really should validate that it's IPv4 and not IPv6
+        return IndicatorTypes.IPV4_SUBNET
+    else:
+        return None
+
 def export_object(request, type_, id_, params):
     setup_access()
     if type_ == "Indicator":
@@ -257,7 +272,10 @@ def import_object(request, type_, id_):
             fields=[f for f in ThreatDescriptor._default_fields if f not in
                     (td.PRIVACY_MEMBERS, td.SUBMITTER_COUNT, td.METADATA)]
         )
-        itype = getattr(IndicatorTypes, obj.get(td.TYPE))
+        itype = get_mapped_itype(obj.get(td.TYPE))
+        if itype is None:
+            return {'success': False,
+                    'message': "Descriptor type is not supported by CRITs"}
         ithreat_type = getattr(IndicatorThreatTypes, obj.get(td.THREAT_TYPE))
         results = handle_indicator_ind(
             obj.get(td.RAW_INDICATOR),
@@ -280,7 +298,7 @@ def import_object(request, type_, id_):
         obj = Malware(id=id_)
         obj.details(
             fields=[f for f in Malware._fields if f not in
-                    (td.PRIVACY_MEMBERS, td.METADATA)]
+                    (m.SUBMITTER_COUNT, m.METADATA)]
         )
         filename = obj.get(m.MD5)
         try:
