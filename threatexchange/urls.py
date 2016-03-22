@@ -2,8 +2,6 @@ from django.conf.urls import patterns
 
 urlpatterns = patterns('threatexchange.views',
     (r'^query/$', 'query'),
-    (r'^get_threat_types/$', 'get_threat_types'),
-    (r'^get_sample_types/$', 'get_sample_types'),
     (r'^submit_query/$', 'submit_query'),
     (r'^submit_related_query/$', 'submit_related_query'),
     (r'^export_object/$', 'export_object'),
