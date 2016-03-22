@@ -270,7 +270,7 @@ def import_object(request, type_, id_):
         obj = ThreatDescriptor(id=id_)
         obj.details(
             fields=[f for f in ThreatDescriptor._default_fields if f not in
-                    (td.PRIVACY_MEMBERS, td.SUBMITTER_COUNT, td.METADATA)]
+                    (td.PRIVACY_MEMBERS, td.METADATA)]
         )
         itype = get_mapped_itype(obj.get(td.TYPE))
         if itype is None:
@@ -298,7 +298,7 @@ def import_object(request, type_, id_):
         obj = Malware(id=id_)
         obj.details(
             fields=[f for f in Malware._fields if f not in
-                    (m.SUBMITTER_COUNT, m.METADATA)]
+                    (m.METADATA)]
         )
         filename = obj.get(m.MD5)
         try:
