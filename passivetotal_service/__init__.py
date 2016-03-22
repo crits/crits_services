@@ -3,12 +3,13 @@
 
 __author__ = 'Brandon Dixon (PassiveTotal)'
 __email__ = "admin@passivetotal.org"
-__version__ = '2.0.0'
+__version__ = '2.0.1'
 
 import logging
 import sys
 
 from . import forms
+from crits.config.config import CRITsConfig
 from crits.services.core import Service, ServiceConfigError
 from django.template.loader import render_to_string
 from future.utils import iteritems
@@ -50,7 +51,7 @@ class PassiveTotalService(Service):
     """
 
     name = "passivetotal_lookup"
-    version = '2.0.0'
+    version = '2.0.1'
     supported_types = ['Domain', 'IP', 'Indicator', 'SSL Certificate', 'Email']
     description = "Perform various services on a query value for the user."
 
@@ -164,6 +165,13 @@ class PassiveTotalService(Service):
         explicit way. Loading via a string is helpful to reduce the code per
         call.
         """
+        crits_config = CRITsConfig.objects().first()
+
+        http_proxy_value = None
+
+        if crits_config.http_proxy:
+            http_proxy_value = crits_config.http_proxy
+
         class_lookup = {'dns': 'DnsRequest', 'whois': 'WhoisRequest',
                         'ssl': 'SslRequest', 'enrichment': 'EnrichmentRequest',
                         'attributes': 'AttributeRequest'}
@@ -171,7 +179,10 @@ class PassiveTotalService(Service):
         mod = __import__('passivetotal.libs.%s' % request_type,
                          fromlist=[class_name])
         loaded = getattr(mod, class_name)
-        authenticated = loaded(self.username, self.api_key)
+        headers = {'PT-INTEGRATION': 'CRITs'}
+        authenticated = loaded(self.username, self.api_key, headers=headers,
+            http_proxy=http_proxy_value, https_proxy=http_proxy_value)
+
         return authenticated
 
     def _check_response(self, response):
