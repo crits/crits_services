@@ -265,6 +265,15 @@ more results if there are any. Documentation can be found <a href="https://devel
                     <input type="checkbox" id="strict" name="strict" />
                 </td>
             </tr>
+            <tr id="status_row">
+                <td>
+                    Indicator Type
+                </td>
+                <td>
+                    <select id="indicator_type" name="indicator_type">
+                    </select>
+                </td>
+            </tr>
             <tr id="threat_type_row">
                 <td>
                     Threat Type
@@ -346,7 +355,8 @@ more results if there are any. Documentation can be found <a href="https://devel
                     Status
                 </td>
                 <td>
-                    <input type="text" id="status" name="text" size=25 placeholder="foo">
+                    <select id="status" name="status">
+                    </select>
                 </td>
             </tr>
             <tr id="review_status_row">
@@ -354,7 +364,8 @@ more results if there are any. Documentation can be found <a href="https://devel
                     Review Status
                 </td>
                 <td>
-                    <input type="text" id="review_status" name="review_status" size=25 placeholder="foo">
+                    <select id="review_status" name="review_status">
+                    </select>
                 </td>
             </tr>
             <tr id="share_level_row">
@@ -362,7 +373,8 @@ more results if there are any. Documentation can be found <a href="https://devel
                     Share Level
                 </td>
                 <td>
-                    <input type="text" id="share_level" name="share_level" size=25 placeholder="foo">
+                    <select id="share_level" name="share_level">
+                    </select>
                 </td>
             </tr>
             <tr>
@@ -413,7 +425,7 @@ function get_results(data) {
                 $('#next_url').val(data.next_url);
                 toggle_loader();
              } else {
-                $('#results').append('<tr><td>' + data.message + '</td></tr>');
+                $('#results').append('<tr><td></td><td>' + data.message + '</td><td></td></tr>');
                 toggle_loader();
              }
          }
@@ -456,49 +468,70 @@ function get_related_results(data) {
 
 $(document).ready(function() {
     var sorted = []
+
     $.ajax({
-         type: "POST",
-         url: "{% url 'threatexchange.views.get_threat_types' %}",
-         success: function(data) {
-            $.each(data, function (i, item) {
-                sorted.push(item);
-            });
-            $('#threat_type').append($('<option>', {
-                value: '',
-                text : ''
-            }));
-            sorted.sort();
-            var len = sorted.length;
-            for (var i=0; i < len; i++) {
+        type: "POST",
+        url: "{% url 'threatexchange.views.get_dropdowns' %}",
+        success: function(data) {
+            var review_status = data.review_status;
+            var sample_type = data.sample_type;
+            var share_level = data.share_level;
+            var status = data.status;
+            var threat_type = data.threat_type;
+            var types = data.types;
+
+            review_status.push('');
+            review_status.sort();
+            sample_type.push('');
+            sample_type.sort();
+            share_level.push('');
+            share_level.sort();
+            status.push('');
+            status.sort();
+            threat_type.push('');
+            threat_type.sort();
+            types.push('');
+            types.sort();
+
+            for (var i=0; i < review_status.length; i++) {
+                $('#review_status').append($('<option>', {
+                    value: review_status[i],
+                    text : review_status[i]
+                }));
+            }
+            for (var i=0; i < share_level.length; i++) {
+                $('#share_level').append($('<option>', {
+                    value: share_level[i],
+                    text : share_level[i]
+                }));
+            }
+            for (var i=0; i < status.length; i++) {
+                $('#status').append($('<option>', {
+                    value: status[i],
+                    text : status[i]
+                }));
+            }
+            for (var i=0; i < threat_type.length; i++) {
                 $('#threat_type').append($('<option>', {
-                    value: sorted[i],
-                    text : sorted[i]
+                    value: threat_type[i],
+                    text : threat_type[i]
                 }));
             }
-         }
-    });
-    sorted = [];
-    $.ajax({
-         type: "POST",
-         url: "{% url 'threatexchange.views.get_sample_types' %}",
-         success: function(data) {
-            $.each(data, function (i, item) {
-                sorted.push(item);
-            });
-            $('#sample_type').append($('<option>', {
-                value: '',
-                text : ''
-            }));
-            sorted.sort();
-            var len = sorted.length;
-            for (var i=0; i < len; i++) {
+            for (var i=0; i < sample_type.length; i++) {
                 $('#sample_type').append($('<option>', {
-                    value: sorted[i],
-                    text : sorted[i]
+                    value: sample_type[i],
+                    text : sample_type[i]
                 }));
             }
-         }
+            for (var i=0; i < types.length; i++) {
+                $('#indicator_type').append($('<option>', {
+                    value: types[i],
+                    text : types[i]
+                }));
+            }
+        }
     });
+
     $(document).on('change', '.find_related', function(e) {
         data = {
             related_type: $(this).val(),
@@ -515,6 +548,7 @@ $(document).ready(function() {
              type: $('#type').val(),
              text: $('#text').val(),
              strict_text: $('#strict_text').prop('checked'),
+             indicator_type: $('#indicator_type').val(),
              threat_type: $('#threat_type').val(),
              sample_type: $('#sample_type').val(),
              limit: $('#limit').val(),

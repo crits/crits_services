@@ -5,8 +5,6 @@ from django.shortcuts import HttpResponse, render_to_response
 from django.template import RequestContext
 #from django.template.loader import render_to_string
 
-from pytx.vocabulary import ThreatType as tt
-from pytx.vocabulary import MalwareAnalysisTypes as mat
 from pytx.vocabulary import ThreatExchange as tx
 
 from crits.core.user_tools import user_can_view_data
@@ -18,29 +16,6 @@ def query(request):
     return render_to_response('query.html',
                               {'foo': "bar"},
                               RequestContext(request))
-
-@user_passes_test(user_can_view_data)
-def get_threat_types(request):
-    if request.method == "POST" and request.is_ajax():
-        threat_types = {k:v for k,v in tt.__dict__.items() if not k.startswith('__') and not callable(k)}
-
-        return HttpResponse(json.dumps(threat_types),
-                            content_type="application/json")
-    else:
-        return render_to_response('error.html',
-                                  {'error': "Must be AJAX."},
-                                  RequestContext(request))
-
-@user_passes_test(user_can_view_data)
-def get_sample_types(request):
-    if request.method == "POST" and request.is_ajax():
-        sample_types = {k:v for k,v in mat.__dict__.items() if not k.startswith('__') and not callable(k)}
-        return HttpResponse(json.dumps(sample_types),
-                            content_type="application/json")
-    else:
-        return render_to_response('error.html',
-                                  {'error': "Must be AJAX."},
-                                  RequestContext(request))
 
 @user_passes_test(user_can_view_data)
 def submit_related_query(request):
@@ -77,8 +52,19 @@ def submit_query(request):
         params = dict(request.POST.copy().dict())
         url = params.get('url', None)
         type_ = params.get('type', None)
+        indicator_type = params.get('indicator_type', None)
+
         if type_:
             del params['type']
+        if indicator_type is not None:
+
+            # can probably do better validation here against the attribute
+            # of the pytx "Types" enum.
+            if indicator_type.strip() != "":
+                params['type_'] = params.get('indicator_type')
+
+            del params['indicator_type']
+
         results = handlers.submit_query(request, url, type_, params=params)
         return HttpResponse(json.dumps(results),
                             content_type="application/json")
