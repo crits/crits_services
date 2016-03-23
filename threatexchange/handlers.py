@@ -19,6 +19,7 @@ from pytx import (
 from pytx.errors import pytxFetchError
 from pytx.vocabulary import (
     Malware as m,
+    MalwareAnalysisTypes,
     MalwareFamilies as mf,
     Precision,
     PrivacyType,
@@ -221,6 +222,7 @@ def get_dropdowns():
     result['precision'] = get_class_attribute_values(Precision)
     result['privacy_type'] = get_class_attribute_values(PrivacyType)
     result['review_status'] = get_class_attribute_values(ReviewStatus)
+    result['sample_type'] = get_class_attribute_values(MalwareAnalysisTypes)
     result['severity'] = get_class_attribute_values(Severity)
     result['share_level'] = get_class_attribute_values(ShareLevel)
     result['status'] = get_class_attribute_values(Status)
