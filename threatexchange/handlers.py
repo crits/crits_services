@@ -191,24 +191,42 @@ def get_members():
     return {'success': True,
             'html': html}
 
-def get_groups():
+def get_groups(manage=None):
     setup_access()
-    html = ''
-    owner = ThreatPrivacyGroup.mine(role="owner", dict_generator=True)
-    member = ThreatPrivacyGroup.mine(role="member", dict_generator=True)
+    owner_groups = ''
+    member_groups = ''
+    owner = ThreatPrivacyGroup.mine(role="owner")
+    member = ThreatPrivacyGroup.mine(role="member")
+    owner_template = "tx_group.html"
+    member_template = "tx_group.html"
+    if manage:
+        owner_template = "tx_group_owner.html"
+        member_template = "tx_group_member.html"
     for o in owner:
-        html += render_to_string("tx_member.html",
-                                    {
-                                        'member': o
-                                    })
+        members = o.get_members()
+        o = o.to_dict()
+        o['members'] = ",".join(x['name'] for x in members)
+        owner_groups += render_to_string(owner_template,
+                                         {
+                                             'group': o
+                                         })
     for mem in member:
-        if mem.get(tpg.MEMBERS_CAN_USE):
-            html += render_to_string("tx_member.html",
-                                        {
-                                            'member': o
-                                        })
-    return {'success': True,
-            'html': html}
+        members = mem.get_members()
+        mem = mem.to_dict()
+        mem['members'] = ",".join(x['name'] for x in members)
+        if mem.get(tpg.MEMBERS_CAN_USE) or manage:
+            member_groups += render_to_string(member_template,
+                                              {
+                                                  'group': mem
+                                              })
+    if manage:
+        return {'success': True,
+                'owner': owner_groups,
+                'member': member_groups}
+    else:
+        html = owner_groups + member_groups
+        return {'success': True,
+                'html': html}
 
 def get_class_attribute_values(klass):
     result = []
@@ -327,3 +345,37 @@ def import_object(request, type_, id_):
         return {'success': False,
                 'message': "Invalid Type"}
     return {'success': True}
+
+def add_edit_privacy_group(id_=None, name=None, description=None, members=None,
+                           members_can_see=False, members_can_use=False):
+    setup_access()
+    results = {'success': False}
+    if name is None:
+        results['html'] = "Must provide a name!"
+        return results
+    if not members_can_see and members_can_use:
+        results['html'] = "Members must be able to see if they are able to use!"
+        return results
+    d = {
+        'name': name,
+        'description': description,
+        'members': members,
+        'members_can_see': 1 if members_can_see else 0,
+        'members_can_use': 1 if members_can_use else 0,
+    }
+    if id_ is not None:
+        try:
+            tpg = ThreatPrivacyGroup(id=id_)
+            tpg.save(params=d)
+            results['success'] = True
+            results['html'] = "Success!"
+        except Exception, e:
+            results['html'] = e.message['message']
+    else:
+        try:
+            ThreatPrivacyGroup.new(params=d)
+            results['success'] = True
+            results['html'] = "Success!"
+        except Exception, e:
+            results['html'] = e.message['message']
+    return results

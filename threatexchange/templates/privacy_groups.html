@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+
+{% block title %}ThreatExchange Privacy Groups{% endblock %}
+
+{% block content %}
+
+<style>
+    .modify_group {
+        font-weight: bold;
+        color: #3366ff;
+        cursor: pointer;
+    }
+    .threatexchange_members {
+        min-width: 250px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .threatexchange_groups {
+        width: 100%;
+        max-height: auto;
+        overflow-y: auto;
+    }
+    #tx_type_warn {
+        display: inline-block;
+    }
+    #tx_threat_type_warn {
+        display: inline-block;
+    }
+</style>
+<div id="threatexchange_privacy_groups" width="100%">
+    <div class='threatexchange_members content_box content_details' style="display: none;">
+        <h3 class="titleheader">
+            <span>Members</span>
+        </h3>
+        <div id="member_content">
+        </div>
+    </div>
+    <div class='threatexchange_groups content_box content_details'>
+        <h3 class="titleheader">
+            <span>Owned Groups</span>
+            <span class="add_button" id="add_tx_privacy_group">
+                <a href="#" class="ui-icon ui-icon-plusthick"></a>
+            </span>
+        </h3>
+        <div>
+            <table class="chart">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Members</th>
+                        <th>Members Can See</th>
+                        <th>Members Can Use</th>
+                    </tr>
+                </thead>
+                <tbody id="owner_group_content">
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class='threatexchange_groups content_box content_details'>
+        <h3 class="titleheader">
+            <span>Member Groups</span>
+        </h3>
+        <div>
+            <table class="chart">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Members</th>
+                        <th>Members Can See</th>
+                        <th>Members Can Use</th>
+                    </tr>
+                </thead>
+                <tbody id="member_group_content">
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script>
+function get_members() {
+    $.ajax({
+        type: "POST",
+        url: "{% url 'threatexchange.views.get_members' %}",
+        success: function(data) {
+            if (data.success) {
+                $('#member_content').append(data.html);
+            }
+        }
+    });
+}
+function get_groups() {
+    $.ajax({
+        type: "POST",
+        data: {'manage': "yes"},
+        url: "{% url 'threatexchange.views.get_groups' %}",
+        success: function(data) {
+            if (data.success) {
+                $('#owner_group_content').html('');
+                $('#member_group_content').html('');
+                $('#owner_group_content').append(data.owner);
+                $('#member_group_content').append(data.member);
+            }
+        }
+    });
+}
+$(document).ready(function() {
+    get_members();
+    get_groups();
+    function submit_privacy_group(elem) {
+        var form = elem.children("form");
+        var data = {
+            id: form.find('#id_id').val(),
+            name: form.find("#id_name").val(),
+            description: form.find("#id_description").val(),
+            members: form.find("#id_members").val(),
+            members_can_see: form.find("#id_members_can_see").prop('checked'),
+            members_can_use: form.find("#id_members_can_use").prop('checked'),
+        }
+        $.ajax({
+            type: "POST",
+            data: data,
+            url: "{% url 'threatexchange.views.add_edit_privacy_group' %}",
+            success: function(data) {
+                var results = form.closest('div')
+                              .children("#add_edit_privacy_group_results");
+                results.html('');
+                results.append(data.html);
+                if (data.success) {
+                    get_groups();
+                }
+            }
+        });
+    }
+    $(document).on('click', '#add_tx_privacy_group', function(e) {
+        $.ajax({
+            type: "POST",
+            url: "{% url 'threatexchange.views.get_privacy_group_form' %}",
+            success: function(data) {
+                if (data.success) {
+                    dialog = $(data.html).dialog({
+                      autoOpen: true,
+                      height: 425,
+                      width: 700,
+                      modal: true,
+                      buttons: {
+                        "Submit": function() {
+                            submit_privacy_group(dialog);
+                        },
+                        Cancel: function() {
+                          dialog.dialog( "close" );
+                        }
+                      },
+                      close: function() {
+                          dialog.dialog( "close" );
+                      }
+                    });
+                    $(".threatexchange_members").show()
+                     .appendTo("#form_privacy_member_list");
+                }
+            }
+        });
+    });
+    $(document).on('click', '.modify_group', function(e) {
+        var id = $(this).data('id');
+        var name = $(this).data('name');
+        var description = $(this).data('description');
+        var can_see = $(this).data('can-see');
+        var can_use = $(this).data('can-use');
+        var members = '';
+        var members_list = $(this).data('members').split(',');
+        $.each(members_list, function(i) {
+            members += $('span[name="' + members_list[i] + '"]').data('id') + ",";
+        });
+        $.ajax({
+            type: "POST",
+            url: "{% url 'threatexchange.views.get_privacy_group_form' %}",
+            success: function(data) {
+                if (data.success) {
+                    dialog = $(data.html).dialog({
+                      autoOpen: true,
+                      height: 425,
+                      width: 700,
+                      modal: true,
+                      buttons: {
+                        "Submit": function() {
+                            submit_privacy_group(dialog);
+                        },
+                        Cancel: function() {
+                          dialog.dialog( "close" );
+                        }
+                      },
+                      close: function() {
+                          dialog.dialog( "close" );
+                      }
+                    });
+                    $(".threatexchange_members").show()
+                     .appendTo("#form_privacy_member_list");
+                    var form = $('#form-add-edit-privacy-group');
+                    $('<input>').attr({
+                        type: 'hidden',
+                        id: 'id_id',
+                        name: 'id',
+                        value: id,
+                    }).appendTo(form);
+                    form.find("#id_name").val(name);
+                    form.find("#id_description").val(description);
+                    form.find("#id_members").val(members);
+                    if (can_see == "True") {
+                        form.find("#id_members_can_see").prop('checked', true);
+                    }
+                    if (can_use == "True") {
+                        form.find("#id_members_can_use").prop('checked', true);
+                    }
+                }
+            }
+        });
+    });
+    $(document).on('click', '.add_privacy_member', function(e) {
+        var id = $(this).data('id');
+        var members = $(this).closest("#add_edit_privacy_group").children("form")
+            .find("textarea[name=members]");
+        members.val(members.val() + id + ",");
+    });
+});
+</script>
+
+{% endblock %}
