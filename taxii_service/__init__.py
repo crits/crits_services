@@ -138,7 +138,8 @@ class TAXIIClient(Service):
                   'pword': '',
                   'feeds': feeds}
         for key in to_remove:
-            del existing_config[key]
+            if key in existing_config:
+                del existing_config[key]
         existing_config['taxii_servers'] = {'Migrated': server}
         return existing_config
 
