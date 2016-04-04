@@ -9,6 +9,7 @@ from crits.indicators.indicator import Indicator
 from crits.ips.ip import IP
 from crits.domains.domain import Domain
 from crits.events.event import Event
+from crits.vocabulary.objects import ObjectTypes
 
 def source_match(item_source, sources):
     for source in item_source:
@@ -28,7 +29,7 @@ def get_md5_objects(oid, sources, md5_list=[], x=0):
     md5_list.append(s.md5)
 
     for o in s.obj:
-        if o.name in ['Domain Name', 'ipv4-addr', 'URL'] and source_match(o.source, sources):
+        if o.object_type in [ObjectTypes.DOMAIN, ObjectTypes.IPV4_ADDRESS, ObjectTypes.C2_URL] and source_match(o.source, sources):
             obj_list.append(o.value)
     for r in s.relationships:
         if r.rel_type == 'Sample':
