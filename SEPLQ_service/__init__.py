@@ -55,7 +55,7 @@ class SEPLQService(Service):
         (metaoutcsv, data) = ExtractPayloads(datacq)
         h = md5(data).hexdigest()
         name = h
-	metaout = metaoutcsv.split(",")
+        metaout = metaoutcsv.split(",")
         name = ntpath.basename(str(metaout[0]))
         fields = (
         "Filename",
@@ -90,7 +90,7 @@ class SEPLQService(Service):
         self._info("name: %s" % name )
         n = 0
         for i in metaout:
-	    if i and i != 0 and i != "0" and i != "":
+            if i and i != 0 and i != "0" and i != "":
                 self._info("meta: %s" % str(i))
                 self._add_result('SEPLQ', str(i)) 
             n+=1
