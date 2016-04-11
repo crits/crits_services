@@ -780,13 +780,13 @@ def to_cybox_observable(obj, exclude=None, bin_fmt="raw"):
     elif type_ == 'IP':
         obje = Address()
         obje.address_value = obj.ip
-        if obj.ip_type == IPTypes.IPv4_ADDRESS:
+        if obj.ip_type == IPTypes.IPV4_ADDRESS:
             obje.category = "ipv4-addr"
-        elif obj.ip_type == IPTypes.IPv6_ADDRESS:
+        elif obj.ip_type == IPTypes.IPV6_ADDRESS:
             obje.category = "ipv6-addr"
-        elif obj.ip_type == IPTypes.IPv4_SUBNET:
+        elif obj.ip_type == IPTypes.IPV4_SUBNET:
             obje.category = "ipv4-net"
-        elif obj.ip_type == IPTypes.IPv6_SUBNET:
+        elif obj.ip_type == IPTypes.IPV6_SUBNET:
             obje.category = "ipv6-subnet"
         return ([Observable(obje)], obj.releasability)
     elif type_ == 'PCAP':
