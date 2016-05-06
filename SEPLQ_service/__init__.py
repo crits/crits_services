@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # for adding the extracted files
 from crits.samples.handlers import handle_file
 
-# For decoding and extracting the payloads 
+# For decoding and extracting the payloads
 from SEPLQ import ExtractPayloads
 # for getting the filename
 import ntpath
@@ -45,7 +45,7 @@ class SEPLQService(Service):
         obj.filedata.seek(0)
         if not data[0:4] == b'\x90\x12\x00\x00':
             raise ServiceConfigError("Not a SEP Local Quarantine file")
-        
+
     def run(self, obj, config):
         self.config = config
         self.obj = obj
@@ -86,17 +86,18 @@ class SEPLQService(Service):
 	)
 
 
-	
+
         self._info("name: %s" % name )
         n = 0
         for i in metaout:
             if i and i != 0 and i != "0" and i != "":
                 self._info("meta: %s" % str(i))
-                self._add_result('SEPLQ', str(i)) 
+                self._add_result('SEPLQ', str(i))
             n+=1
         self._info("New file: %s (%d bytes, %s)" % (name, len(data), h))
         handle_file(name, io.BytesIO(data).read(), self.obj.source,
                 related_id=str(obj.id),
+                str(obj._meta['crits_type']),
                 campaign=obj.campaign,
                 method=self.name,
                 relationship=RelationshipTypes.RELATED_TO,

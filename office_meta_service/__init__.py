@@ -71,6 +71,7 @@ class OfficeMetaService(Service):
             if config.get('save_streams', 0) == 1 and 'data' in curr_dir:
                 handle_file(name, curr_dir['data'], obj.source,
                             related_id=str(obj.id),
+                            related_type=str(obj._meta['crits_type']),
                             campaign=obj.campaign,
                             method=self.name,
                             relationship=RelationshipTypes.CONTAINED_WITHIN,
