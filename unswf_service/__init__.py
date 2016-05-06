@@ -65,10 +65,9 @@ class unswfService(Service):
             self._info("New file: %s (%d bytes, %s)" % (name, len(swf), h))
             handle_file(name, swf, self.obj.source,
                 related_id=str(self.obj.id),
+                related_type=str(self.obj._meta['crits_type']),
                 campaign=self.obj.campaign,
                 method=self.name,
                 relationship=RelationshipTypes.RELATED_TO,
                 user=self.current_task.username)
             self._add_result("file_added", name, {'md5': h})
-
-
