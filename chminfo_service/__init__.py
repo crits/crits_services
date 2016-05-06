@@ -235,6 +235,7 @@ class CHMInfoService(Service):
             for f in self.added_files:
                 handle_file(f[0], f[3], obj.source,
                             related_id=str(obj.id),
+                            related_type=str(obj._meta['crits_type']),
                             campaign=obj.campaign,
                             method=self.name,
                             relationship=RelationshipTypes.CONTAINED_WITHIN,
