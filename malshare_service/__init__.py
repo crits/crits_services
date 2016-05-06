@@ -122,6 +122,7 @@ class MalShareService(Service):
             filename = obj.md5
             handle_file(filename, sample_file, obj.source,
                         related_id=str(obj.id),
+                        related_type=str(obj._meta['crits_type']),
                         campaign=obj.campaign,
                         method=self.name,
                         user=self.current_task.username)

@@ -498,7 +498,7 @@ class CuckooService(Service):
             self._info("New file: %s (%d bytes, %s)" % (name, len(data), h))
             handle_file(name, data, self.obj.source,
                         related_id=str(self.obj.id),
-                        related_type=str(obj._meta['crits_type']),
+                        related_type=str(self.obj._meta['crits_type']),
                         campaign=self.obj.campaign,
                         method=self.name,
                         relationship=RelationshipTypes.RELATED_TO,
