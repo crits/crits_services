@@ -97,7 +97,7 @@ class SEPLQService(Service):
         self._info("New file: %s (%d bytes, %s)" % (name, len(data), h))
         handle_file(name, io.BytesIO(data).read(), self.obj.source,
                 related_id=str(obj.id),
-                str(obj._meta['crits_type']),
+                related_type=str(obj._meta['crits_type']),
                 campaign=obj.campaign,
                 method=self.name,
                 relationship=RelationshipTypes.RELATED_TO,
