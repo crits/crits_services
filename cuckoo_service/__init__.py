@@ -24,7 +24,7 @@ class CuckooService(Service):
     """
 
     name = 'cuckoo'
-    version = '1.0.2'
+    version = '1.0.3'
     supported_types = ['Sample']
     description = "Analyze a sample using Cuckoo Sandbox."
 
@@ -92,11 +92,16 @@ class CuckooService(Service):
         # The integer values are submitted as a list for some reason.
         # Package and machine are submitted as a list too.
         data = { 'timeout': config['timeout'][0],
+                 'tor': config['tor'],
+                 'procmemdump': config['procmemdump'],
+                 'options': config['options'][0],
                  'enforce_timeout': config['enforce_timeout'],
                  'existing_task_id': config['existing_task_id'][0],
                  'package': config['package'][0],
                  'ignored_files': config['ignored_files'][0],
-                 'machine': config['machine'][0] }
+                 'machine': config['machine'][0],
+                 'tags': config['tags'][0]}
+
         return forms.CuckooRunForm(machines=machines, data=data)
 
     @staticmethod
@@ -152,6 +157,7 @@ class CuckooService(Service):
         files = {'file': (obj.filename, obj.filedata.read())}
 
         payload = {}
+        options = {}
 
         package = str(self.config.get('package'))
         if package != 'auto':
@@ -163,7 +169,23 @@ class CuckooService(Service):
 
         enforce_timeout = self.config.get('enforce_timeout')
         if enforce_timeout:
-            payload['enforce_timeout'] = 'True';
+            payload['enforce_timeout'] = 'True'
+
+        tor = self.config.get('tor')
+        if tor:
+            options['tor'] = 'yes'
+
+        procmemdump = self.config.get('procmemdump')
+        if procmemdump:
+            options['procmemdump'] = 'yes'
+
+        options = ",".join(list(map(lambda option: "{0}={1}".format(option, options[option]), options.keys())))
+        options_string = self.config.get('options')
+        if options_string:
+            options += options_string
+
+        tags = str(self.config.get('tags'))
+
 
         tasks = {}
 
@@ -171,30 +193,31 @@ class CuckooService(Service):
         if machine.lower() == "all":
             # Submit a new task with otherwise the same info to each machine
             for each in self.get_machines():
-                task_id = self.post_task(files, payload, each)
+                task_id = self.post_task(files, payload, tags=tags, options=options)
                 if task_id is not None:
                     tasks[each] = task_id
         elif machine.lower() == "any":
-            task_id = self.post_task(files, payload)
+            task_id = self.post_task(files, payload, tags=tags, options=options)
             if task_id is not None:
                 tasks['any'] = task_id
         elif machine:  # Only one Machine ID requested
-            task_id = self.post_task(files, payload, machine)
+            task_id = self.post_task(files, payload, machine=machine, tags=tags, options=options)
             if task_id is not None:
                 tasks[machine] = task_id
 
         # return dictionary of Tasks
         return tasks
 
-    def post_task(self, files, payload, machine=None):
+    def post_task(self, files, payload, machine=None, tags=None, options=None):
         """
         Post a new analysis task to Cuckoo.
 
         Args:
             files: file information
-            payload (dict): task options
+            payload (dict): POST parameters
             machine (str): the machine label to submit to (or None if any
                 machine)
+            options (dict): Task options
 
         Returns:
             Task ID or None
@@ -203,6 +226,8 @@ class CuckooService(Service):
             payload['machine'] = machine
         else:
             machine = "any"
+        if options:
+            payload["options"] = options
 
         r = requests.post(self.base_url + '/tasks/create/file',
                           files=files, data=payload,
@@ -221,6 +246,7 @@ class CuckooService(Service):
             task_id = response['task_ids'][0]
         else:
             task_id = response['task_id']
+        self._info("Options: {0}".format(options))
         self._info("Submitted Task ID %s for machine %s" % (task_id, machine))
 
         return task_id
@@ -273,7 +299,7 @@ class CuckooService(Service):
         # analysis is around 6 minutes.
         delay = 5
         step = 5
-        max_delay = 60
+        max_delay = 120
 
         self._info("Retrieving results for Task ID %s" % task_id)
 
