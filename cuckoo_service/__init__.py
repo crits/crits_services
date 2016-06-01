@@ -180,7 +180,7 @@ class CuckooService(Service):
             options['procmemdump'] = 'yes'
 
         options = ",".join(list(map(lambda option: "{0}={1}".format(option, options[option]), options.keys())))
-        options_string = self.config.get('options')
+        options_string = str(self.config.get('options'))
         if options_string:
             options += options_string
 
