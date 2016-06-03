@@ -4,7 +4,6 @@ from hashlib import md5
 import os
 import tarfile
 import time
-import logging
 
 import requests
 
@@ -90,6 +89,11 @@ class CuckooService(Service):
     def bind_runtime_form(analyst, config):
         machines = CuckooService._tuplize_machines(config['machine'])
 
+        if 'tor' not in config:
+            config['tor'] = False
+        if 'procmemdump' not in config:
+            config['procmemdump'] = False
+        
         # The integer values are submitted as a list for some reason.
         # Package and machine are submitted as a list too.
         data = { 'timeout': config['timeout'][0],
@@ -102,7 +106,6 @@ class CuckooService(Service):
                  'ignored_files': config['ignored_files'][0],
                  'machine': config['machine'][0],
                  'tags': config['tags'][0]}
-        logging.info(data)
 
         return forms.CuckooRunForm(machines=machines, data=data)
 
