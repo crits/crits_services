@@ -150,7 +150,7 @@ class pdf2txtService(Service):
                 return
             raw_hash = md5(output).hexdigest()
             res = handle_raw_data_file(output, self.obj.source, self.current_task.username,
-                        title="pdftotext", data_type='text',
+                        title="pdftotext", data_type='Text',
                         tool_name='pdftotext', tool_version='0.1', tool_details='http://poppler.freedesktop.org',
                         method=self.name,
                         copy_rels=True)
