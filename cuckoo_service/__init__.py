@@ -4,6 +4,7 @@ from hashlib import md5
 import os
 import tarfile
 import time
+import logging
 
 import requests
 
@@ -101,6 +102,7 @@ class CuckooService(Service):
                  'ignored_files': config['ignored_files'][0],
                  'machine': config['machine'][0],
                  'tags': config['tags'][0]}
+        logging.info(data)
 
         return forms.CuckooRunForm(machines=machines, data=data)
 
