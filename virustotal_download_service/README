@@ -1,0 +1,7 @@
+This service checks the VirusTotal database to see if it contains a sample matching the given md5.
+
+If VirusTotal has the sample, the sample is downloaded to CRITs.
+
+Requirements:
+   -An API key available from virustotal.com
+   -Add Source "VirusTotal" to CRITs and assign to User for viewing of related Source Instances
