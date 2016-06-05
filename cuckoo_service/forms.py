@@ -69,8 +69,9 @@ class CuckooRunForm(forms.Form):
                                            "as 0 to use the timeout specified "
                                            " in the Cuckoo configuration.",
                                  initial=0)
+
     enforce_timeout = forms.BooleanField(required=False,
-                                         label="Enforce Timeout?",
+                                         label="Enforce timeout",
                                          initial=False,
                                          help_text="Always wait the timeout "
                                                    "period.")
@@ -79,6 +80,10 @@ class CuckooRunForm(forms.Form):
                               initial=[],
                               help_text="Name of the machine to use for the "
                                         "analysis.")
+    tags = forms.CharField(required=False,
+                           label="Machine tags",
+                           help_text="Machine tags separated by commas")
+
     package = forms.ChoiceField(required=True,
                                 label="Package",
                                 choices=[("auto", "auto"),
@@ -87,6 +92,17 @@ class CuckooRunForm(forms.Form):
                                          ("pdf", "pdf"),
                                          ("doc", "doc")],
                                 help_text="Analysis package to run.")
+
+    tor = forms.BooleanField(required=False,
+                             label="Use Tor",
+                             initial=False,
+                             help_text="Enable Tor while running this sample (cuckoo-modified fork feature)")
+
+    procmemdump = forms.BooleanField(required=False,
+                                     label="Analyze process memory",
+                                     initial=False,
+                                     help_text="Dump and analyze process memory (Processing takes longer)")
+
     existing_task_id = forms.IntegerField(required=False,
                                  label="Existing task ID",
                                  help_text="DEVELOPMENT ONLY: Fetch results "
@@ -94,6 +110,11 @@ class CuckooRunForm(forms.Form):
                                  "running the sample in the sandbox. Use '0' "
                                  "to run a new analysis.",
                                  initial=0)
+
+    options = forms.CharField(required=False,
+                              label="Options",
+                              help_text="A Cuckoo task options string (e.g. foo=yes,bar=yes)")
+
     ignored_files = forms.CharField(required=False,
                                     label="Ignored files",
                                     initial='SharedDataEvents*',
