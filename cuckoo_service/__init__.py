@@ -93,7 +93,7 @@ class CuckooService(Service):
             config['tor'] = False
         if 'procmemdump' not in config:
             config['procmemdump'] = False
-        
+
         # The integer values are submitted as a list for some reason.
         # Package and machine are submitted as a list too.
         data = { 'timeout': config['timeout'][0],
@@ -185,9 +185,11 @@ class CuckooService(Service):
             options['procmemdump'] = 'yes'
 
         options = ",".join(list(map(lambda option: "{0}={1}".format(option, options[option]), options.keys())))
-        options_string = str(self.config.get('options'))
-        if options_string:
-            options += options_string
+        custom_options = str(self.config.get('options'))
+        if custom_options:
+            if len(options) > 0:
+                options += ","
+            options += custom_options
 
         tags = str(self.config.get('tags'))
 
