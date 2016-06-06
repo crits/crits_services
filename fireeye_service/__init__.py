@@ -18,7 +18,7 @@ class FireeyeService(Service):
     """
 
     name = 'Fireeye_Sandbox'
-    version = '1.0.0'
+    version = '1.1.0'
     supported_types = ['Sample']
     description = "Analyze a sample using the FireyeMAS appliance through the Fireeye CMS."
 
@@ -87,7 +87,7 @@ class FireeyeService(Service):
         # The integer values are submitted as a list for some reason.
         # Package and machine are submitted as a list too.
         data = { 'timeout': config['timeout'][0],
-                'machine': config['machine'][0] }
+                'machine': config['machine'][0]}
         return forms.FireeyeRunForm(machines=machines, data=data)
 
     @staticmethod
@@ -115,7 +115,7 @@ class FireeyeService(Service):
 
     @property
     def base_url(self):
-        return 'https://%s/wsapis/v1.0.0' % (self.config.get('host'))
+        return 'https://%s/wsapis/v1.1.0' % (self.config.get('host'))
 
     @property
     def username(self):
@@ -142,7 +142,7 @@ class FireeyeService(Service):
         b64credentials = base64.b64encode(credentials)
         headers = {'Authorization': 'Basic ' + b64credentials}
         r = requests.post(self.base_url + '/auth/login', headers=headers, verify=False, proxies=self.proxies)
-        token = r.headers['x-feapi-token']
+        token = r.headers['X-FeApi-Token']
         return token
 
     #Function to parse out the xml node (file, network, etc) within the os-changes node. 
@@ -173,14 +173,27 @@ class FireeyeService(Service):
     #Submitting sample via a zip file. The MAS options are defined in json_option. 
     def submit_sample(self, obj):
         timeout = self.config.get('timeout')
-        zipdata = create_zip([(obj.filename, obj.filedata.read())]) 
         machine = self.config.get('machine', "")
         sc = self.authentication
-        headers = {'X-FEApi-Token': sc}
-        json_option = {'application':'0', 'timeout':timeout, 'priority':'0', 'profiles':[machine], 'analysistype':'0', 'force':'true', 'prefetch':'0'}
+        headers = {'X-feApi-Token': sc, 'X-FeClient-Token':'critsy test'}
+        json_option = {"application":"0",
+                       "timeout":timeout,
+                       "priority":"0",
+                       "profiles":[machine],
+                       "analysistype":"2",
+                       "force":"false",
+                       "prefetch":"1"}
         jsondata = json.dumps(json_option)
-        files = [('filename',('crits.zip', zipdata, '')),('options', ('', jsondata,'application/json'))]
-        r = requests.post(self.base_url + '/submissions', headers=headers, files=files, verify=False, proxies=self.proxies)
+
+
+        submission = {'filedata' : (obj.filename,obj.filedata)}
+        self._info("About to post to FE MAS")
+        r = requests.post(self.base_url + '/submissions',
+                          headers=headers,
+                          files=submission,
+                          data ={'options':jsondata},
+                          verify=False,
+                          proxies=self.proxies)
         
         if r.status_code != requests.codes.ok:
             msg = "Failed to submit file to machine '%s'." % machine
@@ -368,6 +381,10 @@ class FireeyeService(Service):
         self.obj = obj
 
         self.submit_sample(self.obj)
+        self._info("Submission Completed")
         self.get_analysis()
+        self._info("Analysis Completed")
         self.get_report()
+        self._info("Report Generated")
         self.logout()
+        self._info("Logged out now...")
