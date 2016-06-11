@@ -175,7 +175,7 @@ class TAXIIServiceConfigForm(forms.Form):
                      'style':"height:100px; background-image: none"}
     taxii_servers = forms.ChoiceField(required=False,
                   label="TAXII Servers",
-                  initial='',
+                  initial={},
                   widget=forms.Select(attrs=tserver_attrs))
 
     def __init__(self, choices=[], *args, **kwargs):
