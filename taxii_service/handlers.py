@@ -1501,7 +1501,7 @@ def update_taxii_server_config(updates, analyst):
             pass
     elif 'edit_feed' in updates:
         data = servers[updates['srv_name']]['feeds'][updates['edit_feed']]
-        hostname = servers[updates['srv_name']]['hostname']
+        hostname = servers[updates['srv_name']].get('hostname', '')
         last = taxii.Taxii.get_last(hostname + ':' + data['feedname'])
         if last:
             data['last_poll'] = str(pytz.utc.localize(last.end)).split('+')[0]
@@ -1553,7 +1553,9 @@ def update_taxii_server_config(updates, analyst):
                             fid += 1
                     feeds[str(fid)] = updates
                     servers[srv_name]['feeds'] = feeds
-                except KeyError:
+                except (KeyError, TypeError):
+                    if not isinstance(servers, dict):
+                        servers = {}
                     servers[srv_name] = {'feeds': {'0': updates}}
 
                 service.config.taxii_servers = servers
