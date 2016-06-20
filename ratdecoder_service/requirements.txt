@@ -1,0 +1,4 @@
+yara
+pefile
+pype32
+pycrypto
