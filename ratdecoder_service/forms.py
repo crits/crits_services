@@ -6,12 +6,12 @@ class RATDecoderConfigForm(forms.Form):
     required_css_class = 'required'
     decodersdir = forms.CharField(required=True,
                              label="Decoder directory",
-                             initial='',
+                             initial='/data/crits_services/ratdecoder_service/decoders/',
                              widget=forms.TextInput(),
                              help_text="Directory where decoder files are.")
     yaradir = forms.CharField(required=True,
                              label="Decoder Yara directory",
-                             initial='',
+                             initial='/data/crits_services/ratdecoder_service/yaraRules/',
                              widget=forms.TextInput(),
                              help_text="Directory where decoder files are.")
                              
