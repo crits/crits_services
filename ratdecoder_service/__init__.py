@@ -49,17 +49,15 @@ class RATDecoderService(Service):
         if not obj.is_pe():
             raise ServiceConfigError("Not a PE.")
 
-    @staticmethod
-    def bind_runtime_form(analyst, config):
-        return forms.RATDecoderRunForm(config)
-
     @classmethod
-    def generate_runtime_form(self, analyst, config, crits_type, identifier):
-        return render_to_string('services_run_form.html',
+    def generate_config_form(self, config):
+        html = render_to_string('services_config_form.html',
                                 {'name': self.name,
-                                 'form': forms.RATDecoderRunForm(),
-                                 'crits_type': crits_type,
-                                 'identifier': identifier})
+                                 'form': forms.RATDecoderConfigForm(initial=config),
+                                 'config_error': None})
+        form = forms.RATDecoderConfigForm
+        return form, html
+
 
     @staticmethod
     def get_config(existing_config):
