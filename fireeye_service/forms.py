@@ -17,7 +17,7 @@ class FireeyeConfigForm(forms.Form):
     password = forms.CharField(required=True,
                                 label="Password",
                                 initial='',
-                                widget=forms.TextInput(),
+                                widget=forms.PasswordInput(),
                                 help_text="Password")
     machine = forms.CharField(required=True,
                                 label="Machines",
