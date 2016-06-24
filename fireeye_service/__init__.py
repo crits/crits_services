@@ -216,7 +216,7 @@ class FireeyeService(Service):
             res = r.json()['submissionStatus']
             if first is True:
                 time.sleep(self.timeout+10)
-            if res.text == "Done":
+            if res == "Done":
                 complete = requests.get(self.base_url + '/submissions/results/' + self.task, headers=headers, verify=False, proxies=self.proxies, stream=True)
                 analysis_xml = etree.parse(complete.raw)
                 root = analysis_xml.getroot()
@@ -225,10 +225,10 @@ class FireeyeService(Service):
                 self._info ("Analysis has been completed. FE_ID = %s" % fe_id)
                 self.fe_id = fe_id
                 break;
-            elif res.text == "In Progress":
+            elif res == "In Progress":
                 self._info("Analysis is still running for %s" % self.task)
                 time.sleep(30)
-                counter=counter+1
+                counter += 1
             first = False
 
     #Retrieve the xml report and parsing out parts of the xml report. 
