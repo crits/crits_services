@@ -213,7 +213,10 @@ class FireeyeService(Service):
         first = True
         while counter <= 5:
             r = requests.get(self.base_url + '/submissions/status/' + self.task, headers=headers, verify=False, proxies=self.proxies)
-            res = r.json()['submissionStatus']
+            try:
+                res = r.json()['submissionStatus']
+            except TypeError as err:
+                res = r.text
             if first is True:
                 time.sleep(self.timeout+10)
             if res == "Done":
@@ -224,12 +227,16 @@ class FireeyeService(Service):
                 fe_id = analysis_id.attrib['id']
                 self._info ("Analysis has been completed. FE_ID = %s" % fe_id)
                 self.fe_id = fe_id
-                break;
+                break
             elif res == "In Progress":
                 self._info("Analysis is still running for %s" % self.task)
                 time.sleep(30)
                 counter += 1
+            elif res == "Submission not found":
+                self._info("Submission not found for task %s" % self.task)
+                break
             first = False
+            
 
     #Retrieve the xml report and parsing out parts of the xml report. 
     def get_report(self):
