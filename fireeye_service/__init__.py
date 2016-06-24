@@ -177,7 +177,7 @@ class FireeyeService(Service):
         sc = self.authentication
         headers = {'X-feApi-Token': sc, 'X-FeClient-Token':'critsy test'}
         json_option = {"application":"0",
-                       "timeout":timeout,
+                       "timeout": str(timeout),
                        "priority":"0",
                        "profiles":[machine],
                        "analysistype":"2",
@@ -213,9 +213,10 @@ class FireeyeService(Service):
         first = True
         while counter <= 5:
             r = requests.get(self.base_url + '/submissions/status/' + self.task, headers=headers, verify=False, proxies=self.proxies)
+            res = r.json()['submissionStatus']
             if first is True:
-                time.sleep(self.timeout+20)
-            if r.text == "Done":
+                time.sleep(self.timeout+10)
+            if res.text == "Done":
                 complete = requests.get(self.base_url + '/submissions/results/' + self.task, headers=headers, verify=False, proxies=self.proxies, stream=True)
                 analysis_xml = etree.parse(complete.raw)
                 root = analysis_xml.getroot()
@@ -224,10 +225,10 @@ class FireeyeService(Service):
                 self._info ("Analysis has been completed. FE_ID = %s" % fe_id)
                 self.fe_id = fe_id
                 break;
-            elif r.text == "In Progress":
+            elif res.text == "In Progress":
                 self._info("Analysis is still running for %s" % self.task)
                 time.sleep(30)
-                counter+1
+                counter=counter+1
             first = False
 
     #Retrieve the xml report and parsing out parts of the xml report. 
