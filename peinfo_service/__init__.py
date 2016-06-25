@@ -24,6 +24,7 @@ from crits.samples.handlers import handle_file
 from crits.vocabulary.relationships import RelationshipTypes
 
 from . import forms
+from compiler_maps import richpe_compiler_maps
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class PEInfoService(Service):
     """
 
     name = "peinfo"
-    version = '1.1.4'
+    version = '1.1.5'
     supported_types = ['Sample']
     description = "Generate metadata about Windows PE/COFF files."
     added_files = []
@@ -243,7 +244,14 @@ class PEInfoService(Service):
         sha_256 = hashlib.sha256()
         for hv in headervalues:
             sha_256.update(struct.pack('<I', hv))
+
         self._add_result('rich_header', sha_256.hexdigest(), None)
+
+        for hv in headervalues:
+            hexd = str("{0:#0{1}x}".format(hv, 10))
+            if hexd in richpe_compiler_maps:
+                self._add_result('rich_header', 'compid ' + hexd,
+                                 {"raw": richpe_compiler_maps[hexd]})
 
     def _get_imphash(self, pe):
         imphash = pe.get_imphash()
