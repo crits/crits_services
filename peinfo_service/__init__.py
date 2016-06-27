@@ -150,6 +150,7 @@ class PEInfoService(Service):
 
     def run(self, obj, config):
         try:
+            self._debug("Version: %s" % pefile.__version__ )
             pe = pefile.PE(data=obj.filedata.read())
         except pefile.PEFormatError as e:
             self._error("A PEFormatError occurred: %s" % e)
