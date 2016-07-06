@@ -108,7 +108,7 @@ class RATDecoderService(Service):
         # UPX Check and unpack
         if family == 'UPX':
             raw_data = self.unpack(raw_data)
-            family = self.yara_scan(raw_data)
+            family = self.yara_scan(raw_data, config['yaradir'])
 
             if family == 'UPX':
                 # Failed to unpack
@@ -118,7 +118,7 @@ class RATDecoderService(Service):
         # Java Dropper Check
         if family == 'JavaDropper':
             raw_data = JavaDropper.run(raw_data)
-            family = self.yara_scan(raw_data)
+            family = self.yara_scan(raw_data, config['yaradir'])
 
             if family == 'JavaDropper':
                 logger.error("  [!] Failed to unpack JavaDropper")
