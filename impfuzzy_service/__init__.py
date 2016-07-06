@@ -25,6 +25,8 @@ class impfuzzyService(Service):
 
     @staticmethod
     def valid_for(obj):
+        if obj.filedata.grid_id == None:
+            raise ServiceConfigError("Missing filedata.")
         # Only run on PE files
         if not obj.is_pe():
             raise ServiceConfigError("Not a PE.")
