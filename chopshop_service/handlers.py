@@ -14,6 +14,7 @@ from crits.pcaps.pcap import PCAP
 from crits.samples.handlers import handle_file
 from crits.emails.handlers import handle_eml
 from crits.services.handlers import get_config
+from crits.vocabulary.relationships import RelationshipTypes
 import crits.services
 
 def chopshop_carver(pcap_md5, options, analyst):
@@ -128,7 +129,9 @@ def chopshop_carver(pcap_md5, options, analyst):
 
     # Grab any carved SMTP returns.
     for blob in chopui.jsonclass.smtp_returns.values():
-        ret = handle_eml(blob, source, None, analyst, 'ChopShop FileCarver', 'PCAP', pcap.id)
+        ret = handle_eml(blob, source, None, analyst, 'ChopShop FileCarver',
+                         related_id=pcap.id, related_type='PCAP',
+                         relationship_type=RelationshipTypes.RELATED_TO)
         if not ret['status']:
             message += ret['reason']
             continue
