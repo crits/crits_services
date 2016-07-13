@@ -59,7 +59,11 @@ class impfuzzyService(Service):
 
     def run(self, obj, config):
         threshold = config.get("threshold", 50)
-        target_impfuzzy = pyimpfuzzy.get_impfuzzy_data(obj.filedata.read())
+        target_impfuzzy = None
+        try:
+            target_impfuzzy = pyimpfuzzy.get_impfuzzy_data(obj.filedata.read())
+        except Exception:
+            pass
         target_md5 = obj.md5
         if not target_impfuzzy:
             logger.error = "Could not get the target impfuzzy value for sample"
