@@ -1,5 +1,6 @@
 import logging
 import json
+import re
 
 from django.http import HttpResponseRedirect
 from django.template import RequestContext
@@ -135,12 +136,14 @@ def list_saved_polls(request):
     """
     if request.POST and request.body:
         polls = handlers.get_saved_polls('delete', request.body)
+        data = {}
     else:
         polls = handlers.get_saved_polls('list')
+        data = {'html': render_to_string("taxii_saved_polls.html",
+                                         {'polls' : polls})}
 
-    data = {'success': polls['success'], 'msg': polls.get('msg')}
-    data['html'] = render_to_string("taxii_saved_polls.html",
-                                    {'polls' : polls})
+    data['success'] = polls['success']
+    data['msg'] = polls.get('msg')
     return HttpResponse(json.dumps(data), content_type="application/json")
 
 @user_passes_test(user_can_view_data)
