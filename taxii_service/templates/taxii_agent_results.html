@@ -144,6 +144,18 @@
                     </ul>
                 </td>
             </tr>
+            <tr>
+                <td>Signatures</td><td>{{ result.Signature|length }}</td>
+                <td>
+                    <ul>
+                    {% for signature in result.Signature %}
+                        <li>
+                            <a href="{% url 'crits.core.views.details' 'Signature' signature.0 %}">{{ signature.1 }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
         </tbody>
     </table>
 </div>

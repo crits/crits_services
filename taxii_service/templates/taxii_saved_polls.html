@@ -24,7 +24,7 @@
         <table class="chart" id="ta_results" width="100%">
             <colgroup>
                 <col width="175px">
-                <col width="75px">
+                <col width="140px">
                 <col width="85px">
                 <col>
                 <col>
@@ -34,7 +34,7 @@
             </colgroup>
             <thead>
                 <th>Timestamp</th>
-                <th>Message ID</th>
+                <th>Msg ID or Reference</th>
                 <th>Block Count</th>
                 <th>Server Hostname</th>
                 <th>Feed or File Name</th>
@@ -69,7 +69,7 @@
         <table class="chart" id="ta_results" width="100%">
             <colgroup>
                 <col width="175px">
-                <col width="75px">
+                <col width="140px">
                 <col width="85px">
                 <col>
                 <col>
@@ -79,7 +79,7 @@
             </colgroup>
             <thead>
                 <th>Timestamp</th>
-                <th>Message ID</th>
+                <th>Msg ID or Reference</th>
                 <th>Block Count</th>
                 <th>Server Hostname</th>
                 <th>Feed or File Name</th>
@@ -133,13 +133,14 @@
 
     $('a.delete_poll').click(function() {
 		$.ajax({
+			context: this,
 			type: "POST",
 			url: "{% url 'taxii_service.views.list_saved_polls' %}",
 			data: this.id,
 			dataType: "json"
 		}).done(function(data) { // run on successful request
 			if (data.success) { // at least some feeds were successfully processed
-				$("#results_container").html(data.html);
+				$(this).closest('tr').remove();
 				show_container("Saved TAXII Polls", result_ctr);
                 view_saved.prop('hidden', true);
 			} else { // some issue occurred
