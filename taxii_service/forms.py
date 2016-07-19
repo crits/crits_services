@@ -156,10 +156,10 @@ class TAXIIServiceConfigForm(forms.Form):
                   widget=forms.TextInput(),
                   help_text="The XML namespace prefix to use in STIX IDs.")
 
-    create_events = forms.BooleanField(required=False,
-                  label="Events",
+    header_events = forms.BooleanField(required=False,
+                  label="Pkg Header Events",
                   initial=False,
-                  help_text="Create events for all STIX documents.")
+                  help_text="Create an Event from each STIX package header & relate all items to it.")
 
     max_rels = forms.IntegerField(required=True,
                                   label="Maximum Related",
@@ -203,7 +203,8 @@ class TAXIIServerConfigForm(forms.Form):
                                label="Hostname",
                                initial='',
                                widget=forms.TextInput(),
-                               help_text="TAXII server hostname.")
+                               help_text="TAXII server hostname. (Omit URI "
+                                         "scheme, e.g. 'http://')")
 
     https = forms.BooleanField(required=False,
                                label="HTTPS",

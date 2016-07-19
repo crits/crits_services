@@ -192,8 +192,6 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
           }
 
     save_datetimes = False
-    sc = get_config('taxii_service')
-    create_events = sc['create_events']
 
     # Last document's end time is our start time.
     if not start:
@@ -522,7 +520,7 @@ def generate_import_preview(poll_id, analyst):
               "analyst" (string) - Userid of the anaylst that initiated the poll
     """
     tsvc = get_config('taxii_service')
-    create_events = tsvc['create_events']
+    hdr_events = tsvc['header_events']
     p_time = datetime.utcfromtimestamp(float(poll_id))
     blocks = taxii.TaxiiContent.objects(poll_time=p_time)
     if not blocks:
@@ -556,7 +554,7 @@ def generate_import_preview(poll_id, analyst):
 
         if block.content:
             objs = import_standards_doc(block.content, analyst, None, None,
-                                        create_events, preview_only=True)
+                                        hdr_events, preview_only=True)
 
             if not objs['success']:
                 failures.append((objs['reason'], 'STIX Package'))
@@ -732,7 +730,7 @@ def import_content_blocks(block_ids, action, analyst):
     blocks = taxii.TaxiiContent.objects(id__in=block_ids)
 
     tsvc = get_config('taxii_service')
-    create_events = tsvc['create_events']
+    hdr_events = tsvc['header_events']
     tsrvs = tsvc.taxii_servers
     pids = {}
 
@@ -757,7 +755,7 @@ def import_content_blocks(block_ids, action, analyst):
                 source = block.hostname
 
         objs = import_standards_doc(data, analyst, method, ref=reference,
-                                    make_event=create_events, source=source)
+                                    hdr_events=hdr_events, source=source)
 
         if not objs['success']:
             ret['failures'].append((objs['reason'],
@@ -1752,7 +1750,7 @@ def update_taxii_service_config(post_data, analyst):
     status['success'] = True
     return status
 
-def import_standards_doc(data, analyst, method, ref=None, make_event=False,
+def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
                          source=None, preview_only=False):
     """
     Import a standards document into CRITs.
@@ -1766,8 +1764,8 @@ def import_standards_doc(data, analyst, method, ref=None, make_event=False,
     :type method: str
     :param ref: The reference to this document.
     :type ref: str
-    :param make_event: Whether or not we should make an Event for this document.
-    :type make_event: bool
+    :param hdr_events: Whether or not we should make an Event for this document.
+    :type hdr_events: bool
     :param source: The name of the source who provided this document.
     :type source: str
     :param preview_only: If True, nothing is imported and a preview is returned
@@ -1788,7 +1786,7 @@ def import_standards_doc(data, analyst, method, ref=None, make_event=False,
 
     try:
         parser = STIXParser(data, analyst, method, preview_only)
-        parser.parse_stix(reference=ref, make_event=make_event, source=source)
+        parser.parse_stix(reference=ref, hdr_events=hdr_events, source=source)
         parser.relate_objects()
     except STIXParserException, e:
         logger.exception(e)
