@@ -407,8 +407,36 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
         msg = 'Unknown content binding "%s"' % binding
         return (None, msg)
 
-def save_standards_doc(data, analyst, message_id, hostname, feed,
-                       timestamp, begin, end, poll_time=None, errors=[]):
+def process_standards_doc(data, analyst, filename, source, reference):
+    """
+    Take the given standards data and save it in the DB
+
+    :param data: Uploaded Content
+    :type data: string
+    :param analyst: Userid of the analyst who uploaded the data
+    :type analyst: string
+    :param filename: The filename of the standards doc
+    :type filename: string
+    :param source: The source name of the data
+    :type source: string
+    :param reference: A reference to the source of the data
+    :type reference: string
+    :returns: dict with key "polls"
+    """
+
+    t_stamp = datetime.now()
+    t_stamp = t_stamp.replace(microsecond=t_stamp.microsecond / 1000 * 1000)
+    host = "Manual STIX Upload - Source: %s" % source
+
+    save_standards_doc(data, analyst, reference, host, filename,
+                       t_stamp, poll_time=t_stamp)
+
+    poll_id = (t_stamp.replace(tzinfo=None)-datetime(1970,1,1)).total_seconds()
+
+    return {'polls': [generate_import_preview(poll_id, analyst)]}
+
+def save_standards_doc(data, analyst, message_id, hostname, feed, timestamp,
+                       begin=None, end=None, poll_time=None, errors=[]):
     """
     Take the given standards data and save it in the DB
 
@@ -446,7 +474,10 @@ def save_standards_doc(data, analyst, message_id, hostname, feed,
             begin = begin.strftime('%Y-%m-%d %H:%M:%S')
         else:
             begin = 'None'
-        end = end.strftime('%Y-%m-%d %H:%M:%S')
+        if end:
+            end = end.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            end = 'None'
         taxii_content.timerange = '%s to %s' % (begin, end)
         taxii_content.analyst = analyst
         taxii_content.content = data or ""
@@ -637,6 +668,7 @@ def import_content_blocks(block_ids, action, analyst):
     pids = {}
 
     for block in blocks:
+        source = ""
         reference = block.taxii_msg_id
         timestamp = block.timestamp
         data = block.content
@@ -646,6 +678,14 @@ def import_content_blocks(block_ids, action, analyst):
                 for feed in tsrvs[svr]['feeds']:
                     if tsrvs[svr]['feeds'][feed]['feedname'] == block.feed:
                         source = tsrvs[svr]['feeds'][feed]['source']
+                        break
+                if source:
+                    break
+        else:
+            try:
+                source = block.hostname.split(' - Source: ')[1]
+            except:
+                source = block.hostname
 
         objs = import_standards_doc(data, analyst, method, ref=reference,
                                     make_event=create_events, source=source)

@@ -18,7 +18,7 @@
 {% with polls.unimported as upolls %}
 <div class="content_box">
     <h3 class="titleheader">
-        <span>Unimported Polls - Count: {{ upolls|length }}</span>
+        <span>Unimported STIX - Count: {{ upolls|length }}</span>
     </h3>
     {% if upolls %}
         <table class="chart" id="ta_results" width="100%">
@@ -37,7 +37,7 @@
                 <th>Message ID</th>
                 <th>Block Count</th>
                 <th>Server Hostname</th>
-                <th>Feed Name</th>
+                <th>Feed or File Name</th>
                 <th>Time Range</th>
                 <th>Analyst</th>
                 <th>Delete</th>
@@ -62,7 +62,7 @@
 {% with polls.errored as epolls %}
 <div class="content_box">
     <h3 class="titleheader">
-        <span>Polls With Errors During Import - Count: {{ epolls|length }}</span>
+        <span>STIX With Errors During Import - Count: {{ epolls|length }}</span>
     </h3>
     {% if epolls %}
         <table class="chart" id="ta_results" width="100%">
@@ -81,7 +81,7 @@
                 <th>Message ID</th>
                 <th>Block Count</th>
                 <th>Server Hostname</th>
-                <th>Feed Name</th>
+                <th>Feed or File Name</th>
                 <th>Time Range</th>
                 <th>Analyst</th>
                 <th>Delete</th>
@@ -115,7 +115,7 @@
 		}).done(function(data) { // run on successful request
 			if (data.success) { // at least some feeds were successfully processed
 				$("#results_container").html(data.html);
-				$("#current_state").text("TAXII Import Preview");
+				$("#current_state").text("STIX Import Preview");
                 $("#view_saved").prop('hidden', false);
 			} else { // some issue occurred
 				$("#error_container").children(".taxii_notice").html(data.msg);

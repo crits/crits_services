@@ -14,5 +14,5 @@ urlpatterns = patterns('taxii_service.views',
     (r'^get_taxii_config_form/(?P<crits_type>\S+)/(?P<crits_id>\S+)/$', 'get_taxii_config_form'),
     (r'^(?P<crits_type>\S+)/(?P<crits_id>\S+)/$', 'execute_taxii_service'),
     (r'^(?P<crits_type>\S+)/(?P<crits_id>\S+)/preview$', 'preview_taxii_service'),
-    (r'^upload/$', 'upload_standards'),
+    (r'^stix_upload/$', 'stix_upload'),
 )
