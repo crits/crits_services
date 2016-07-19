@@ -7,6 +7,7 @@ def register_api(v1_api):
 urlpatterns = patterns('taxii_service.views',
     (r'^taxii_agent/$', 'taxii_poll'),
     (r'^taxii_agent/import/$', 'import_taxii_data'),
+    (r'^taxii_agent/export/(?P<tid>\S+)$', 'download_taxii_content'),
     (r'^taxii_agent/saved/$', 'list_saved_polls'),
     (r'^taxii_agent/preview/(?P<taxii_msg_id>[\d.]+)/$', 'get_import_preview'),
     (r'^configure/$', 'configure_taxii'),

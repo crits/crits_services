@@ -94,6 +94,7 @@
         <h3 class="titleheader">
             <input id="{{ block.id }}" class="cbx_{{ poll.taxii_msg_id }} cbx" type="checkbox" value="{{ block.id }}" checked />
             <span>Block {{ forloop.counter }}: {{ block.timestamp }}</span>
+            <span style="float:right; margin-right:5px; margin-top:4px; font-size:75%;"><a href="{% url 'taxii_service.views.download_taxii_content' block.id %}">Download</a></span>
         </h3>
         <table class="chart" id="block_data" width="100%">
             <colgroup>

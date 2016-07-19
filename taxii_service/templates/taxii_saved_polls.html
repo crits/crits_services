@@ -30,7 +30,7 @@
                 <col>
                 <col width="275px">
                 <col>
-                <col width="45px">
+                <col width="120px">
             </colgroup>
             <thead>
                 <th>Timestamp</th>
@@ -40,7 +40,7 @@
                 <th>Feed or File Name</th>
                 <th>Time Range</th>
                 <th>Analyst</th>
-                <th>Delete</th>
+                <th>Actions</th>
             </thead>
             <tbody>
                 {% for time, meta in upolls.items %}
@@ -50,7 +50,8 @@
                     <td>{{ meta.count }}</td><td>{{ meta.host }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
                     <td>{{ meta.analyst }}</td>
-                    <td><a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
+                    <td><a href="{% url 'taxii_service.views.download_taxii_content' meta.poll_id %}">Download</a>
+                        | <a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -74,7 +75,7 @@
                 <col>
                 <col width="275px">
                 <col>
-                <col width="45px">
+                <col width="120px">
             </colgroup>
             <thead>
                 <th>Timestamp</th>
@@ -84,7 +85,7 @@
                 <th>Feed or File Name</th>
                 <th>Time Range</th>
                 <th>Analyst</th>
-                <th>Delete</th>
+                <th>Actions</th>
             </thead>
             <tbody>
                 {% for time, meta in epolls.items %}
@@ -94,7 +95,8 @@
                     <td>{{ meta.count }}</td><td>{{ meta.host }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
                     <td>{{ meta.analyst }}</td>
-                    <td><a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
+                    <td><a href="{% url 'taxii_service.views.download_taxii_content' meta.poll_id %}">Download</a>
+                        | <a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
                 </tr>
                 {% endfor %}
             </tbody>

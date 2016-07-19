@@ -569,6 +569,7 @@ def get_saved_polls(action, poll_id=None):
     related to that poll before returning the remaining poll metadata.
 
     :param action: If 'list', return metadata.
+                   If 'download', return XML-formatted data
                    If 'delete', delete a set of data, then return metadata
     :type action: string
     :param poll_id: ID of the poll for which content should be deleted
@@ -577,10 +578,35 @@ def get_saved_polls(action, poll_id=None):
               "unimported" (dict) - Polls that have not yet been imported
               "errored" (dict) - Polls that errored during import
               "success" (bool) - True if poll data was successfully retrieved
+              "msg" (string) - If success is False, provide an error msg
     """
-    if action == 'delete':
+    if action in ('delete', 'download'):
         p_time = datetime.utcfromtimestamp(float(poll_id))
-        taxii.TaxiiContent.objects(poll_time=p_time).delete()
+        data = taxii.TaxiiContent.objects(poll_time=p_time) # get data from dB
+        if action == 'delete':
+            data.delete() # delete the given poll
+            return {'success': True}
+        else: # download
+            if 'Manual STIX Upload' in data[0].hostname:
+                filename = data[0].feed
+                res = ''.join(block.content for block in data)
+                return {'response': res, 'filename': filename}
+
+            # rebuild XML
+            filename = "taxii_poll-%s.xml" % p_time.strftime('%Y%m%dT%H%M%S')
+            content_blocks = []
+            for block in data:
+                stamp = block.timestamp.replace(tzinfo=pytz.utc)
+                c_block = tm11.ContentBlock(content_binding = t.CB_STIX_XML_111,
+                                            timestamp_label = stamp,
+                                            content = block.content)
+                content_blocks.append(c_block)
+            res = tm11.PollResponse(message_id=block.taxii_msg_id,
+                                    in_response_to="Unknown",
+                                    collection_name=block.feed,
+                                    message=block.timerange,
+                                    content_blocks=content_blocks)
+            return {'response': res.to_xml(), 'filename': filename}
     elif action != 'list':
         return {'success': False, 'msg': 'Invalid action type'}
 
@@ -613,6 +639,34 @@ def get_saved_polls(action, poll_id=None):
             ret['unimported'][poll] = polls[poll]
     ret['success'] = True
     return ret
+
+def get_saved_block(block_id=None):
+    """
+    Return the XML data for the given block ID.
+
+    :param block_id: ObjectId of the requested block
+    :type poll_id: string
+    :returns: dict with keys:
+              "response" (str) - The XML
+              "filename" (str) - The name of the XML file
+    """
+
+    data = taxii.TaxiiContent.objects(id=block_id).first() # get data from dB
+
+    if 'Manual STIX Upload' in data.hostname:
+        filename = data.feed
+        res = data.content
+        return {'response': res, 'filename': filename}
+
+    # rebuild XML
+    stamp = data.timestamp.replace(tzinfo=pytz.utc)
+    filename = "taxii_block-%s-%s.xml"
+    filename = filename % (data.feed, stamp.strftime('%Y%m%dT%H%M%S'))
+    c_block = tm11.ContentBlock(content_binding = t.CB_STIX_XML_111,
+                                timestamp_label = stamp,
+                                content = data.content)
+
+    return {'response': c_block.to_xml(), 'filename': filename}
 
 def import_content_blocks(block_ids, action, analyst):
     """
