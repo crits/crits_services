@@ -267,10 +267,7 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         proxy = settings.HTTP_PROXY
         if not proxy.startswith('http://'):
             proxy = 'http://' + proxy
-        if https:
-            client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
-        else:
-            client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTP)
+        client.setProxy(proxy)
 
     crits_taxii = taxii.Taxii()
     crits_taxii.runtime = runtime
@@ -1285,9 +1282,10 @@ def run_taxii_service(analyst, obj, rcpts, preview,
             ret['failed_rcpts'].append((rcpt, msg))
             continue
 
-        # Setup client authentication
+        # Setup client authentication and proxy communication
         if https:
             client.setUseHttps(True)
+        client.setProxy(proxy)
         if akey and lcert and user:
             client.setAuthType(tc.HttpClient.AUTH_CERT_BASIC)
             client.setAuthCredentials({'key_file': akey, 'cert_file': lcert,
