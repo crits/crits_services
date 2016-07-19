@@ -144,6 +144,30 @@ def list_saved_polls(request):
     return HttpResponse(json.dumps(data), content_type="application/json")
 
 @user_passes_test(user_can_view_data)
+def download_taxii_content(request, tid):
+    """
+    Given a particular TAXII poll or block, return an XML file containing
+    the date from that TAXII poll or block.
+
+    :param request: Django request object (Required)
+    :type request: :class:`django.http.HttpRequest`
+    :param tid: ID of the desired TAXII poll (a datetimestamp), or block (oid)
+    :param tid: string
+    :returns: :class:`django.http.HttpResponse`
+    """
+
+    if '.' in tid: # this is a timestamp
+        ret = handlers.get_saved_polls('download', tid)
+    else: # this is an ObjectId
+        ret = handlers.get_saved_block(tid)
+
+    resp = HttpResponse(content_type='text/xml')
+    resp['Content-Disposition'] = 'attachment; filename="%s"' % ret['filename']
+    resp.write(ret['response'])
+
+    return resp
+
+@user_passes_test(user_can_view_data)
 def get_import_preview(request, taxii_msg_id):
     """
     Given a particular TAXII poll, get a preview of the content that is
