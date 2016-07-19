@@ -205,32 +205,39 @@ class STIXParser():
             self.source_instance.reference = reference
             self.source.instances.append(self.source_instance)
 
-        # add Event based on the STIX_Header that has
-        # relationships to everything in the STIX Package
+        # If hdr_events is True, add Event based on the STIX_Header,
+        # unless this package came from a CRITs instance. Packages generated
+        # by CRITs have limited valuable header data.
+        # This event will have relationships to everything in the STIX Package
         if hdr_events:
             title = "STIX Package %s" % package.id_
             event_type = None
             event_date = datetime.datetime.now()
             description = ""
+            is_from_crits = False
             if isinstance(header, STIXHeader):
-                title = header.title or title
-                if header.package_intents:
-                    try:
-                        intent = str(header.package_intents[0])
-                        event_type = get_crits_event_type(intent)
-                    except:
-                        pass
-                info_src = header.information_source
-                if info_src and info_src.time and info_src.time.produced_time:
-                    event_date = info_src.time.produced_time.value
-                    if event_date.tzinfo:
-                        event_date = event_date.astimezone(pytz.utc)
-                        event_date = event_date.replace(tzinfo=None)
-                description = str(header.description or description)
+                if header.title == "CRITs Generated STIX Package":
+                    is_from_crits = True
+                else:
+                    title = header.title or title
+                    if header.package_intents:
+                        try:
+                            intent = str(header.package_intents[0])
+                            event_type = get_crits_event_type(intent)
+                        except:
+                            pass
+                    info_src = header.information_source
+                    if (info_src and info_src.time
+                        and info_src.time.produced_time):
+                        event_date = info_src.time.produced_time.value
+                        if event_date.tzinfo:
+                            event_date = event_date.astimezone(pytz.utc)
+                            event_date = event_date.replace(tzinfo=None)
+                    description = str(header.description or description)
 
-            if self.preview:
+            if self.preview and not is_from_crits:
                 self.imported[package.id_] = ('Event', None, title)
-            else:
+            elif not is_from_crits:
                 res = add_new_event(title,
                                     description,
                                     event_type or EventTypes.INTEL_SHARING,
@@ -503,7 +510,8 @@ class STIXParser():
                 # handled indicator-wrapped observable
                 if getattr(indicator, 'title', ""):
                     if "Top-Level Object" in indicator.title:
-                        self.parse_observables(indicator.observables)
+                        self.parse_observables(indicator.observables,
+                                               ind_id=indicator.id_)
                         continue
                     elif indicator.title:
                         title = indicator.title
@@ -517,7 +525,7 @@ class STIXParser():
                 description = '\n'.join(str(x) for x in description if x)
 
                 self.parse_observables(indicator.observables,
-                                       description, indicator.id_)
+                                       description, True, indicator.id_)
 
             except Exception, e:
                 self.failed.append((e.message,
@@ -579,7 +587,8 @@ class STIXParser():
                                 self.imported[tmech.id_] = (Signature._meta['crits_type'],
                                                             None, "%s - %s" % (kind, rule))
 
-    def parse_observables(self, observables, description='', ind_id=None):
+    def parse_observables(self, observables, description='',
+                          is_ind=False, ind_id=None):
         """
         Parse list of observables in STIX doc.
 
@@ -587,6 +596,8 @@ class STIXParser():
         :type observables: List of STIX observables.
         :param description: Parent-level (e.g. Indicator) description.
         :type description: str
+        :param is_ind: Whether the observable is actually an Indicator
+        :type is_ind: boolean
         :param ind_id: The ID of a parent STIX Indicator.
         :type ind_id: str
         """
@@ -601,7 +612,7 @@ class STIXParser():
                         ref_pkg = STIXPackage.from_xml(f)
                     if 'Observable' in ob.idref:
                         self.parse_observables(ref_pkg.observables.observables,
-                                               description, ind_id)
+                                               description, is_ind, ind_id)
 
                         if self.preview: # no need to store relationship if just a preview
                             continue
@@ -619,7 +630,7 @@ class STIXParser():
                     # ((A OR B) AND C). This code simply imports all observables
                     # and forms "Related_To" relationships between them
                     self.parse_observables(ob._observable_composition.observables,
-                                           description, ind_id)
+                                           description, is_ind, ind_id)
                     rel_ids = []
 
                     if self.preview: # no need to store relationship if just a preview
@@ -656,10 +667,11 @@ class STIXParser():
             if ob.description:
                 description.append('STIX Observable Description: %s' % ob.description)
             description = '\n'.join(str(x) for x in description if x)
-            self.parse_cybox_object(ob.object_, description, ind_id)
+            self.parse_cybox_object(ob.object_, description, is_ind, ind_id)
 
 
-    def parse_cybox_object(self, cbx_obj, description='', ind_id=None):
+    def parse_cybox_object(self, cbx_obj, description='',
+                           is_ind=False, ind_id=None):
         """
         Parse a CybOX object form a STIX doc. An object can contain
         multiple related_objects, which in turn can have their own
@@ -669,6 +681,8 @@ class STIXParser():
         :type cbx_obj: A CybOX object.
         :param description: Parent-level (e.g. Observable) description.
         :type description: str
+        :param is_ind: Whether the observable is actually an Indicator
+        :type is_ind: boolean
         :param ind_id: The ID of a parent STIX Indicator.
         :type ind_id: str
         """
@@ -693,7 +707,7 @@ class STIXParser():
             analyst = self.source_instance.analyst
             item = cbx_obj.properties
             val = cbx_obj.id_
-            if isinstance(item, Address) and not ind_id:
+            if isinstance(item, Address) and not is_ind:
                 if item.category in ('cidr', 'ipv4-addr', 'ipv4-net',
                                      'ipv4-netmask', 'ipv6-addr',
                                      'ipv6-net', 'ipv6-netmask'):
@@ -713,7 +727,7 @@ class STIXParser():
                             else:
                                 res = {'success': False, 'reason': 'No IP Type'}
                         self.parse_res(imp_type, val, cbx_obj, res, ind_id)
-            if (not ind_id and (isinstance(item, DomainName) or
+            if (not is_ind and (isinstance(item, DomainName) or
                 (isinstance(item, URI) and item.type_ == 'Domain Name'))):
                 imp_type = "Domain"
                 for val in item.value.values:
@@ -1109,7 +1123,7 @@ class STIXParser():
                 c_obj = make_crits_object(item)
 
                 # Ignore what was already caught above
-                if (ind_id or c_obj.object_type not in IPTypes.values()):
+                if (is_ind or c_obj.object_type not in IPTypes.values()):
                     ind_type = c_obj.object_type
                     for val in [str(v).strip() for v in c_obj.value if v]:
                         if ind_type:
@@ -1140,7 +1154,7 @@ class STIXParser():
 
         # parse any related CybOX object(s)
         for rel_obj in cbx_obj.related_objects:
-            self.parse_cybox_object(rel_obj, description, ind_id)
+            self.parse_cybox_object(rel_obj, description, is_ind, ind_id)
             self.relationships.append((cbx_obj.id_, rel_obj.relationship.value,
                                        rel_obj.id_ or rel_obj.idref, "High"))
 
