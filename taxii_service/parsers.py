@@ -117,14 +117,14 @@ class STIXParser():
         self.failed = [] # track STIX/CybOX items that failed import
         self.saved_artifacts = {}
 
-    def parse_stix(self, reference='', make_event=False, source=''):
+    def parse_stix(self, reference='', hdr_events=False, source=''):
         """
         Parse the document.
 
         :param reference: The reference to the data.
         :type reference: str
-        :param make_event: Whether or not to create an Event for this document.
-        :type make_event: bool
+        :param hdr_events: Whether to create an Event for each Package Header.
+        :type hdr_events: bool
         :param source: The source of this document.
         :type source: str
         :raises: :class:`taxii_service.parsers.STIXParserException`
@@ -160,14 +160,14 @@ class STIXParser():
                     self.pkg_rels[pkg.id_] = (str(rel_pkg.relationship),
                                               str(rel_pkg.confidence))
                     self.imported = self.importedByPkg.setdefault(pkg.id_, {})
-                    self.parse_package(pkg, reference, make_event, source)
+                    self.parse_package(pkg, reference, hdr_events, source)
 
             self.imported = self.importedByPkg.setdefault(self.package.id_, {})
-            self.parse_package(self.package, reference, make_event, source) # parse the top-level package
+            self.parse_package(self.package, reference, hdr_events, source) # parse the top-level package
             self.imported = {k: v for d in self.importedByPkg.itervalues() for k, v in d.items()}
 
 
-    def parse_package(self, package, reference='', make_event=False, source=''):
+    def parse_package(self, package, reference='', hdr_events=False, source=''):
         """
         Parse a STIX package.
 
@@ -175,8 +175,8 @@ class STIXParser():
         :type package: :class:`stix.core.STIXPackage`
         :param reference: The reference to the data.
         :type reference: str
-        :param make_event: Whether or not to create an Event for this document.
-        :type make_event: bool
+        :param hdr_events: Whether to create an Event for each Package header.
+        :type hdr_events: bool
         :param source: The source of this document.
         :type source: str
         """
@@ -207,7 +207,7 @@ class STIXParser():
 
         # add Event based on the STIX_Header that has
         # relationships to everything in the STIX Package
-        if make_event:
+        if hdr_events:
             title = "STIX Package %s" % package.id_
             event_type = None
             event_date = datetime.datetime.now()
