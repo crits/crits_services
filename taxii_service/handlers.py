@@ -275,14 +275,19 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     crits_taxii.feed = hostname + ':' + feed
 
     # if version=0, Poll using 1.1 then 1.0 if that fails.
+    status = ""
     while True:
         if version in ('0', '1.1'):
+            if subID:
+                pprams = None
+            else:
+                pprams = tm11.PollRequest.PollParameters()
             poll_msg = tm11.PollRequest(message_id=tm11.generate_message_id(),
-                                collection_name=feed,
-                                poll_parameters=tm11.PollRequest.PollParameters(),
-                                exclusive_begin_timestamp_label=start,
-                                inclusive_end_timestamp_label=end,
-                                subscription_id=subID)
+                                        collection_name=feed,
+                                        poll_parameters=pprams,
+                                        exclusive_begin_timestamp_label=start,
+                                        inclusive_end_timestamp_label=end,
+                                        subscription_id=subID)
             xml_msg_binding = t.VID_TAXII_XML_11
             tm_ = tm11
 
@@ -307,19 +312,32 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
                 ret['failures'].append("TAXII Server Communication Error: %s" % e)
             return ret
 
-        taxii_msg = t.get_message_from_http_response(response,
-                                                     poll_msg.message_id)
-
-        # If this is a TAXII 1.0 server, but TAXII 1.1 is selected, notify
+        # If server says it's a different TAXII version than selected, notify
         if (version == '1.1' and
             response.info().getheader('X-TAXII-Content-Type') == t.VID_TAXII_XML_10):
             ret['failures'].append('Error - TAXII 1.1 selected, but server is TAXII 1.0')
             return ret
+        if (version == '1.0' and
+            response.info().getheader('X-TAXII-Content-Type') == t.VID_TAXII_XML_11):
+            if status:
+                status += 'Server response content type is TAXII 1.1'
+            else:
+                ret['failures'].append('Error - TAXII 1.0 selected, but server is TAXII 1.1')
+            return ret
 
-        if response.getcode() != 200 or taxii_msg.message_type == tm_.MSG_STATUS_MESSAGE:
-            status = "%s: %s" % (taxii_msg.status_type, taxii_msg.message)
-        else:
-            break
+        try:
+            taxii_msg = t.get_message_from_http_response(response,
+                                                         poll_msg.message_id)
+
+            if response.getcode() != 200 or taxii_msg.message_type == tm_.MSG_STATUS_MESSAGE:
+                status += "%s: %s" % (taxii_msg.status_type, taxii_msg.message)
+            else:
+                break
+
+        except Exception as e:
+            status += str(e)
+            if version == '1.0' and "taxii_xml_binding-1.1" in str(e):
+                status += ". Try selecting TAXII Version 1.1 in settings."
 
         if version == '0':
             status = 'TAXII 1.1 ' + status + '<br><br>TAXII 1.0 '
