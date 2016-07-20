@@ -15,6 +15,8 @@ from .object_mapper import (
 from crits.actors.actor import Actor
 from crits.actors.handlers import add_new_actor, update_actor_tags
 from crits.certificates.handlers import handle_cert_file
+from crits.core.data_tools import validate_md5_checksum
+from crits.core.data_tools import validate_sha1_checksum, validate_sha256_checksum
 from crits.domains.handlers import upsert_domain
 from crits.emails.handlers import handle_email_fields
 from crits.events.handlers import add_new_event
@@ -906,13 +908,28 @@ class STIXParser():
                 md5 = item.md5
                 if md5:
                     md5 = md5.lower()
+                    validate_md5_result = validate_md5_checksum(md5)
+                    if validate_md5_result.get('success', False) is False:
+                        md5 = None
                 sha1 = item.sha1
                 if sha1:
                     sha1 = sha1.lower()
+                    validate_sha1_result = validate_sha1_checksum(sha1)
+                    if validate_sha1_result.get('success', False) is False:
+                        sha1 = None
                 sha256 = item.sha256
                 if sha256:
                     sha256 = sha256.lower()
-                fname = str(item.file_name)
+                    if len(sha256) == 63:
+                        sha256 = "0" + sha256
+
+                    validate_sha256_result = validate_sha256_checksum(sha256)
+                    if validate_sha256_result.get('success', False) is False:
+                        sha256 = None
+
+                fname = None
+                if item.file_name is not None:
+                    fname = str(item.file_name)
                 size = item.size_in_bytes
                 data = None
                 if item.file_path: # save the path in the description field
