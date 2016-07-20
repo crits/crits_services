@@ -1060,11 +1060,11 @@ class STIXParser():
                                     id_list.append(tmp_obj.id_)
                             else:
                                 imp_type = 'Indicator'
-                                if key in 'reply_to':
+                                if 'reply_to' in key:
                                     ind_type = IndicatorTypes.EMAIL_REPLY_TO
-                                elif key in 'sender':
+                                elif 'sender' in key:
                                     ind_type = IndicatorTypes.EMAIL_SENDER
-                                elif key in 'from_address':
+                                elif 'from_address' in key:
                                     ind_type = IndicatorTypes.EMAIL_FROM
                                 elif 'subject' in key:
                                     ind_type = IndicatorTypes.EMAIL_SUBJECT
