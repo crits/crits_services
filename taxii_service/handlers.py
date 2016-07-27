@@ -235,11 +235,21 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         ret['failures'].append("Bad timestamp(s)")
         return ret
 
-    # subID must be none if not provided
+    # subID & port must be none if not provided
     if not subID:
         subID = None
+    if not port:
+        port = None
 
+    # Instantiate TAXII client class
     client = tc.HttpClient()
+
+    # Setup proxy communication, if needed
+    if settings.HTTP_PROXY:
+        proxy = settings.HTTP_PROXY
+        if not proxy.startswith('http://'):
+            proxy = 'http://' + proxy
+        client.setProxy(proxy)
 
     # Setup client authentication
     if https:
@@ -257,15 +267,6 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     else:
         ret['failures'].append("Insufficient Authentication Data")
         return ret
-
-    if not port:
-        port = None
-
-    if settings.HTTP_PROXY:
-        proxy = settings.HTTP_PROXY
-        if not proxy.startswith('http://'):
-            proxy = 'http://' + proxy
-        client.setProxy(proxy)
 
     crits_taxii = taxii.Taxii()
     crits_taxii.runtime = runtime
@@ -1250,11 +1251,12 @@ def run_taxii_service(analyst, obj, rcpts, preview,
     # Instantiate TAXII client class
     client = tc.HttpClient()
 
-    # Get Proxy settings
+    # Setup proxy communication, if needed
     if settings.HTTP_PROXY:
         proxy = settings.HTTP_PROXY
         if not proxy.startswith('http://'):
             proxy = 'http://' + proxy
+        client.setProxy(proxy)
 
     # The minimum required info has been provided by user via the TAXII form.
     # Form configuration and validation ensures the form is valid.
@@ -1298,7 +1300,6 @@ def run_taxii_service(analyst, obj, rcpts, preview,
         # Setup client authentication and proxy communication
         if https:
             client.setUseHttps(True)
-        client.setProxy(proxy)
         if akey and lcert and user:
             client.setAuthType(tc.HttpClient.AUTH_CERT_BASIC)
             client.setAuthCredentials({'key_file': akey, 'cert_file': lcert,
