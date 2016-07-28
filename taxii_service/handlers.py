@@ -412,7 +412,7 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
         f.close()
         return parse_content_block(tm_.ContentBlock.from_xml(new_block),
                                    tm_, privkey, pubkey)
-    elif binding == t.CB_STIX_XML_111:
+    elif binding in (t.CB_STIX_XML_111, "urn:stix.mitre.org:xml:1.2"):
         f = BytesIO(content_block.content)
         data = f.read()
         f.close()
