@@ -186,7 +186,7 @@ $(document).ready(function() {
             var threat_type = data.threat_type;
             var types = data.types;
             var t = "{{ indicator.ind_type }}".toUpperCase().replace(' ', '_');
-            var tt = "{{ indicator.threat_type }}".toUpperCase().replace(' ', '_');
+            var tt = "{{ indicator.threat_types.0 }}".toUpperCase().replace(' ', '_');
             for (var i=0; i < precision.length; i++) {
                 $('#tx_precision').append($('<option>', {
                     value: precision[i],
