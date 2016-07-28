@@ -98,22 +98,23 @@ def poll_taxii_feeds(feeds, analyst, begin=None, end=None):
                                      feed_name, akey, acert, subID, analyst,
                                      user, pword, ecert, ekey, begin, end)
 
+        fails = result['failures']
         results['polls'].append(result)
-        result['failures'] = ", ".join(result['failures'])
+        fails = "<br>".join(cgi.escape(x) for x in fails)
 
-        if not result['failures']:
+        if not fails:
             success_feeds.append("%s - %s" % (feed[0], feedc['feedname']))
         else:
             results['status'] = False
-            msg = " Feed '%s' failed - %s<br>"
+            msg = " Feed '%s' failed <br><br>%s<br><br>"
             if len(success_feeds) == 0:
                 msg += "%s feeds were processed successfully%s"
             elif len(success_feeds) == 1:
                 msg += "%s feed was processed successfully: %s"
             else:
                 msg += "%s feeds were processed successfully: %s"
-            msg = msg % (("%s - %s" % (feed[0], feedc['feedname'])),
-                         cgi.escape(result['failures']),
+
+            msg = msg % (("%s - %s" % (feed[0], feedc['feedname'])), fails,
                          len(success_feeds), ", ".join(success_feeds))
             results['msg'] = result['msg'] + msg
             results['all_fail'] = len(success_feeds) == False
@@ -272,8 +273,8 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     crits_taxii.feed = hostname + ':' + feed
 
     # if version=0, Poll using 1.1 then 1.0 if that fails.
-    status = ""
     while True:
+        status = ""
         if version in ('0', '1.1'):
             if subID:
                 pprams = None
@@ -326,8 +327,11 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
             taxii_msg = t.get_message_from_http_response(response,
                                                          poll_msg.message_id)
 
-            if response.getcode() != 200 or taxii_msg.message_type == tm_.MSG_STATUS_MESSAGE:
-                status += "%s: %s" % (taxii_msg.status_type, taxii_msg.message)
+            if (response.getcode() != 200
+                or taxii_msg.message_type == tm_.MSG_STATUS_MESSAGE):
+                status += "Server Response: %s"
+                msg = (taxii_msg.status_type, taxii_msg.message)
+                status = status % ' - '.join(x for x in msg if x)
             else:
                 break
 
@@ -337,10 +341,10 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
                 status += ". Try selecting TAXII Version 1.1 in settings."
 
         if version == '0':
-            status = 'TAXII 1.1 ' + status + '<br><br>TAXII 1.0 '
+            ret['failures'].append('TAXII 1.1 ' + status)
             version = '1.0' # try '1.0'
         else:
-            ret['failures'].append(status)
+            ret['failures'].append('TAXII %s ' % version + status)
             return ret
 
     valid = tm_.validate_xml(taxii_msg.to_xml())
