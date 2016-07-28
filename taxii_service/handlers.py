@@ -173,8 +173,9 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
               "end" (string) - Inclusive end component of the timerange that was polled
               "poll_time" (:class:`datetime.datetime`) - Datetime the feed was polled
               "taxii_msg_id" (string) - TAXII Message ID of the poll
-              "host" (string) - Hostname of the TAXII server that was polled
+              "source" (string) - Hostname of the TAXII server that was polled
               "feed" (string) - Name of the TAXII feed/collection that was polled
+                                or name of the file that was uploaded
               "analyst" (string) - Userid of the anaylst that initiated the poll
               "msg" (string) - OPTIONAL - Error message
     """
@@ -185,7 +186,7 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
             'blocks': [],
             'start': start,
             'end': end,
-            'host': hostname,
+            'source': hostname,
             'feed': feed,
             'analyst': analyst,
             'msg': ''
@@ -513,8 +514,9 @@ def generate_import_preview(poll_id, analyst):
               "end" (string) - Inclusive end component of the timerange that was polled
               "poll_time" (:class:`datetime.datetime`) - Datetime the feed was polled
               "taxii_msg_id" (string) - TAXII Message ID of the poll
-              "host" (string) - Hostname of the TAXII server that was polled
+              "source" (string) - Source from which the content came
               "feed" (string) - Name of the TAXII feed/collection that was polled
+                                or name of the file that was uploaded
               "analyst" (string) - Userid of the anaylst that initiated the poll
     """
     tsvc = get_config('taxii_service')
@@ -537,7 +539,7 @@ def generate_import_preview(poll_id, analyst):
             'end': times[1],
             'poll_time': blocks[0].poll_time,
             'taxii_msg_id': blocks[0].taxii_msg_id,
-            'host': blocks[0].hostname,
+            'source': blocks[0].hostname,
             'feed': blocks[0].feed,
             'analyst': blocks[0].analyst
           }
@@ -629,7 +631,7 @@ def get_saved_polls(action, poll_id=None):
         if time not in polls:
             polls[time] = {'poll_id': poll_id,
                            'msg_id': block.taxii_msg_id,
-                           'host': block.hostname,
+                           'source': block.hostname,
                            'feed': block.feed,
                            'timerange': block.timerange,
                            'analyst': block.analyst,
