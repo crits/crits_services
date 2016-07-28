@@ -36,7 +36,7 @@
                 <th>Timestamp</th>
                 <th>Msg ID or Reference</th>
                 <th>Block Count</th>
-                <th>Server Hostname</th>
+                <th>Source</th>
                 <th>Feed or File Name</th>
                 <th>Time Range</th>
                 <th>Analyst</th>
@@ -47,7 +47,7 @@
                 <tr>
                     <td><a class="pollid" href="#" id="{{ meta.poll_id }}">{{ time }}</a></td>
                     <td>{{ meta.msg_id }}</td>
-                    <td>{{ meta.count }}</td><td>{{ meta.host }}</td>
+                    <td>{{ meta.count }}</td><td>{{ meta.source }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
                     <td>{{ meta.analyst }}</td>
                     <td><a href="{% url 'taxii_service.views.download_taxii_content' meta.poll_id %}">Download</a>
@@ -81,7 +81,7 @@
                 <th>Timestamp</th>
                 <th>Msg ID or Reference</th>
                 <th>Block Count</th>
-                <th>Server Hostname</th>
+                <th>Source</th>
                 <th>Feed or File Name</th>
                 <th>Time Range</th>
                 <th>Analyst</th>
@@ -92,7 +92,7 @@
                 <tr>
                     <td><a class="pollid" href="#" id="{{ meta.poll_id }}">{{ time }}</a></td>
                     <td>{{ meta.msg_id }}</td>
-                    <td>{{ meta.count }}</td><td>{{ meta.host }}</td>
+                    <td>{{ meta.count }}</td><td>{{ meta.source }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
                     <td>{{ meta.analyst }}</td>
                     <td><a href="{% url 'taxii_service.views.download_taxii_content' meta.poll_id %}">Download</a>

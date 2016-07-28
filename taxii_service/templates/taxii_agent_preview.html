@@ -57,17 +57,17 @@
     </colgroup>
     <thead>
         <th>Timestamp</th>
-        <th>Message ID</th>
+        <th>Msg ID or Reference</th>
         <th>Block Count</th>
-        <th>Server Hostname</th>
-        <th>Feed Name</th>
+        <th>Source</th>
+        <th>Feed or File Name</th>
         <th>Time Range</th>
         <th>Analyst</th>
     </thead>
     <tbody>
         <tr>
             <td>{{ poll.poll_time }}</td><td>{{ poll.taxii_msg_id }}</td>
-            <td>{{ poll.blocks|length }}</td><td>{{ poll.host }}</td>
+            <td>{{ poll.blocks|length }}</td><td>{{ poll.source }}</td>
             <td>{{ poll.feed }}</td><td>{{ poll.start }} to {{ poll.end }}</td>
             <td>{{ poll.analyst }}</td>
         </tr>
