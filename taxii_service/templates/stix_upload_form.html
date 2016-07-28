@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load url from future %}
+
+{% block content %}
+
+{% include "resources/taxii_style_tag.html" %}
+{% include "resources/taxii_agent_jscript_tag.html" %}
+
+<div id="taxii_service" width="100%" style="text-align: center">
+
+	<h1 id="current_state">Upload STIX Document</h1>
+	<a href="#" id="view_saved">View Saved Poll/Upload Results</a>
+
+	<div id="taxii-loader" style="text-align: center; display: none;">
+		<img src="/images/chasingloader.gif" width="75px;"/>
+		<br />
+	</div>
+
+<section id="taxii_config_container" class="taxii-container">
+	<form id="taxii_config_form">{% csrf_token %}
+		<table id="taxii_form_table">
+            <tr>
+                <td colspan="2">
+	                <strong class="taxii_ctype_label required">
+		                {{ form.filedata.label }}
+	                </strong>
+	                <br/>
+	                {{ form.filedata }}
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+	                <strong class="taxii_ctype_label required">
+		                {{ form.source.label }}
+	                </strong>
+	                <br/>
+	                {{ form.source }}
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+	                <strong class="taxii_ctype_label required">
+		                {{ form.reference.label }}
+	                </strong>
+	                <br/>
+	                {{ form.reference }}
+                </td>
+            </tr>
+		</table>
+	</form>
+    {{ form.errors }}
+	<div style="text-align: center; padding-bottom: 10px; margin-top: 15px;">
+		<button id="stix_submit" class="taxii_btn">Upload</button>
+	</div>
+</section>
+
+<section id="results_container" class="taxii-container" style="display: none; text-align: left;">
+</section>
+
+<section id="error_container" class="taxii-container" style="display: none;">
+	<div class="taxii_notice"></div>
+	<br/>
+	<button class="back_to_cfg taxii_btn">Back</button>
+</section>
+</div>
+{% endblock %}

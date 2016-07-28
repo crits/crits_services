@@ -16,6 +16,13 @@
 			}
 	    	execute_taxii_service();
 		});
+		$("#stix_submit").click(function() {
+			$("#taxii-loader").show();
+			if ($("#taxii_config_container").is(":visible")) {
+				$("#taxii_config_container").slideToggle();
+			}
+			upload_stix_doc();
+		});
 		$("#view_saved").click(function() {
 			$("#taxii-loader").show();
 			if ($("#taxii_config_container").is(":visible")) {
@@ -70,7 +77,38 @@
 			}).done(function(data) { // run on successful request
 				if (data.success) { // at least some feeds were successfully processed
 					$("#results_container").html(data.html);
-					show_container("TAXII Import Preview", result_ctr);
+					show_container("STIX Import Preview", result_ctr);
+					view_saved.prop('hidden', false);
+				} else { // some issue occurred
+					error_ctr.children(".taxii_notice").html(data.msg);
+					show_container("Problems", error_ctr);
+				}
+			}).fail(function(data) { // server error
+				error_ctr.children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+				show_container("Problems", error_ctr);
+			}).always(function() {
+				$("#taxii-loader").hide();
+			});
+		}
+
+		function upload_stix_doc() {
+			view_saved.prop('hidden', true);
+			current_state.text("Processing...");
+			$("#taxii-loader").show();
+			var form_data = $('#taxii_config_form').serialize();
+			var form_data = new FormData($('#taxii_config_form').get(0));
+			$.ajax({
+				type: "POST",
+				contentType: 'multipart/form-data',
+				url: "{% url 'taxii_service.views.stix_upload' %}",
+				data: form_data,
+				dataType: "json",
+				processData: false,
+				contentType: false
+			}).done(function(data) { // run on successful request
+				if (data.success) { // at least some feeds were successfully processed
+					$("#results_container").html(data.html);
+					show_container("STIX Import Preview", result_ctr);
 					view_saved.prop('hidden', false);
 				} else { // some issue occurred
 					error_ctr.children(".taxii_notice").html(data.msg);
@@ -95,7 +133,7 @@
 			}).done(function(data) { // run on successful request
 				if (data.success) { // at least some feeds were successfully processed
 					$("#results_container").html(data.html);
-					show_container("Saved TAXII Polls", result_ctr);
+					show_container("Saved TAXII Polls & STIX Uploads", result_ctr);
 					view_saved.prop('hidden', true);
 				} else { // some issue occurred
 					error_ctr.children(".taxii_notice").html(data.msg);

@@ -1,5 +1,5 @@
 m2crypto
-libtaxii==1.1.105
-cybox==2.1.0.11
-stix==1.1.1.5
+libtaxii==1.1.109
+cybox==2.1.0.12
+stix==1.2.0.0
 stix-ramrod==1.1.0
