@@ -18,39 +18,40 @@
 {% with polls.unimported as upolls %}
 <div class="content_box">
     <h3 class="titleheader">
-        <span>Unimported Polls - Count: {{ upolls|length }}</span>
+        <span>Unimported STIX - Count: {{ upolls|length }}</span>
     </h3>
     {% if upolls %}
         <table class="chart" id="ta_results" width="100%">
             <colgroup>
                 <col width="175px">
-                <col width="75px">
+                <col width="140px">
                 <col width="85px">
                 <col>
                 <col>
                 <col width="275px">
                 <col>
-                <col width="45px">
+                <col width="120px">
             </colgroup>
             <thead>
                 <th>Timestamp</th>
-                <th>Message ID</th>
+                <th>Msg ID or Reference</th>
                 <th>Block Count</th>
-                <th>Server Hostname</th>
-                <th>Feed Name</th>
+                <th>Source</th>
+                <th>Feed or File Name</th>
                 <th>Time Range</th>
                 <th>Analyst</th>
-                <th>Delete</th>
+                <th>Actions</th>
             </thead>
             <tbody>
                 {% for time, meta in upolls.items %}
                 <tr>
                     <td><a class="pollid" href="#" id="{{ meta.poll_id }}">{{ time }}</a></td>
                     <td>{{ meta.msg_id }}</td>
-                    <td>{{ meta.count }}</td><td>{{ meta.host }}</td>
+                    <td>{{ meta.count }}</td><td>{{ meta.source }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
                     <td>{{ meta.analyst }}</td>
-                    <td><a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
+                    <td><a href="{% url 'taxii_service.views.download_taxii_content' meta.poll_id %}">Download</a>
+                        | <a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -62,39 +63,40 @@
 {% with polls.errored as epolls %}
 <div class="content_box">
     <h3 class="titleheader">
-        <span>Polls With Errors During Import - Count: {{ epolls|length }}</span>
+        <span>STIX With Errors During Import - Count: {{ epolls|length }}</span>
     </h3>
     {% if epolls %}
         <table class="chart" id="ta_results" width="100%">
             <colgroup>
                 <col width="175px">
-                <col width="75px">
+                <col width="140px">
                 <col width="85px">
                 <col>
                 <col>
                 <col width="275px">
                 <col>
-                <col width="45px">
+                <col width="120px">
             </colgroup>
             <thead>
                 <th>Timestamp</th>
-                <th>Message ID</th>
+                <th>Msg ID or Reference</th>
                 <th>Block Count</th>
-                <th>Server Hostname</th>
-                <th>Feed Name</th>
+                <th>Source</th>
+                <th>Feed or File Name</th>
                 <th>Time Range</th>
                 <th>Analyst</th>
-                <th>Delete</th>
+                <th>Actions</th>
             </thead>
             <tbody>
                 {% for time, meta in epolls.items %}
                 <tr>
                     <td><a class="pollid" href="#" id="{{ meta.poll_id }}">{{ time }}</a></td>
                     <td>{{ meta.msg_id }}</td>
-                    <td>{{ meta.count }}</td><td>{{ meta.host }}</td>
+                    <td>{{ meta.count }}</td><td>{{ meta.source }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
                     <td>{{ meta.analyst }}</td>
-                    <td><a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
+                    <td><a href="{% url 'taxii_service.views.download_taxii_content' meta.poll_id %}">Download</a>
+                        | <a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -115,7 +117,7 @@
 		}).done(function(data) { // run on successful request
 			if (data.success) { // at least some feeds were successfully processed
 				$("#results_container").html(data.html);
-				$("#current_state").text("TAXII Import Preview");
+				$("#current_state").text("STIX Import Preview");
                 $("#view_saved").prop('hidden', false);
 			} else { // some issue occurred
 				$("#error_container").children(".taxii_notice").html(data.msg);
@@ -131,13 +133,14 @@
 
     $('a.delete_poll').click(function() {
 		$.ajax({
+			context: this,
 			type: "POST",
 			url: "{% url 'taxii_service.views.list_saved_polls' %}",
 			data: this.id,
 			dataType: "json"
 		}).done(function(data) { // run on successful request
 			if (data.success) { // at least some feeds were successfully processed
-				$("#results_container").html(data.html);
+				$(this).closest('tr').remove();
 				show_container("Saved TAXII Polls", result_ctr);
                 view_saved.prop('hidden', true);
 			} else { // some issue occurred

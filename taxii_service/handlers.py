@@ -98,22 +98,23 @@ def poll_taxii_feeds(feeds, analyst, begin=None, end=None):
                                      feed_name, akey, acert, subID, analyst,
                                      user, pword, ecert, ekey, begin, end)
 
+        fails = result['failures']
         results['polls'].append(result)
-        result['failures'] = ", ".join(result['failures'])
+        fails = "<br>".join(cgi.escape(x) for x in fails)
 
-        if not result['failures']:
+        if not fails:
             success_feeds.append("%s - %s" % (feed[0], feedc['feedname']))
         else:
             results['status'] = False
-            msg = " Feed '%s' failed - %s<br>"
+            msg = " Feed '%s' failed <br><br>%s<br><br>"
             if len(success_feeds) == 0:
                 msg += "%s feeds were processed successfully%s"
             elif len(success_feeds) == 1:
                 msg += "%s feed was processed successfully: %s"
             else:
                 msg += "%s feeds were processed successfully: %s"
-            msg = msg % (("%s - %s" % (feed[0], feedc['feedname'])),
-                         cgi.escape(result['failures']),
+
+            msg = msg % (("%s - %s" % (feed[0], feedc['feedname'])), fails,
                          len(success_feeds), ", ".join(success_feeds))
             results['msg'] = result['msg'] + msg
             results['all_fail'] = len(success_feeds) == False
@@ -173,8 +174,9 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
               "end" (string) - Inclusive end component of the timerange that was polled
               "poll_time" (:class:`datetime.datetime`) - Datetime the feed was polled
               "taxii_msg_id" (string) - TAXII Message ID of the poll
-              "host" (string) - Hostname of the TAXII server that was polled
+              "source" (string) - Hostname of the TAXII server that was polled
               "feed" (string) - Name of the TAXII feed/collection that was polled
+                                or name of the file that was uploaded
               "analyst" (string) - Userid of the anaylst that initiated the poll
               "msg" (string) - OPTIONAL - Error message
     """
@@ -185,15 +187,13 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
             'blocks': [],
             'start': start,
             'end': end,
-            'host': hostname,
+            'source': hostname,
             'feed': feed,
             'analyst': analyst,
             'msg': ''
           }
 
     save_datetimes = False
-    sc = get_config('taxii_service')
-    create_events = sc['create_events']
 
     # Last document's end time is our start time.
     if not start:
@@ -237,11 +237,21 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         ret['failures'].append("Bad timestamp(s)")
         return ret
 
-    # subID must be none if not provided
+    # subID & port must be none if not provided
     if not subID:
         subID = None
+    if not port:
+        port = None
 
+    # Instantiate TAXII client class
     client = tc.HttpClient()
+
+    # Setup proxy communication, if needed
+    if settings.HTTP_PROXY:
+        proxy = settings.HTTP_PROXY
+        if not proxy.startswith('http://'):
+            proxy = 'http://' + proxy
+        client.setProxy(proxy)
 
     # Setup client authentication
     if https:
@@ -256,21 +266,6 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     elif user:
         client.setAuthType(tc.HttpClient.AUTH_BASIC)
         client.setAuthCredentials({'username': user, 'password': pword})
-    else:
-        ret['failures'].append("Insufficient Authentication Data")
-        return ret
-
-    if not port:
-        port = None
-
-    if settings.HTTP_PROXY:
-        proxy = settings.HTTP_PROXY
-        if not proxy.startswith('http://'):
-            proxy = 'http://' + proxy
-        if https:
-            client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
-        else:
-            client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTP)
 
     crits_taxii = taxii.Taxii()
     crits_taxii.runtime = runtime
@@ -279,13 +274,18 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
 
     # if version=0, Poll using 1.1 then 1.0 if that fails.
     while True:
+        status = ""
         if version in ('0', '1.1'):
+            if subID:
+                pprams = None
+            else:
+                pprams = tm11.PollRequest.PollParameters()
             poll_msg = tm11.PollRequest(message_id=tm11.generate_message_id(),
-                                collection_name=feed,
-                                poll_parameters=tm11.PollRequest.PollParameters(),
-                                exclusive_begin_timestamp_label=start,
-                                inclusive_end_timestamp_label=end,
-                                subscription_id=subID)
+                                        collection_name=feed,
+                                        poll_parameters=pprams,
+                                        exclusive_begin_timestamp_label=start,
+                                        inclusive_end_timestamp_label=end,
+                                        subscription_id=subID)
             xml_msg_binding = t.VID_TAXII_XML_11
             tm_ = tm11
 
@@ -310,25 +310,41 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
                 ret['failures'].append("TAXII Server Communication Error: %s" % e)
             return ret
 
-        taxii_msg = t.get_message_from_http_response(response,
-                                                     poll_msg.message_id)
-
-        # If this is a TAXII 1.0 server, but TAXII 1.1 is selected, notify
+        # If server says it's a different TAXII version than selected, notify
         if (version == '1.1' and
             response.info().getheader('X-TAXII-Content-Type') == t.VID_TAXII_XML_10):
             ret['failures'].append('Error - TAXII 1.1 selected, but server is TAXII 1.0')
             return ret
+        if (version == '1.0' and
+            response.info().getheader('X-TAXII-Content-Type') == t.VID_TAXII_XML_11):
+            if status:
+                status += 'Server response content type is TAXII 1.1'
+            else:
+                ret['failures'].append('Error - TAXII 1.0 selected, but server is TAXII 1.1')
+            return ret
 
-        if response.getcode() != 200 or taxii_msg.message_type == tm_.MSG_STATUS_MESSAGE:
-            status = "%s: %s" % (taxii_msg.status_type, taxii_msg.message)
-        else:
-            break
+        try:
+            taxii_msg = t.get_message_from_http_response(response,
+                                                         poll_msg.message_id)
+
+            if (response.getcode() != 200
+                or taxii_msg.message_type == tm_.MSG_STATUS_MESSAGE):
+                status += "Server Response: %s"
+                msg = (taxii_msg.status_type, taxii_msg.message)
+                status = status % ' - '.join(x for x in msg if x)
+            else:
+                break
+
+        except Exception as e:
+            status += str(e)
+            if version == '1.0' and "taxii_xml_binding-1.1" in str(e):
+                status += ". Try selecting TAXII Version 1.1 in settings."
 
         if version == '0':
-            status = 'TAXII 1.1 ' + status + '<br><br>TAXII 1.0 '
+            ret['failures'].append('TAXII 1.1 ' + status)
             version = '1.0' # try '1.0'
         else:
-            ret['failures'].append(status)
+            ret['failures'].append('TAXII %s ' % version + status)
             return ret
 
     valid = tm_.validate_xml(taxii_msg.to_xml())
@@ -398,7 +414,7 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
         f.close()
         return parse_content_block(tm_.ContentBlock.from_xml(new_block),
                                    tm_, privkey, pubkey)
-    elif binding == t.CB_STIX_XML_111:
+    elif binding in (t.CB_STIX_XML_111, "urn:stix.mitre.org:xml:1.2"):
         f = BytesIO(content_block.content)
         data = f.read()
         f.close()
@@ -407,8 +423,36 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
         msg = 'Unknown content binding "%s"' % binding
         return (None, msg)
 
-def save_standards_doc(data, analyst, message_id, hostname, feed,
-                       timestamp, begin, end, poll_time=None, errors=[]):
+def process_standards_doc(data, analyst, filename, source, reference):
+    """
+    Take the given standards data and save it in the DB
+
+    :param data: Uploaded Content
+    :type data: string
+    :param analyst: Userid of the analyst who uploaded the data
+    :type analyst: string
+    :param filename: The filename of the standards doc
+    :type filename: string
+    :param source: The source name of the data
+    :type source: string
+    :param reference: A reference to the source of the data
+    :type reference: string
+    :returns: dict with key "polls"
+    """
+
+    t_stamp = datetime.now()
+    t_stamp = t_stamp.replace(microsecond=t_stamp.microsecond / 1000 * 1000)
+    host = "Manual STIX Upload - Source: %s" % source
+
+    save_standards_doc(data, analyst, reference, host, filename,
+                       t_stamp, poll_time=t_stamp)
+
+    poll_id = (t_stamp.replace(tzinfo=None)-datetime(1970,1,1)).total_seconds()
+
+    return {'polls': [generate_import_preview(poll_id, analyst)]}
+
+def save_standards_doc(data, analyst, message_id, hostname, feed, timestamp,
+                       begin=None, end=None, poll_time=None, errors=[]):
     """
     Take the given standards data and save it in the DB
 
@@ -446,7 +490,10 @@ def save_standards_doc(data, analyst, message_id, hostname, feed,
             begin = begin.strftime('%Y-%m-%d %H:%M:%S')
         else:
             begin = 'None'
-        end = end.strftime('%Y-%m-%d %H:%M:%S')
+        if end:
+            end = end.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            end = 'None'
         taxii_content.timerange = '%s to %s' % (begin, end)
         taxii_content.analyst = analyst
         taxii_content.content = data or ""
@@ -471,12 +518,13 @@ def generate_import_preview(poll_id, analyst):
               "end" (string) - Inclusive end component of the timerange that was polled
               "poll_time" (:class:`datetime.datetime`) - Datetime the feed was polled
               "taxii_msg_id" (string) - TAXII Message ID of the poll
-              "host" (string) - Hostname of the TAXII server that was polled
+              "source" (string) - Source from which the content came
               "feed" (string) - Name of the TAXII feed/collection that was polled
+                                or name of the file that was uploaded
               "analyst" (string) - Userid of the anaylst that initiated the poll
     """
     tsvc = get_config('taxii_service')
-    create_events = tsvc['create_events']
+    hdr_events = tsvc['header_events']
     p_time = datetime.utcfromtimestamp(float(poll_id))
     blocks = taxii.TaxiiContent.objects(poll_time=p_time)
     if not blocks:
@@ -495,7 +543,7 @@ def generate_import_preview(poll_id, analyst):
             'end': times[1],
             'poll_time': blocks[0].poll_time,
             'taxii_msg_id': blocks[0].taxii_msg_id,
-            'host': blocks[0].hostname,
+            'source': blocks[0].hostname,
             'feed': blocks[0].feed,
             'analyst': blocks[0].analyst
           }
@@ -510,7 +558,7 @@ def generate_import_preview(poll_id, analyst):
 
         if block.content:
             objs = import_standards_doc(block.content, analyst, None, None,
-                                        create_events, preview_only=True)
+                                        hdr_events, preview_only=True)
 
             if not objs['success']:
                 failures.append((objs['reason'], 'STIX Package'))
@@ -528,7 +576,6 @@ def generate_import_preview(poll_id, analyst):
                               'timestamp': block.timestamp,
                               'tlos': tlos,
                               'failures': failures})
-
     return ret
 
 def get_saved_polls(action, poll_id=None):
@@ -538,6 +585,7 @@ def get_saved_polls(action, poll_id=None):
     related to that poll before returning the remaining poll metadata.
 
     :param action: If 'list', return metadata.
+                   If 'download', return XML-formatted data
                    If 'delete', delete a set of data, then return metadata
     :type action: string
     :param poll_id: ID of the poll for which content should be deleted
@@ -546,10 +594,35 @@ def get_saved_polls(action, poll_id=None):
               "unimported" (dict) - Polls that have not yet been imported
               "errored" (dict) - Polls that errored during import
               "success" (bool) - True if poll data was successfully retrieved
+              "msg" (string) - If success is False, provide an error msg
     """
-    if action == 'delete':
+    if action in ('delete', 'download'):
         p_time = datetime.utcfromtimestamp(float(poll_id))
-        taxii.TaxiiContent.objects(poll_time=p_time).delete()
+        data = taxii.TaxiiContent.objects(poll_time=p_time) # get data from dB
+        if action == 'delete':
+            data.delete() # delete the given poll
+            return {'success': True}
+        else: # download
+            if 'Manual STIX Upload' in data[0].hostname:
+                filename = data[0].feed
+                res = ''.join(block.content for block in data)
+                return {'response': res, 'filename': filename}
+
+            # rebuild XML
+            filename = "taxii_poll-%s.xml" % p_time.strftime('%Y%m%dT%H%M%S')
+            content_blocks = []
+            for block in data:
+                stamp = block.timestamp.replace(tzinfo=pytz.utc)
+                c_block = tm11.ContentBlock(content_binding = t.CB_STIX_XML_111,
+                                            timestamp_label = stamp,
+                                            content = block.content)
+                content_blocks.append(c_block)
+            res = tm11.PollResponse(message_id=block.taxii_msg_id,
+                                    in_response_to="Unknown",
+                                    collection_name=block.feed,
+                                    message=block.timerange,
+                                    content_blocks=content_blocks)
+            return {'response': res.to_xml(), 'filename': filename}
     elif action != 'list':
         return {'success': False, 'msg': 'Invalid action type'}
 
@@ -562,7 +635,7 @@ def get_saved_polls(action, poll_id=None):
         if time not in polls:
             polls[time] = {'poll_id': poll_id,
                            'msg_id': block.taxii_msg_id,
-                           'host': block.hostname,
+                           'source': block.hostname,
                            'feed': block.feed,
                            'timerange': block.timerange,
                            'analyst': block.analyst,
@@ -582,6 +655,34 @@ def get_saved_polls(action, poll_id=None):
             ret['unimported'][poll] = polls[poll]
     ret['success'] = True
     return ret
+
+def get_saved_block(block_id=None):
+    """
+    Return the XML data for the given block ID.
+
+    :param block_id: ObjectId of the requested block
+    :type poll_id: string
+    :returns: dict with keys:
+              "response" (str) - The XML
+              "filename" (str) - The name of the XML file
+    """
+
+    data = taxii.TaxiiContent.objects(id=block_id).first() # get data from dB
+
+    if 'Manual STIX Upload' in data.hostname:
+        filename = data.feed
+        res = data.content
+        return {'response': res, 'filename': filename}
+
+    # rebuild XML
+    stamp = data.timestamp.replace(tzinfo=pytz.utc)
+    filename = "taxii_block-%s-%s.xml"
+    filename = filename % (data.feed, stamp.strftime('%Y%m%dT%H%M%S'))
+    c_block = tm11.ContentBlock(content_binding = t.CB_STIX_XML_111,
+                                timestamp_label = stamp,
+                                content = data.content)
+
+    return {'response': c_block.to_xml(), 'filename': filename}
 
 def import_content_blocks(block_ids, action, analyst):
     """
@@ -632,11 +733,12 @@ def import_content_blocks(block_ids, action, analyst):
     blocks = taxii.TaxiiContent.objects(id__in=block_ids)
 
     tsvc = get_config('taxii_service')
-    create_events = tsvc['create_events']
+    hdr_events = tsvc['header_events']
     tsrvs = tsvc.taxii_servers
     pids = {}
 
     for block in blocks:
+        source = ""
         reference = block.taxii_msg_id
         timestamp = block.timestamp
         data = block.content
@@ -646,9 +748,17 @@ def import_content_blocks(block_ids, action, analyst):
                 for feed in tsrvs[svr]['feeds']:
                     if tsrvs[svr]['feeds'][feed]['feedname'] == block.feed:
                         source = tsrvs[svr]['feeds'][feed]['source']
+                        break
+                if source:
+                    break
+        else:
+            try:
+                source = block.hostname.split(' - Source: ')[1]
+            except:
+                source = block.hostname
 
         objs = import_standards_doc(data, analyst, method, ref=reference,
-                                    make_event=create_events, source=source)
+                                    hdr_events=hdr_events, source=source)
 
         if not objs['success']:
             ret['failures'].append((objs['reason'],
@@ -1006,7 +1116,9 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
             else:
                 stx, releas = to_cybox_observable(obj)
 
-            # wrap in stix Indicator
+            # wrap in stix Indicator because some STIX objects can't have
+            # related_observables and we want to be able to relate observables
+            # to anything else
             ind = S_Ind()
             for ob in stx:
                 ind.add_observable(ob)
@@ -1029,17 +1141,17 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
             if rel.object_id in refObjs:
                 relationships.setdefault(stx.id_, {})
                 relationships[stx.id_][rel.object_id] = (rel.relationship,
-                                                            rel.rel_confidence.capitalize(),
-                                                            rel.rel_type)
+                                                         rel.rel_confidence.capitalize(),
+                                                         rel.rel_type)
 
         stix_msg['final_objects'].append(obj)
         stix.append(stx)
 
     # set relationships on STIX objects
-    for stix_obj in stix:
-        for rel in relationships.get(stix_obj.id_, {}):
-            if isinstance(refObjs.get(rel), S_Ind): # if is STIX Indicator
-                stix_obj.related_indicators.append(refObjs[rel])
+    for stix_obj in stix: # for each new STIX object
+        for rel in relationships.get(stix_obj.id_, {}): # each CRITs oid related to the new STIX object
+            if isinstance(refObjs.get(rel), S_Ind): # if a STIX Indicator was made for that CRITs oid
+                stix_obj.related_indicators.append(refObjs[rel]) # relate the STIX ind to that new STIX obj
                 rel_meta = relationships.get(stix_obj.id_)[rel]
                 stix_obj.related_indicators[-1].relationship = rel_meta[0]
                 stix_obj.related_indicators[-1].confidence = rel_meta[1]
@@ -1062,12 +1174,10 @@ def to_stix(obj, items_to_convert=[], loaded=False, bin_fmt="raw"):
         identity=Identity(name=settings.COMPANY_NAME),
         tools=tool_list)
 
-    if obj._meta['crits_type'] == "Event":
-        stix_desc = obj.description
-        stix_title = obj.title
-    else:
-        stix_desc = "STIX from %s" % settings.COMPANY_NAME
-        stix_title = "Threat Intelligence Sharing"
+    stix_desc = ("This STIX package was generated by the TAXII service "
+                 "of CRITs, the open source threat repository. You can "
+                 "learn more about CRITs at https://crits.github.io")
+    stix_title = "CRITs Generated STIX Package"
     header = STIXHeader(information_source=i_s,
                         description=StructuredText(value=stix_desc),
                         package_intents=["Collective Threat Intelligence"],
@@ -1141,16 +1251,15 @@ def run_taxii_service(analyst, obj, rcpts, preview,
             ret['release_changes'] = release
             return ret # make user confirm changes, instead of sending messages
 
-    # Setup TAXII client for proxy communication
+    # Instantiate TAXII client class
     client = tc.HttpClient()
+
+    # Setup proxy communication, if needed
     if settings.HTTP_PROXY:
         proxy = settings.HTTP_PROXY
         if not proxy.startswith('http://'):
             proxy = 'http://' + proxy
-        if https:
-            client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTPS)
-        else:
-            client.setProxy(proxy, proxy_type=tc.HttpClient.PROXY_HTTP)
+        client.setProxy(proxy)
 
     # The minimum required info has been provided by user via the TAXII form.
     # Form configuration and validation ensures the form is valid.
@@ -1191,7 +1300,7 @@ def run_taxii_service(analyst, obj, rcpts, preview,
             ret['failed_rcpts'].append((rcpt, msg))
             continue
 
-        # Setup client authentication
+        # Setup client authentication and proxy communication
         if https:
             client.setUseHttps(True)
         if akey and lcert and user:
@@ -1204,9 +1313,6 @@ def run_taxii_service(analyst, obj, rcpts, preview,
         elif user:
             client.setAuthType(tc.HttpClient.AUTH_BASIC)
             client.setAuthCredentials({'username': user, 'password': pword})
-        else:
-            ret['failed_rcpts'].append((feed, 'Insufficient Authentication Data'))
-            continue
 
         # generate and send inbox messages
         # one message per feed, with appropriate TargetFeed header specified
@@ -1642,7 +1748,7 @@ def update_taxii_service_config(post_data, analyst):
     status['success'] = True
     return status
 
-def import_standards_doc(data, analyst, method, ref=None, make_event=False,
+def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
                          source=None, preview_only=False):
     """
     Import a standards document into CRITs.
@@ -1656,8 +1762,8 @@ def import_standards_doc(data, analyst, method, ref=None, make_event=False,
     :type method: str
     :param ref: The reference to this document.
     :type ref: str
-    :param make_event: Whether or not we should make an Event for this document.
-    :type make_event: bool
+    :param hdr_events: Whether or not we should make an Event for this document.
+    :type hdr_events: bool
     :param source: The name of the source who provided this document.
     :type source: str
     :param preview_only: If True, nothing is imported and a preview is returned
@@ -1678,7 +1784,7 @@ def import_standards_doc(data, analyst, method, ref=None, make_event=False,
 
     try:
         parser = STIXParser(data, analyst, method, preview_only)
-        parser.parse_stix(reference=ref, make_event=make_event, source=source)
+        parser.parse_stix(reference=ref, hdr_events=hdr_events, source=source)
         parser.relate_objects()
     except STIXParserException, e:
         logger.exception(e)

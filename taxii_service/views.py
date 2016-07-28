@@ -1,5 +1,6 @@
 import logging
 import json
+import re
 
 from django.http import HttpResponseRedirect
 from django.template import RequestContext
@@ -67,6 +68,62 @@ def taxii_poll(request):
                               RequestContext(request))
 
 @user_passes_test(user_can_view_data)
+def stix_upload(request):
+    """
+    Manually upload a STIX document. Should be a GET or an AJAX POST.
+
+    :param request: Django request object (Required)
+    :type request: :class:`django.http.HttpRequest`
+    :returns: :class:`django.http.HttpResponse`
+    """
+    if request.method == "POST":
+        form = forms.UploadStandardsForm(request.user, request.POST, request.FILES)
+    else:
+        form = forms.UploadStandardsForm(request.user)
+
+    if form.is_valid():
+        analyst = request.user.username
+        data = u''
+        import re
+        skip = False
+        encoding = 'ascii'
+        ## search and extract encoding string
+        ptrn = r"""^<\?xml.+?encoding=["'](?P<encstr>[^"']+)["'].*?\?>"""
+        match = re.search(ptrn, request.FILES['filedata'].readline())
+        if match :
+            encoding = match.group("encstr")
+            skip = True
+        for line in request.FILES['filedata']:
+            if skip: # First line has encoding declaration, so skip
+                skip = False
+                continue
+            data += line.decode(encoding, 'replace')
+        source = form.cleaned_data['source']
+        reference = form.cleaned_data['reference']
+        filename = request.FILES['filedata'].name
+
+        result = handlers.process_standards_doc(data, analyst, filename,
+                                                source, reference)
+
+        data = {'success': True}
+        data['html'] = render_to_string("taxii_agent_preview.html",
+                                        {'result' : result})
+
+        return HttpResponse(json.dumps(data), content_type="application/json")
+
+    if request.is_ajax():
+        msg = "<b>Form Validation Error</b><br>"
+        for fld in form.errors:
+            msg += "%s: %s<br>" % (form[fld].label,
+                                   form.errors[fld].as_text())
+        data = {'success': False, 'msg': msg}
+        return HttpResponse(json.dumps(data), content_type="application/json")
+
+    return render_to_response('stix_upload_form.html',
+                              {'form': form, 'errors': form.errors},
+                              RequestContext(request))
+
+@user_passes_test(user_can_view_data)
 def list_saved_polls(request):
     """
     Get data for all saved TAXII polls. If is a POST and a TAXII message
@@ -79,13 +136,39 @@ def list_saved_polls(request):
     """
     if request.POST and request.body:
         polls = handlers.get_saved_polls('delete', request.body)
+        data = {}
     else:
         polls = handlers.get_saved_polls('list')
+        data = {'html': render_to_string("taxii_saved_polls.html",
+                                         {'polls' : polls})}
 
-    data = {'success': polls['success'], 'msg': polls.get('msg')}
-    data['html'] = render_to_string("taxii_saved_polls.html",
-                                    {'polls' : polls})
+    data['success'] = polls['success']
+    data['msg'] = polls.get('msg')
     return HttpResponse(json.dumps(data), content_type="application/json")
+
+@user_passes_test(user_can_view_data)
+def download_taxii_content(request, tid):
+    """
+    Given a particular TAXII poll or block, return an XML file containing
+    the date from that TAXII poll or block.
+
+    :param request: Django request object (Required)
+    :type request: :class:`django.http.HttpRequest`
+    :param tid: ID of the desired TAXII poll (a datetimestamp), or block (oid)
+    :param tid: string
+    :returns: :class:`django.http.HttpResponse`
+    """
+
+    if '.' in tid: # this is a timestamp
+        ret = handlers.get_saved_polls('download', tid)
+    else: # this is an ObjectId
+        ret = handlers.get_saved_block(tid)
+
+    resp = HttpResponse(content_type='text/xml')
+    resp['Content-Disposition'] = 'attachment; filename="%s"' % ret['filename']
+    resp.write(ret['response'])
+
+    return resp
 
 @user_passes_test(user_can_view_data)
 def get_import_preview(request, taxii_msg_id):
@@ -286,61 +369,6 @@ def configure_taxii(request, server=None):
                           RequestContext(request))
     else:
         return HttpResponseRedirect(reverse('taxii_service.views.configure_taxii'))
-
-@user_passes_test(user_can_view_data)
-def upload_standards(request):
-    """
-    Upload a standards document.
-
-    :param request: Django request.
-    :type request: :class:`django.http.HttpRequest`
-    :returns: :class:`django.http.HttpResponse`
-    """
-
-    std_form = forms.UploadStandardsForm(request.user, request.POST, request.FILES)
-    response = {
-                   'form': std_form.as_table(),
-                   'success': False,
-                   'message': ""
-                 }
-
-    if request.method != "POST":
-        response['message'] = "Must submit via POST."
-        return render_to_response('file_upload_response.html',
-                                  {'response': json.dumps(response)},
-                                  RequestContext(request))
-
-    if not std_form.is_valid():
-        response['message'] = "Form is invalid."
-        return render_to_response('file_upload_response.html',
-                                  {'response': json.dumps(response)},
-                                  RequestContext(request))
-
-    data = u''
-    for chunk in request.FILES['filedata']:
-        data += chunk
-
-    make_event = std_form.cleaned_data['make_event']
-    source = std_form.cleaned_data['source']
-
-    reference = std_form.cleaned_data['reference']
-
-
-    # XXX: Add reference to form and handle here?
-    status = handlers.import_standards_doc(data, request.user.username, "STIX Upload",
-                                 ref=reference, make_event=make_event, source=source)
-
-    if not status['success']:
-        response['message'] = status['reason']
-        return render_to_response('file_upload_response.html',
-                                  {'response': json.dumps(response)},
-                                  RequestContext(request))
-
-    response['success'] = True
-    response['message'] = render_to_string("import_results.html", {'failed' : status['failed'], 'imported' : status['imported']})
-    return render_to_response('file_upload_response.html',
-                              {'response': json.dumps(response)},
-                              RequestContext(request))
 
 def taxii_service_context(request):
     context = {}

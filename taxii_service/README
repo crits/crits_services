@@ -1,5 +1,0 @@
-The TAXII service allows you to send and receive content between a CRITs
-instance and a TAXII server.
-
-The current implementation of the TAXII service only allows for connecting to
-one TAXII server.

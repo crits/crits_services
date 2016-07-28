@@ -22,7 +22,7 @@ from cybox.objects.process_object import Process
 from cybox.objects.uri_object import URI
 from cybox.objects.win_registry_key_object import WinRegistryKey
 
-from stix.common.vocabs import IncidentCategory
+from stix.common.vocabs import IncidentCategory, PackageIntent
 
 class UnsupportedCybOXObjectTypeError(Exception):
     """
@@ -68,9 +68,9 @@ def get_crits_ip_type(type_):
 
 def get_crits_event_type(category):
     """
-    Converts a STIX Incident Category to a CRITs Event Type.
+    Converts a STIX Incident Category or Package Intent to a CRITs Event Type.
 
-    :param category: A STIX Incident Category
+    :param category: A STIX Incident Category or Package Intent
     :type category: str
     :returns: CRITs Event Type (str)
     """
@@ -88,6 +88,19 @@ def get_crits_event_type(category):
         return EventTypes.SCANNING
     elif category == IncidentCategory.TERM_UNAUTHORIZED_ACCESS:
         return EventTypes.UNAUTHORIZED_INFORMATION_ACCESS
+
+    elif category == PackageIntent.TERM_EXPLOIT_CHARACTERIZATION:
+        return EventTypes.EXPLOITATION
+    elif category == PackageIntent.TERM_INDICATORS_MALWARE_ARTIFACTS:
+        return EventTypes.MALICIOUS_CODE
+    elif category == PackageIntent.TERM_INDICATORS_PHISHING:
+        return EventTypes.PHISHING
+    elif category == PackageIntent.TERM_MALWARE_CHARACTERIZATION:
+        return EventTypes.MALICIOUS_CODE
+    elif category == PackageIntent.TERM_MALWARE_SAMPLES:
+        return EventTypes.MALICIOUS_CODE
+    elif category in PackageIntent.values():
+        return EventTypes.INTEL_SHARING
 
 def get_crits_actor_tags(type_):
     if type_ == "Innovator":
@@ -397,18 +410,20 @@ def make_crits_object(cybox_obj):
             o.object_type = IndicatorTypes.MUTEX
             o.value = get_object_values(cybox_obj.name)
             return o
-        # Unless there is a way to know this is source or destination, this doesn't
-        # help :(
-        #elif isinstance(cybox_obj, Port):
-        #    o.object_type = "Port"
-        #    o.value = get_object_values(cybox_obj.port_value)
-        #    return o
+        # Assume this is a destination port because it almost always is
+        elif isinstance(cybox_obj, Port):
+            o.object_type = IndicatorTypes.DEST_PORT
+            o.value = get_object_values(cybox_obj.port_value)
+            return o
         elif isinstance(cybox_obj, Process):
             o.object_type = IndicatorTypes.PROCESS_NAME
             o.value = get_object_values(cybox_obj.name)
             return o
         elif isinstance(cybox_obj, URI):
-            o.object_type = IndicatorTypes.URI
+            if cybox_obj.type_ == 'Domain Name':
+                o.object_type = IndicatorTypes.DOMAIN
+            else:
+                o.object_type = IndicatorTypes.URI
             o.value = get_object_values(cybox_obj.value)
             return o
         elif isinstance(cybox_obj, WinRegistryKey):
