@@ -264,9 +264,6 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     elif user:
         client.setAuthType(tc.HttpClient.AUTH_BASIC)
         client.setAuthCredentials({'username': user, 'password': pword})
-    else:
-        ret['failures'].append("Insufficient Authentication Data")
-        return ret
 
     crits_taxii = taxii.Taxii()
     crits_taxii.runtime = runtime
@@ -1310,9 +1307,6 @@ def run_taxii_service(analyst, obj, rcpts, preview,
         elif user:
             client.setAuthType(tc.HttpClient.AUTH_BASIC)
             client.setAuthCredentials({'username': user, 'password': pword})
-        else:
-            ret['failed_rcpts'].append((feed, 'Insufficient Authentication Data'))
-            continue
 
         # generate and send inbox messages
         # one message per feed, with appropriate TargetFeed header specified
