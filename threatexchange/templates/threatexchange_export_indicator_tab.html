@@ -152,6 +152,14 @@
                         </select>
                     </td>
                 </tr>
+                <tr id="tag_row">
+                    <td>
+                        Tags
+                    </td>
+                    <td>
+                        <input type="text" id="tx_tags" name="tx_tags" size=50 placeholder="foo">
+                    </td>
+                </tr>
                 <tr>
                     <td>
                         <button id="tx_export_submit" name="submit" type="submit">Submit</button>
@@ -178,7 +186,7 @@ $(document).ready(function() {
             var threat_type = data.threat_type;
             var types = data.types;
             var t = "{{ indicator.ind_type }}".toUpperCase().replace(' ', '_');
-            var tt = "{{ indicator.threat_type }}".toUpperCase().replace(' ', '_');
+            var tt = "{{ indicator.threat_types.0 }}".toUpperCase().replace(' ', '_');
             for (var i=0; i < precision.length; i++) {
                 $('#tx_precision').append($('<option>', {
                     value: precision[i],
@@ -297,7 +305,8 @@ $(document).ready(function() {
              precision: $('#tx_precision').val(),
              privacy_type: $('#tx_privacy_type').val(),
              privacy_members: $('#tx_privacy_members').val(),
-             share_level: $('#tx_share_level').val()
+             share_level: $('#tx_share_level').val(),
+             tags: $('#tx_tags').val(),
         }
         $.ajax({
              type: "POST",
