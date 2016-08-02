@@ -24,8 +24,8 @@ class CuckooService(Service):
     """
 
     name = 'cuckoo'
-    version = '1.0.3'
-    supported_types = ['Sample']
+    version = '1.0.4'
+    supported_types = ['Sample', 'IP', 'Domain', 'Indicator']
     description = "Analyze a sample using Cuckoo Sandbox."
 
     @staticmethod
@@ -66,7 +66,8 @@ class CuckooService(Service):
         config['machine'] = '\r\n'.join(config['machine'])
         html = render_to_string('services_config_form.html',
                                 {'name': self.name,
-                                 'form': forms.CuckooConfigForm(initial=config),
+                                 'form': forms.
+                                    CuckooConfigForm(initial=config),
                                  'config_error': None})
         form = forms.CuckooConfigForm
         return form, html
@@ -96,23 +97,23 @@ class CuckooService(Service):
 
         # The integer values are submitted as a list for some reason.
         # Package and machine are submitted as a list too.
-        data = { 'timeout': config['timeout'][0],
-                 'tor': config['tor'],
-                 'procmemdump': config['procmemdump'],
-                 'options': config['options'][0],
-                 'enforce_timeout': config['enforce_timeout'],
-                 'existing_task_id': config['existing_task_id'][0],
-                 'package': config['package'][0],
-                 'ignored_files': config['ignored_files'][0],
-                 'machine': config['machine'][0],
-                 'tags': config['tags'][0]}
+        data = {'timeout': config['timeout'][0],
+                'tor': config['tor'],
+                'procmemdump': config['procmemdump'],
+                'options': config['options'][0],
+                'enforce_timeout': config['enforce_timeout'],
+                'existing_task_id': config['existing_task_id'][0],
+                'package': config['package'][0],
+                'ignored_files': config['ignored_files'][0],
+                'machine': config['machine'][0],
+                'tags': config['tags'][0]}
 
         return forms.CuckooRunForm(machines=machines, data=data)
 
-    @staticmethod
-    def valid_for(obj):
-        if obj.filedata.grid_id == None:
-            raise ServiceConfigError("Missing filedata.")
+    # @staticmethod
+    # def valid_for(obj):
+    #     if obj.filedata.grid_id is None:
+    #         raise ServiceConfigError("Missing filedata.")
 
     @staticmethod
     def get_config_details(config):
@@ -135,7 +136,7 @@ class CuckooService(Service):
         else:
             proto = 'http'
         return '%s://%s:%s' % (proto, self.config.get('host'),
-                                 self.config.get('port'))
+                               self.config.get('port'))
 
     @property
     def proxies(self):
@@ -159,8 +160,8 @@ class CuckooService(Service):
         return ids
 
     def submit_task(self, obj):
-        files = {'file': (obj.filename, obj.filedata.read())}
-
+        # Sets the configuration option that was provided in the runtime form
+        files = {}
         payload = {}
         options = {}
 
@@ -184,7 +185,8 @@ class CuckooService(Service):
         if procmemdump:
             options['procmemdump'] = 'yes'
 
-        options = ",".join(list(map(lambda option: "{0}={1}".format(option, options[option]), options.keys())))
+        options = ",".join(list(map(lambda option: '{0}={1}'.format(option,
+                           options[option]), options.keys())))
         custom_options = str(self.config.get('options'))
         if custom_options:
             if len(options) > 0:
@@ -193,52 +195,82 @@ class CuckooService(Service):
 
         tags = str(self.config.get('tags'))
 
+        machine = self.config.get('machine', '')
 
+        # Set files to the appropriate TLO
+        if self.obj._meta['crits_type'] == 'Domain':
+            files = {'url': ('', obj.domain)}
+        elif self.obj._meta['crits_type'] == 'IP':
+            files = {'url': ('', obj.ip)}
+        elif self.obj._meta['crits_type'] == 'Sample':
+            files = {'file': (obj.filename, obj.filedata.read())}
+        elif self.obj._meta['crits_type'] == 'Indicator':
+            files = {'url': ('', obj.value)}
+
+        # Runs the task on the selected machines and returns the
+        # submitted task_id.
+        return self.submit_on_selected_machine(files, payload, machine,
+                                               tags, options)
+
+    def submit_on_selected_machine(self, files, payload, machine, tags,
+                                   option):
         tasks = {}
 
-        machine = self.config.get('machine', "")
-        if machine.lower() == "all":
+        if machine.lower() == 'all':
             # Submit a new task with otherwise the same info to each machine
             for machine in self.get_machines():
-                task_id = self.post_task(files, payload, machine=machine, options=options)
+                task_id = self.post_task(files, payload, machine=machine,
+                                         options=option)
                 if task_id is not None:
                     tasks[machine] = task_id
-        elif machine.lower() == "any":
-            task_id = self.post_task(files, payload, tags=tags, options=options)
+        elif machine.lower() == 'any':
+            task_id = self.post_task(files, payload, tags=tags,
+                                     options=option)
             if task_id is not None:
                 tasks['any'] = task_id
-        elif machine:  # Only one Machine ID requested
-            task_id = self.post_task(files, payload, machine=machine, options=options)
+        elif machine:
+            task_id = self.post_task(files, payload, machine=machine,
+                                     options=option)
             if task_id is not None:
                 tasks[machine] = task_id
 
-        # return dictionary of Tasks
+        # Return a dictionary of tasks.
         return tasks
 
-    def post_task(self, files, payload, machine=None, tags=None, options=None):
+    def post_task(self, files, payload, machine=None, tags=None,
+                  options=None):
         """
         Post a new analysis task to Cuckoo.
 
         Args:
-            files: file information
+            files: file information for file object or url
             payload (dict): POST parameters
             machine (str): the machine label to submit to (or None if any
                 machine)
             options (dict): Task options
-
         Returns:
             Task ID or None
         """
         if machine:
             payload['machine'] = machine
         else:
-            machine = "any"
+            machine = 'any'
         if options:
-            payload["options"] = options
+            payload['options'] = options
 
-        r = requests.post(self.base_url + '/tasks/create/file',
-                          files=files, data=payload,
-                          proxies=self.proxies)
+        # Set the response object to be None.
+        r = None
+
+        if self.obj._meta['crits_type'] in ('Domain', 'IP', 'Indicator'):
+            # Submit a url to the cuckoo instnace if the crits_type was an
+            # Indicator, IP, or Domain.
+            r = requests.post(self.base_url + '/tasks/create/url',
+                              files=files, data=payload, proxies=self.proxies)
+        elif self.obj._meta['crits_type'] == 'Sample':
+            # Submit a file to the cuckoo instance if the crits_type was a
+            # Sample.
+            r = requests.post(self.base_url + '/tasks/create/file',
+                              files=files, data=payload, proxies=self.proxies)
 
         # TODO: check return status codes
         if r.status_code != requests.codes.ok:
@@ -246,13 +278,14 @@ class CuckooService(Service):
             self._error(msg)
             self._debug(r.text)
             return None
+
         response = dict(r.json())
-        # Compatibility with Optiv fork of Cuckoo.
-        # See https://github.com/crits/crits_services/pull/147
+
         if 'task_ids' in response:
             task_id = response['task_ids'][0]
         else:
             task_id = response['task_id']
+
         self._info("Options: {0}".format(options))
         self._info("Submitted Task ID %s for machine %s" % (task_id, machine))
 
@@ -368,7 +401,14 @@ class CuckooService(Service):
         self.config = config
         self.obj = obj
 
+        valid_indicator_types = ('Domain', 'IPv4 Address', 'URI')
+
         task_id = self.config.get('existing_task_id')
+
+        if (obj._meta['crits_type'] is 'Indicator' and
+                obj.ind_type not in valid_indicator_types):
+            raise ServiceConfigError("Invalid Indicator Type.")
+
         if task_id:
             self._info("Reusing existing task with ID: %s" % task_id)
             task_id = {'existing_task': task_id}
