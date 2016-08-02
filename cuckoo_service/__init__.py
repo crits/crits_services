@@ -26,7 +26,7 @@ class CuckooService(Service):
     name = 'cuckoo'
     version = '1.0.4'
     supported_types = ['Sample', 'IP', 'Domain', 'Indicator']
-    description = "Analyze a sample using Cuckoo Sandbox."
+    description = "Analyze a Sample, IP, Domain, and Indicator using Cuckoo Sandbox."
 
     @staticmethod
     def parse_config(config):
