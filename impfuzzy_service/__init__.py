@@ -5,7 +5,7 @@ import pyimpfuzzy
 from django.template.loader import render_to_string
 
 from crits.samples.sample import Sample
-from crits.services.core import Service
+from crits.services.core import Service, ServiceConfigError
 
 from . import forms
 
