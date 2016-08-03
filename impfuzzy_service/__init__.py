@@ -71,8 +71,7 @@ class impfuzzyService(Service):
             return
         # setup the sample space to compare against
         # first use the mimetype as a comparator if available
-        if not hasattr(obj, 'impfuzzy'):
-            obj.impfuzzy = target_impfuzzy
+        obj.impfuzzy = target_impfuzzy
         self._add_result('impfuzzy_hash', target_impfuzzy,{'impfuzzy': target_impfuzzy})
         target_mimetype = obj.mimetype
         query_filter = {}
