@@ -10,4 +10,4 @@ please see image "HailaTAXII Example Config.png" in the repository or below.
 
 ### EclecticIQ TAXII stand  https://test.taxiistand.com
 please see image "TAXIIstand Example Config.png" in the repository or below.
-![TAXIIstand Example Config.png](./TAXIIstand Example Config.png)
+![TAXIIstand Example Config.png](./TAXIIstand Example Config_1.png)
