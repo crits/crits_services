@@ -1,7 +1,6 @@
 import logging
 import json
 import re
-from datetime import datetime
 
 from django.http import HttpResponseRedirect
 from django.template import RequestContext
