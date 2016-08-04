@@ -305,8 +305,7 @@ def get_taxii_result(request, crits_type, crits_id, preview):
         if preview and data and 'preview' in data:
             resp = HttpResponse(data['preview'],
                                 content_type="application/xml")
-            utcnow = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
-            c_disp = 'attachment; filename=STIX_' + utcnow + '.xml'
+            c_disp = 'attachment; filename="STIX_preview.xml"'
             resp['Content-Disposition'] = c_disp
             return resp
         else: # else show success/error message that has been generated
