@@ -295,12 +295,10 @@ class TAXIIFeedConfigForm(forms.Form):
                           initial='',
                           widget=forms.HiddenInput())
 
-    source = forms.CharField(required=False,
-                             label="CRITs Source",
-                             initial='',
-                             widget=forms.TextInput(),
-                             help_text="The CRITs Source name to associate"
-                                       " with this feed.")
+    source = forms.ChoiceField(required=True,
+                               label="CRITs Source",
+                               help_text="The CRITs Source name to associate"
+                                         " with this feed.")
 
     fcert = forms.CharField(required=False,
                             label="Encryption Certificate",
@@ -329,10 +327,13 @@ class TAXIIFeedConfigForm(forms.Form):
                             help_text="The end timestamp of the last full "
                             "poll. Future polls begin with this date/time.")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, username, *args, **kwargs):
         kwargs.setdefault('label_suffix', ':')
         super(TAXIIFeedConfigForm, self).__init__(*args, **kwargs)
 
+        srcs = get_source_names(True, True, username)
+        self.fields['source'].choices = [(c.name, c.name) for c in srcs]
+        self.fields['source'].initial = get_user_organization(username)
 
 class UploadStandardsForm(forms.Form):
     """
@@ -349,8 +350,7 @@ class UploadStandardsForm(forms.Form):
     def __init__(self, username, *args, **kwargs):
         kwargs.setdefault('label_suffix', ':')
         super(UploadStandardsForm, self).__init__(*args, **kwargs)
-        self.fields['source'].choices = [(c.name,
-                                          c.name) for c in get_source_names(True,
-                                                                            True,
-                                                                            username)]
+
+        srcs = get_source_names(True, True, username)
+        self.fields['source'].choices = [(c.name, c.name) for c in srcs]
         self.fields['source'].initial = get_user_organization(username)

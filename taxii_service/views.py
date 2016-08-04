@@ -321,7 +321,7 @@ def configure_taxii(request, server=None):
     analyst = request.user.username
     srvr_form = forms.TAXIIServerConfigForm([(x,'') for x in range(100)],
                                             request.POST or None)
-    feed_form = forms.TAXIIFeedConfigForm(request.POST or None)
+    feed_form = forms.TAXIIFeedConfigForm(analyst, request.POST or None)
     if request.method == "POST" and request.is_ajax():
         if ('remove_server' in request.POST or
             'remove_feed' in request.POST or
