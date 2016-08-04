@@ -596,6 +596,6 @@ class CuckooService(Service):
                                   org,
                                   user=self.current_task.username,
                                   related_id=str(self.obj.id),
-                                  related_type="Sample",
+                                  related_type=self.obj._meta['crits_type'],
                                   method=self.name)
         self._add_result("pcap_added", h, {'md5': h})
