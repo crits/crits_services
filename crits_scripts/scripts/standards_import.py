@@ -31,7 +31,7 @@ class CRITsScript(CRITsBaseScript):
         data = f.read()
         f.close()
 
-        ret = import_standards_doc(data, "Command Line", "Standards Import Script", make_event=opts.event, source=opts.source)
+        ret = import_standards_doc(data, "Command Line", "Standards Import Script", hdr_events=opts.event, source=opts.source)
         if ret['success']:
             for k in ["events", "samples", "emails", "indicators"]:
                 print "%s (%i)" % (k, len(ret[k]))
