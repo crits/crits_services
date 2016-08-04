@@ -7,6 +7,7 @@ from crits.core.user_tools import user_sources, get_user_organization
 from crits.core.handlers import get_source_names, collect_objects
 from crits.core.class_mapper import class_from_type
 from crits.services.handlers import get_config
+from crits.vocabulary.indicators import IndicatorCI
 
 from datetime import datetime
 from dateutil.tz import tzutc
@@ -327,6 +328,16 @@ class TAXIIFeedConfigForm(forms.Form):
                             help_text="The end timestamp of the last full "
                             "poll. Future polls begin with this date/time.")
 
+    def_conf = forms.ChoiceField(required=True,
+                                 label="Default Confidence",
+                                 help_text="Indicators with no Confidence "
+                                           "are assigned this value.")
+
+    def_impact = forms.ChoiceField(required=True,
+                                   label="Default Impact",
+                                   help_text="Indicators with no Impact "
+                                             "are assigned this value.")
+
     def __init__(self, username, *args, **kwargs):
         kwargs.setdefault('label_suffix', ':')
         super(TAXIIFeedConfigForm, self).__init__(*args, **kwargs)
@@ -334,6 +345,13 @@ class TAXIIFeedConfigForm(forms.Form):
         srcs = get_source_names(True, True, username)
         self.fields['source'].choices = [(c.name, c.name) for c in srcs]
         self.fields['source'].initial = get_user_organization(username)
+
+        ind_ci = IndicatorCI.values()
+        self.fields['def_conf'].choices = [(c, c.title()) for c in ind_ci]
+        self.fields['def_conf'].initial = 'unknown'
+        self.fields['def_impact'].choices = [(c, c.title()) for c in ind_ci]
+        self.fields['def_impact'].initial = 'unknown'
+
 
 class UploadStandardsForm(forms.Form):
     """
