@@ -1,0 +1,1 @@
+The impfuzzy service requires pyimpfuzzy, which requires pydeep, ssdeep, and pefile to run.
