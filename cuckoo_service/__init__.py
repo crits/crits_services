@@ -14,6 +14,8 @@ from crits.pcaps.handlers import handle_pcap_file
 from crits.core.user_tools import get_user_organization
 from crits.services.core import Service, ServiceConfigError
 from crits.vocabulary.relationships import RelationshipTypes
+from crits.indicators.indicator import Indicator
+from crits.samples.sample import Sample
 
 from . import forms
 
@@ -110,10 +112,14 @@ class CuckooService(Service):
 
         return forms.CuckooRunForm(machines=machines, data=data)
 
-    # @staticmethod
-    # def valid_for(obj):
-    #     if obj.filedata.grid_id is None:
-    #         raise ServiceConfigError("Missing filedata.")
+    @staticmethod
+    def valid_for(obj):
+        valid_types = ('Domain', 'File Name', 'IPv4 Address', 'URI')
+        if isinstance(obj, Indicator) and obj.ind_type not in valid_types:
+            raise ServiceConfigError("Invalid Indicator Type: %s" %
+                                      obj.ind_type)
+        if isinstance(obj, Sample) and obj.filedata.grid_id == None:
+            raise ServiceConfigError("Invalid Sample Data: Missing File Data")
 
     @staticmethod
     def get_config_details(config):
