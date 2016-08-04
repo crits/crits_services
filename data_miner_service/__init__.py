@@ -92,46 +92,56 @@ class DataMinerService(Service):
 # hack of a parser to extract potential ip addresses from data
 def extract_ips(data):
     pattern = r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)([ (\[]?(\.|dot)[ )\]]?(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})"
+    unique_ips = []
     ips = [each[0] for each in re.findall(pattern, data)]
     for item in ips:
         location = ips.index(item)
         ip = re.sub("[ ()\[\]]", "", item)
         ip = re.sub("dot", ".", ip)
         ips.remove(item)
-        ips.insert(location, ip)
-    return ips
+        if ip not in unique_ips : 
+            unique_ips.append(ip)
+    
+    unique_ips.sort() 
+    return unique_ips
 
 # hack of a parser to extract potential domains from data
 def extract_domains(data):
-    pattern = r'[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?[\.[a-zA-Z]{2,}'
+    pattern = r'[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?[\.][a-zA-Z]{2,}'
     domains = [each for each in re.findall(pattern, data) if len(each) > 0]
     final_domains = []
+    unique_domains = []
     for item in domains:
         if len(item) > 1 and item.find('.') != -1:
             try:
                 tld = item.split(".")[-1]
                 check = TLD.objects(tld=tld).first()
                 if check:
-                    final_domains.append(item)
+                    if item not in unique_domains:
+                        unique_domains.append(item)
             except:
                 pass
-    return final_domains
+    unique_domains.sort()
+    return unique_domains
 
 # hack of a parser to extract potential emails from data
 def extract_emails(data):
-    pattern = r'[a-zA-Z0-9-\.\+]+@.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?[\.[a-zA-Z]{2,}'
+    pattern = r'[a-zA-Z0-9-\.\+]+@.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?[\.][a-zA-Z]{2,}'
     emails = [each for each in re.findall(pattern, data) if len(each) > 0]
     final_emails = []
+    unique_emails = []
     for item in emails:
         if len(item) > 1 and item.find('.') != -1:
             try:
                 tld = item.split(".")[-1]
                 check = TLD.objects(tld=tld).first()
                 if check:
-                    final_emails.append(item)
+                    if item not in unique_emails :
+                        unique_emails.append(item)         
             except:
                 pass
-    return final_emails
+    unique_emails.sort()
+    return unique_emails
 
 # hack of a parser to extract potential domains from data
 def extract_hashes(data):
@@ -142,6 +152,7 @@ def extract_hashes(data):
     re_ssdeep = re.compile("\\b\\d{2}:[A-Za-z0-9/+]{3,}:[A-Za-z0-9/+]{3,}\\b", re.I | re.S | re.M)
 
     final_hashes = []
+    unique_hashes = [] 
     md5 = IndicatorTypes.MD5
     sha1 = IndicatorTypes.SHA1
     sha256 = IndicatorTypes.SHA256
@@ -158,5 +169,10 @@ def extract_hashes(data):
     final_hashes.extend(
         [(ssdeep,each) for each in re.findall(re_ssdeep, data) if len(each) > 0]
     )
-    return final_hashes
+    for item in final_hashes :
+        if item not in unique_hashes : 
+            unique_hashes.append(item)
+    
+    unique_hashes.sort()
+    return unique_hashes
 
