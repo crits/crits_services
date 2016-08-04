@@ -39,6 +39,7 @@ from crits.vocabulary.indicators import (
     IndicatorThreatTypes,
     IndicatorTypes,
 )
+from crits.vocabulary.indicators import IndicatorCI
 from crits.vocabulary.ips import IPTypes
 from crits.vocabulary.relationships import RelationshipTypes
 
@@ -79,7 +80,7 @@ class STIXParser():
     STIX Parser class.
     """
 
-    def __init__(self, data, analyst, method, preview_only=False):
+    def __init__(self, data, analyst, method, def_ci=None, preview_only=False):
         """
         Instantiation of the STIXParser can take the data to parse, the analyst
         doing the parsing, and the method of data aquisition.
@@ -90,11 +91,14 @@ class STIXParser():
         :type analyst: str
         :param method: The method of acquiring this data.
         :type method: str
+        :param def_ci: The default Indicator (confidence, impact).
+        :type def_ci: tuple
         :param preview_only: If True, nothing is imported and a preview is returned
         :type preview_only: boolean
         """
 
         self.data = data
+        self.def_ci = def_ci or (None, None)
         self.preview = preview_only
 
         self.package = None
@@ -526,8 +530,20 @@ class STIXParser():
                     description.append('STIX Indicator Description: %s' % desc)
                 description = '\n'.join(str(x) for x in description if x)
 
-                self.parse_observables(indicator.observables,
-                                       description, True, indicator.id_)
+                ci_vals = IndicatorCI.values()
+                if (indicator.confidence
+                    and indicator.confidence.value.value.lower() in ci_vals):
+                    conf = indicator.confidence.value.value.lower()
+                else:
+                    conf = self.def_ci[0]
+                if (indicator.likely_impact
+                    and indicator.likely_impact.value.value.lower() in ci_vals):
+                    impact = indicator.likely_impact.value.value.lower()
+                else:
+                    impact = self.def_ci[1]
+
+                self.parse_observables(indicator.observables, description,
+                                       True, indicator.id_, (conf, impact))
 
             except Exception, e:
                 self.failed.append((e.message,
@@ -590,7 +606,7 @@ class STIXParser():
                                                             None, "%s - %s" % (kind, rule))
 
     def parse_observables(self, observables, description='',
-                          is_ind=False, ind_id=None):
+                          is_ind=False, ind_id=None, ind_ci=None):
         """
         Parse list of observables in STIX doc.
 
@@ -602,6 +618,8 @@ class STIXParser():
         :type is_ind: boolean
         :param ind_id: The ID of a parent STIX Indicator.
         :type ind_id: str
+        :param ind_ci: The (confidence, impact) of a parent STIX Indicator.
+        :type ind_ci: tuple
         """
 
         for ob in observables: # for each STIX observable
@@ -614,7 +632,7 @@ class STIXParser():
                         ref_pkg = STIXPackage.from_xml(f)
                     if 'Observable' in ob.idref:
                         self.parse_observables(ref_pkg.observables.observables,
-                                               description, is_ind, ind_id)
+                                               description, is_ind, ind_id, ind_ci)
 
                         if self.preview: # no need to store relationship if just a preview
                             continue
@@ -632,7 +650,7 @@ class STIXParser():
                     # ((A OR B) AND C). This code simply imports all observables
                     # and forms "Related_To" relationships between them
                     self.parse_observables(ob._observable_composition.observables,
-                                           description, is_ind, ind_id)
+                                           description, is_ind, ind_id, ind_ci)
                     rel_ids = []
 
                     if self.preview: # no need to store relationship if just a preview
@@ -669,11 +687,11 @@ class STIXParser():
             if ob.description:
                 description.append('STIX Observable Description: %s' % ob.description)
             description = '\n'.join(str(x) for x in description if x)
-            self.parse_cybox_object(ob.object_, description, is_ind, ind_id)
+            self.parse_cybox_object(ob.object_, description, is_ind, ind_id, ind_ci)
 
 
     def parse_cybox_object(self, cbx_obj, description='',
-                           is_ind=False, ind_id=None):
+                           is_ind=False, ind_id=None, ind_ci=None):
         """
         Parse a CybOX object form a STIX doc. An object can contain
         multiple related_objects, which in turn can have their own
@@ -687,7 +705,13 @@ class STIXParser():
         :type is_ind: boolean
         :param ind_id: The ID of a parent STIX Indicator.
         :type ind_id: str
+        :param ind_ci: The (confidence, impact) of a parent STIX Indicator.
+        :type ind_ci: tuple
         """
+
+        # Setup indicator confidence/impact
+        if not ind_ci:
+            ind_ci = (None, None)
 
         # check for missing attributes
         if not cbx_obj or not cbx_obj.properties:
@@ -791,7 +815,9 @@ class STIXParser():
                                                     IndicatorAttackTypes.UNKNOWN,
                                                     analyst,
                                                     add_relationship=True,
-                                                    description=description)
+                                                    description=description,
+                                                    confidence=ind_ci[0],
+                                                    impact=ind_ci[1])
                 except:
                     msg = "Unsupported use of 'HTTPSession' object."
                     res = {'success': False, 'reason': msg}
@@ -956,7 +982,9 @@ class STIXParser():
                                                   IndicatorThreatTypes.UNKNOWN,
                                                   IndicatorAttackTypes.UNKNOWN,
                                                   analyst,
-                                                  description=description)
+                                                  description=description,
+                                                  confidence=ind_ci[0],
+                                                  impact=ind_ci[1])
                             self.parse_res(imp_type, indv, cbx_obj, res, ind_id)
                 elif md5 or data: # Can create a Sample
                     val = fname or md5
@@ -1109,7 +1137,9 @@ class STIXParser():
                                                           analyst,
                                                           add_domain=True,
                                                           add_relationship=True,
-                                                          description=description)
+                                                          description=description,
+                                                          confidence=ind_ci[0],
+                                                          impact=ind_ci[1])
                                     if res['success']:
                                         get_attach = True
                                 tmp_obj = copy(cbx_obj)
@@ -1165,7 +1195,9 @@ class STIXParser():
                                                         analyst,
                                                         add_domain=True,
                                                         add_relationship=True,
-                                                        description=str(description))
+                                                        description=str(description),
+                                                        confidence=ind_ci[0],
+                                                        impact=ind_ci[1])
                             self.parse_res(imp_type, val, cbx_obj, res, ind_id)
 
         except Exception, e: # probably caused by cybox object we don't handle
@@ -1175,7 +1207,7 @@ class STIXParser():
 
         # parse any related CybOX object(s)
         for rel_obj in cbx_obj.related_objects:
-            self.parse_cybox_object(rel_obj, description, is_ind, ind_id)
+            self.parse_cybox_object(rel_obj, description, is_ind, ind_id, ind_ci)
             self.relationships.append((cbx_obj.id_, rel_obj.relationship.value,
                                        rel_obj.id_ or rel_obj.idref, "High"))
 
