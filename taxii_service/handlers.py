@@ -969,6 +969,14 @@ def to_stix_indicator(obj):
     obs, releas = to_cybox_observable(obj)
     for ob in obs:
         ind.add_observable(ob)
+        try:
+            ind.confidence = obj.confidence.rating.title()
+        except:
+            pass
+        try:
+            ind.likely_impact = obj.impact.rating.title()
+        except:
+            pass
     #TODO: determine if a source wants its name shared. This will
     #   probably have to happen on a per-source basis rather than a per-
     #   object basis.
