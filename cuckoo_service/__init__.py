@@ -28,7 +28,8 @@ class CuckooService(Service):
     name = 'cuckoo'
     version = '1.0.4'
     supported_types = ['Sample', 'IP', 'Domain', 'Indicator']
-    description = "Analyze a Sample, IP, Domain, and Indicator using Cuckoo Sandbox."
+    description = ("Analyze a Sample, IP, Domain, and Indicator" +
+                   " using Cuckoo Sandbox.")
 
     @staticmethod
     def parse_config(config):
@@ -117,8 +118,8 @@ class CuckooService(Service):
         valid_types = ('Domain', 'File Name', 'IPv4 Address', 'URI')
         if isinstance(obj, Indicator) and obj.ind_type not in valid_types:
             raise ServiceConfigError("Invalid Indicator Type: %s" %
-                                      obj.ind_type)
-        if isinstance(obj, Sample) and obj.filedata.grid_id == None:
+                                     obj.ind_type)
+        if isinstance(obj, Sample) and obj.filedata.grid_id is None:
             raise ServiceConfigError("Invalid Sample Data: Missing File Data")
 
     @staticmethod
@@ -407,13 +408,7 @@ class CuckooService(Service):
         self.config = config
         self.obj = obj
 
-        valid_indicator_types = ('Domain', 'IPv4 Address', 'URI')
-
         task_id = self.config.get('existing_task_id')
-
-        if (obj._meta['crits_type'] is 'Indicator' and
-                obj.ind_type not in valid_indicator_types):
-            raise ServiceConfigError("Invalid Indicator Type.")
 
         if task_id:
             self._info("Reusing existing task with ID: %s" % task_id)
