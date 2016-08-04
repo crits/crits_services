@@ -92,5 +92,3 @@ class OfficeMetaService(Service):
         for f in added_files:
             self._add_result("file_added", f[0], {'md5': f[1]})
 
-    def _parse_error(self, item, e):
-        self._error("Error parsing %s (%s): %s" % (item, e.__class__.__name__, e))
