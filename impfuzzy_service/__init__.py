@@ -58,6 +58,7 @@ class impfuzzyService(Service):
                                  'identifier': identifier})
 
     def run(self, obj, config):
+        self._info("Impfuzzy: run()")
         threshold = config.get("threshold", 50)
         target_impfuzzy = None
         try:
@@ -66,12 +67,17 @@ class impfuzzyService(Service):
             pass
         target_md5 = obj.md5
         if not target_impfuzzy:
-            logger.error = "Could not get the target impfuzzy value for sample"
-            self._error("Could not get the target impfuzzy value for sample")
+            logger.error = "impfuzzy: Could not generate impfuzzy value for sample: %s" % str(obj.id)
+            self._error("Could not generate impfuzzy value for sample")
             return
         # setup the sample space to compare against
         # first use the mimetype as a comparator if available
-        obj.impfuzzy = target_impfuzzy
+        if obj.impfuzzy:
+            obj.impfuzzy = target_impfuzzy
+            obj.save()
+            self._info("impfuzzy: Filled-in in the impfuzzy")
+        else:
+            self._info("impfuzzy attribute already present, not overwriting")
         self._add_result('impfuzzy_hash', target_impfuzzy,{'impfuzzy': target_impfuzzy})
         target_mimetype = obj.mimetype
         query_filter = {}
@@ -98,3 +104,4 @@ class impfuzzyService(Service):
         for match in match_list:
             #Show the MD5 and the Description
             self._add_result("impfuzzy_match", match["md5"], {'description': match["description"], 'md5': match["md5"], 'score': match["score"]})
+        self._info("impfuzzy run() done")
