@@ -2,6 +2,8 @@ import logging
 import json
 import re
 
+from datetime import datetime
+
 from django.http import HttpResponseRedirect
 from django.template import RequestContext
 from django.template.loader import render_to_string
@@ -304,7 +306,8 @@ def get_taxii_result(request, crits_type, crits_id, preview):
         if preview and data and 'preview' in data:
             resp = HttpResponse(data['preview'],
                                 content_type="application/xml")
-            c_disp = 'attachment; filename="STIX_preview.xml"'
+            utcnow = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+	    c_disp = 'attachment; filename=STIX_' + utcnow + '.xml'
             resp['Content-Disposition'] = c_disp
             return resp
         else: # else show success/error message that has been generated
