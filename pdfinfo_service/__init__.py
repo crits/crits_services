@@ -236,5 +236,3 @@ class PDFInfoService(Service):
         self._notify()
         self.run_pdfparser(data)
 
-    def _parse_error(self, item, e):
-        self._error("Error parsing %s (%s): %s" % (item, e.__class__.__name__, e))
