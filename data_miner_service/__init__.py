@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 class DataMinerService(Service):
     """
     Mine data for useful information
-
     Currently this service only runs on RawData and Samples. This could be
     expanded to work on email bodies + headers or other top-level objects which
     contain a chunk of data ripe for parsing potential indicators.
@@ -175,4 +174,3 @@ def extract_hashes(data):
     
     unique_hashes.sort()
     return unique_hashes
-
