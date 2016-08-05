@@ -58,7 +58,6 @@ class impfuzzyService(Service):
                                  'identifier': identifier})
 
     def run(self, obj, config):
-        self._info("Impfuzzy: run()")
         threshold = config.get("threshold", 50)
         target_impfuzzy = None
         try:
@@ -104,4 +103,3 @@ class impfuzzyService(Service):
         for match in match_list:
             #Show the MD5 and the Description
             self._add_result("impfuzzy_match", match["md5"], {'description': match["description"], 'md5': match["md5"], 'score': match["score"]})
-        self._info("impfuzzy run() done")
