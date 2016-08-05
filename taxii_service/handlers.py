@@ -747,7 +747,10 @@ def import_content_blocks(block_ids, action, analyst):
             if tsrvs[svr].get('hostname') == block.hostname:
                 for feed in tsrvs[svr]['feeds']:
                     if tsrvs[svr]['feeds'][feed]['feedname'] == block.feed:
-                        source = tsrvs[svr]['feeds'][feed]['source']
+                        feed_cfg = tsrvs[svr]['feeds'][feed]
+                        source = feed_cfg['source']
+                        default_ci = (feed_cfg.get('def_conf', 'unknown'),
+                                      feed_cfg.get('def_impact', 'unknown'))
                         break
                 if source:
                     break
@@ -756,9 +759,10 @@ def import_content_blocks(block_ids, action, analyst):
                 source = block.hostname.split(' - Source: ')[1]
             except:
                 source = block.hostname
+            default_ci = ('unknown', 'unknown')
 
-        objs = import_standards_doc(data, analyst, method, ref=reference,
-                                    hdr_events=hdr_events, source=source)
+        objs = import_standards_doc(data, analyst, method, reference,
+                                    hdr_events, default_ci, source)
 
         if not objs['success']:
             ret['failures'].append((objs['reason'],
@@ -969,6 +973,14 @@ def to_stix_indicator(obj):
     obs, releas = to_cybox_observable(obj)
     for ob in obs:
         ind.add_observable(ob)
+        try:
+            ind.confidence = obj.confidence.rating.title()
+        except:
+            pass
+        try:
+            ind.likely_impact = obj.impact.rating.title()
+        except:
+            pass
     #TODO: determine if a source wants its name shared. This will
     #   probably have to happen on a per-source basis rather than a per-
     #   object basis.
@@ -1749,7 +1761,7 @@ def update_taxii_service_config(post_data, analyst):
     return status
 
 def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
-                         source=None, preview_only=False):
+                         def_ci=None, source=None, preview_only=False):
     """
     Import a standards document into CRITs.
 
@@ -1764,6 +1776,8 @@ def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
     :type ref: str
     :param hdr_events: Whether or not we should make an Event for this document.
     :type hdr_events: bool
+    :param def_ci: The default Indicator (confidence, impact).
+    :type def_ci: tuple
     :param source: The name of the source who provided this document.
     :type source: str
     :param preview_only: If True, nothing is imported and a preview is returned
@@ -1783,7 +1797,7 @@ def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
           }
 
     try:
-        parser = STIXParser(data, analyst, method, preview_only)
+        parser = STIXParser(data, analyst, method, def_ci, preview_only)
         parser.parse_stix(reference=ref, hdr_events=hdr_events, source=source)
         parser.relate_objects()
     except STIXParserException, e:
