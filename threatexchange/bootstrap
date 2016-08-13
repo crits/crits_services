@@ -68,7 +68,7 @@ freebsd_install()
 red_hat_install()
 {
     #printf "${HEAD}Installing Yum Packages${END}\n"
-    sudo yum install itcpdump wireshark
+    sudo yum install tcpdump wireshark
     if [ $? -eq 0 ]
     then
       printf "${PASS}Yum Install Complete${END}\n"
