@@ -73,6 +73,8 @@ class PEInfoService(Service):
         #image characteristics
         img_chars = bitstring.BitArray(hex(exe.FILE_HEADER.Characteristics))
         #pad to 16 bits
+        if len(img_chars) == 8:
+            img_chars = bitstring.BitArray('0b00000000') + img_chars
         img_chars = bitstring.BitArray(bytes=img_chars.tobytes())
         img_chars_xor = img_chars[0:7] ^ img_chars[8:15]
 
