@@ -16,7 +16,7 @@ class SSDeepService(Service):
     """
 
     name = "ssdeep_compare"
-    version = '1.0.2'
+    version = '1.0.3'
     description = "Compare samples using ssdeep."
     supported_types = ['Sample']
 
