@@ -102,4 +102,4 @@ class impfuzzyService(Service):
         match_list.sort(key=lambda sample: sample["score"], reverse=True)
         for match in match_list:
             #Show the MD5 and the Description
-            self._add_result("impfuzzy_match", match["md5"], {'description': match["description"], 'md5': match["md5"], 'score': match["score"]})
+            self._add_result("impfuzzy_match (MD5)", match["md5"], {'description': match["description"], 'score': match["score"]})
