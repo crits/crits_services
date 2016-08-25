@@ -19,7 +19,7 @@ class impfuzzyService(Service):
     """
 
     name = "impfuzzy_compare"
-    version = '1.0.0'
+    version = '1.0.1'
     description = "Compare samples using impfuzzy."
     supported_types = ['Sample']
 
