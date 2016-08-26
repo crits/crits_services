@@ -1800,12 +1800,12 @@ def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
         parser = STIXParser(data, analyst, method, def_ci, preview_only)
         parser.parse_stix(reference=ref, hdr_events=hdr_events, source=source)
         parser.relate_objects()
-    except STIXParserException, e:
-        logger.exception(e)
+    except STIXParserException as e:
+        logger.exception(str(e))
         ret['reason'] = str(e.message)
         return ret
-    except Exception, e:
-        logger.exception(e)
+    except Exception as e:
+        logger.exception(str(e))
         ret['reason'] = str(e)
         return ret
 
