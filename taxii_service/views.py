@@ -16,7 +16,7 @@ from crits.core.user_tools import user_can_view_data
 from . import handlers
 from . import forms
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("crits." + __name__)
 
 @user_passes_test(user_can_view_data)
 def taxii_poll(request):
