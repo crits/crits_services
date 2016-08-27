@@ -53,7 +53,7 @@ from crits.services.service import CRITsService
 from crits.vocabulary.ips import IPTypes
 from crits.vocabulary.relationships import RelationshipTypes
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("crits." + __name__)
 
 def poll_taxii_feeds(feeds, analyst, begin=None, end=None):
     """
@@ -1618,6 +1618,9 @@ def update_taxii_server_config(updates, analyst):
         except:
             pass
     elif 'edit_feed' in updates:
+        if not updates['edit_feed']:
+            result['success'] = False
+            return result
         data = servers[updates['srv_name']]['feeds'][updates['edit_feed']]
         hostname = servers[updates['srv_name']].get('hostname', '')
         last = taxii.Taxii.get_last(hostname + ':' + data['feedname'])

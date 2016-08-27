@@ -75,6 +75,10 @@ $('#add').click(function() {
 	}});
 $('#edit').click(function() {
     $("#error_box").html('');
+    if (!$('#id_feeds').val()) {
+        $('#error_box').text('You must select a feed to edit.');
+        return;
+    }
     if ($('#id_cur_sname').val()) {
         var data = {'edit_feed': $('#id_feeds').val(), 'srv_name': $('#id_cur_sname').val()};
     }
@@ -89,13 +93,18 @@ $('#edit').click(function() {
                     $('#id_fcert').val(data.fcert);
                     $('#id_fkey').val(data.fkey);
                     $('#id_subID').val(data.subID);
+                    $('#id_def_conf').val(data.def_conf);
+                    $('#id_def_impact').val(data.def_impact);
                     $('#id_last_poll').val(data.last_poll);
+
+                    if ($("#server_config_container").is(":visible")) {
+                        $("#server_config_container").slideToggle();
+                        $("#feed_config_container").slideToggle();
+                    }
                 }
-                else {$('#error_box').text('Failed to edit feed.');}}});
-	if ($("#server_config_container").is(":visible")) {
-		    $("#server_config_container").slideToggle();
-            $("#feed_config_container").slideToggle();
-	}});
+                else {$('#error_box').text('Failed to edit feed.');}
+            }});
+	});
 $('#remove').click(function() {
     if ($('#id_cur_sname').val()) {
         var data = {'remove_feed': $('#id_feeds').val(), 'srv_name': $('#id_cur_sname').val()};
