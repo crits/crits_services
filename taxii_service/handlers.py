@@ -53,7 +53,7 @@ from crits.services.service import CRITsService
 from crits.vocabulary.ips import IPTypes
 from crits.vocabulary.relationships import RelationshipTypes
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("crits." + __name__)
 
 def poll_taxii_feeds(feeds, analyst, begin=None, end=None):
     """
