@@ -1618,6 +1618,9 @@ def update_taxii_server_config(updates, analyst):
         except:
             pass
     elif 'edit_feed' in updates:
+        if not updates['edit_feed']:
+            result['success'] = False
+            return result
         data = servers[updates['srv_name']]['feeds'][updates['edit_feed']]
         hostname = servers[updates['srv_name']].get('hostname', '')
         last = taxii.Taxii.get_last(hostname + ':' + data['feedname'])
