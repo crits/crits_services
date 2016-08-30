@@ -710,8 +710,8 @@ class STIXParser():
         """
 
         # Setup indicator confidence/impact
-        if not ind_ci:
-            ind_ci = (None, None)
+        if not ind_ci: # if not provided, use defaults
+            ind_ci = self.def_ci
 
         # check for missing attributes
         if not cbx_obj or not cbx_obj.properties:

@@ -395,6 +395,12 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
     :type pubkey: string
     :returns: tuple: (parsed_data or None, error_message or None)
     """
+    stix_bindings = (t.CB_STIX_XML_10,
+                     t.CB_STIX_XML_101,
+                     t.CB_STIX_XML_11,
+                     t.CB_STIX_XML_111,
+                     "urn:stix.mitre.org:xml:1.2")
+
     binding = str(content_block.content_binding)
     if binding == 'application/x-pkcs7-mime':
         if not privkey or not pubkey:
@@ -414,7 +420,7 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
         f.close()
         return parse_content_block(tm_.ContentBlock.from_xml(new_block),
                                    tm_, privkey, pubkey)
-    elif binding in (t.CB_STIX_XML_111, "urn:stix.mitre.org:xml:1.2"):
+    elif binding in stix_bindings:
         f = BytesIO(content_block.content)
         data = f.read()
         f.close()
