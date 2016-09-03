@@ -10,7 +10,7 @@ from crits.services.core import Service, ServiceConfigError
 
 from . import forms
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("crits." + __name__)
 
 class TAXIIClient(Service):
     """

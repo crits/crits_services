@@ -53,7 +53,7 @@ from crits.services.service import CRITsService
 from crits.vocabulary.ips import IPTypes
 from crits.vocabulary.relationships import RelationshipTypes
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("crits." + __name__)
 
 def poll_taxii_feeds(feeds, analyst, begin=None, end=None):
     """
@@ -395,6 +395,12 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
     :type pubkey: string
     :returns: tuple: (parsed_data or None, error_message or None)
     """
+    stix_bindings = (t.CB_STIX_XML_10,
+                     t.CB_STIX_XML_101,
+                     t.CB_STIX_XML_11,
+                     t.CB_STIX_XML_111,
+                     "urn:stix.mitre.org:xml:1.2")
+
     binding = str(content_block.content_binding)
     if binding == 'application/x-pkcs7-mime':
         if not privkey or not pubkey:
@@ -414,7 +420,7 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
         f.close()
         return parse_content_block(tm_.ContentBlock.from_xml(new_block),
                                    tm_, privkey, pubkey)
-    elif binding in (t.CB_STIX_XML_111, "urn:stix.mitre.org:xml:1.2"):
+    elif binding in stix_bindings:
         f = BytesIO(content_block.content)
         data = f.read()
         f.close()
@@ -1618,6 +1624,9 @@ def update_taxii_server_config(updates, analyst):
         except:
             pass
     elif 'edit_feed' in updates:
+        if not updates['edit_feed']:
+            result['success'] = False
+            return result
         data = servers[updates['srv_name']]['feeds'][updates['edit_feed']]
         hostname = servers[updates['srv_name']].get('hostname', '')
         last = taxii.Taxii.get_last(hostname + ':' + data['feedname'])
@@ -1800,12 +1809,12 @@ def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
         parser = STIXParser(data, analyst, method, def_ci, preview_only)
         parser.parse_stix(reference=ref, hdr_events=hdr_events, source=source)
         parser.relate_objects()
-    except STIXParserException, e:
-        logger.exception(e)
+    except STIXParserException as e:
+        logger.exception(str(e))
         ret['reason'] = str(e.message)
         return ret
-    except Exception, e:
-        logger.exception(e)
+    except Exception as e:
+        logger.exception(str(e))
         ret['reason'] = str(e)
         return ret
 
