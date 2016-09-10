@@ -1,6 +1,8 @@
-from django.conf.urls import patterns
+from django.conf.urls import url
 
-urlpatterns = patterns('pyew.views',
-    (r'^pyew_port/$', 'pyew_port'),
-    (r'^pyew_token/$', 'pyew_tokenize'),
-)
+from . import views
+
+urlpatterns = [
+    url(r'^pyew_port/$', views.pyew_port),
+    url(r'^pyew_token/$', views.pyew_tokenize),
+]

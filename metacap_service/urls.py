@@ -1,7 +1,9 @@
-from django.conf.urls import patterns
+from django.conf.urls import url
 
-urlpatterns = patterns('metacap_service.views',
-    (r'^pdml/(?P<pcap_md5>.+?)/$', 'get_pcap_pdml'),
-    (r'^tcpdump/get_form/$', 'get_tcpdump_config_form'),
-    (r'^tcpdump/(?P<pcap_md5>.+?)/$', 'get_pcap_tcpdump'),
-)
+from . import views
+
+urlpatterns = [
+    url(r'^pdml/(?P<pcap_md5>.+?)/$', views.get_pcap_pdml),
+    url(r'^tcpdump/get_form/$', views.get_tcpdump_config_form),
+    url(r'^tcpdump/(?P<pcap_md5>.+?)/$', views.get_pcap_tcpdump),
+]

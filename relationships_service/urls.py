@@ -1,9 +1,11 @@
-from django.conf.urls import patterns
+from django.conf.urls import url
 
-urlpatterns = patterns('relationships_service.views',
-    (r'add_campaign/$', 'add_campaign'),
-    (r'^(?P<ctype>.+?)/(?P<cid>.+?)/$', 'get_relationships'),
-)
+from . import views
+
+urlpatterns = [
+    url(r'add_campaign/$', views.add_campaign),
+    url(r'^(?P<ctype>.+?)/(?P<cid>.+?)/$', views.get_relationships),
+]
 
 def register_api(v1_api):
     from relationships_service.api import RelationshipsServiceResource

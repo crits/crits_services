@@ -1,5 +1,7 @@
-from django.conf.urls import patterns
+from django.conf.urls import url
 
-urlpatterns = patterns('anb_service.views',
-    (r'^(?P<ctype>.+?)/(?P<cid>.+?)/$', 'get_anb_data'),
-)
+from . import views
+
+urlpatterns = [
+    url(r'^(?P<ctype>.+?)/(?P<cid>.+?)/$', views.get_anb_data),
+]
