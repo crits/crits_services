@@ -349,7 +349,7 @@ def configure_taxii(request, server=None):
         result = handlers.update_taxii_server_config(srvr_form.cleaned_data,
                                                      analyst)
         if result['success']:
-            return HttpResponseRedirect(reverse('crits.services.views.detail',
+            return HttpResponseRedirect(reverse('crits-services-views-detail',
                                                 kwargs={'name':'taxii_service'}))
         srvr_form = handlers.add_feed_config_buttons(srvr_form)
         return render_to_response('taxii_server_config.html',
@@ -370,7 +370,7 @@ def configure_taxii(request, server=None):
                            'errors': result['form'].errors},
                           RequestContext(request))
     else:
-        return HttpResponseRedirect(reverse('taxii_service.views.configure_taxii'))
+        return HttpResponseRedirect(reverse('taxii_service-views-configure_taxii'))
 
 def taxii_service_context(request):
     context = {}

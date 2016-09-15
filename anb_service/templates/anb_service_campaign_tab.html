@@ -6,7 +6,7 @@ $(document).ready(function() {
       $('.anb_loader').html('<img src="/new_images/loader.gif" />');
       $.ajax({
         type: "GET",
-        url: "{% url 'anb_service.views.get_anb_data' 'Campaign' campaign_detail.name %}",
+        url: "{% url 'anb_service-views-get_anb_data' 'Campaign' campaign_detail.name %}",
         dataType: "json",
         success: function(data) {
           if (data['success'] != "true") {

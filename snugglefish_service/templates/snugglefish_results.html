@@ -19,7 +19,7 @@
                         <ul>
                         {% if result.files %}
                             {% for file in result.files %}
-                            <li><a href="{% url 'crits.samples.views.detail' file %}">{{ file }}</a></li>
+                            <li><a href="{% url 'crits-samples-views-detail' file %}">{{ file }}</a></li>
                             {% endfor %}
                         {% else %}
                             <li>No files found.</li>

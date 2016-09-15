@@ -50,7 +50,7 @@
                     <td>{{ meta.count }}</td><td>{{ meta.source }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
                     <td>{{ meta.analyst }}</td>
-                    <td><a href="{% url 'taxii_service.views.download_taxii_content' meta.poll_id %}">Download</a>
+                    <td><a href="{% url 'taxii_service-views-download_taxii_content' meta.poll_id %}">Download</a>
                         | <a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
                 </tr>
                 {% endfor %}
@@ -95,7 +95,7 @@
                     <td>{{ meta.count }}</td><td>{{ meta.source }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
                     <td>{{ meta.analyst }}</td>
-                    <td><a href="{% url 'taxii_service.views.download_taxii_content' meta.poll_id %}">Download</a>
+                    <td><a href="{% url 'taxii_service-views-download_taxii_content' meta.poll_id %}">Download</a>
                         | <a class='delete_poll' href="#" id="{{ meta.poll_id }}">Delete</a></td>
                 </tr>
                 {% endfor %}
@@ -113,7 +113,7 @@
         var pid = $(this).attr('id');
 		$.ajax({
 			type: "GET",
-			url: "{% url 'taxii_service.views.get_import_preview' '1234' %}".replace(/1234/, pid),
+			url: "{% url 'taxii_service-views-get_import_preview' '1234' %}".replace(/1234/, pid),
 		}).done(function(data) { // run on successful request
 			if (data.success) { // at least some feeds were successfully processed
 				$("#results_container").html(data.html);
@@ -135,7 +135,7 @@
 		$.ajax({
 			context: this,
 			type: "POST",
-			url: "{% url 'taxii_service.views.list_saved_polls' %}",
+			url: "{% url 'taxii_service-views-list_saved_polls' %}",
 			data: this.id,
 			dataType: "json"
 		}).done(function(data) { // run on successful request

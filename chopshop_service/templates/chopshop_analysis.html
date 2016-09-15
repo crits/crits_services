@@ -56,7 +56,7 @@
             {% endfor %}
             <td>
                 {% if result.result %}
-                    <a href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&q={{result.result|urlencode}}">{{result.result}}</a>
+                    <a href="{% url 'crits-core-views-global_search_listing' %}?search_type=global&q={{result.result|urlencode}}">{{result.result}}</a>
                 {% endif %}
             </td>
         </tr>

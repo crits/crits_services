@@ -103,7 +103,7 @@ def pcap_tcpdump(pcap_md5, form, analyst):
                                       parent_type="PCAP",
                                       method="MetaCap Tcpdumper")
             if result['success']:
-                tcpdump_output = "<a href=\"%s\">View new pcap.</a>" % reverse('crits.pcaps.views.pcap_details', args=[result['md5']])
+                tcpdump_output = "<a href=\"%s\">View new pcap.</a>" % reverse('crits-pcaps-views-pcap_details', args=[result['md5']])
             else:
                 tcpdump_output = result['message']
         else:

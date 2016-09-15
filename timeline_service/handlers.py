@@ -57,7 +57,7 @@ def generate_timeline(obj_type, obj_id, user):
         name = campaign.name
         confidence = campaign.confidence
         description = campaign.description
-        rev = reverse('crits.campaigns.views.campaign_details', args=[name,])
+        rev = reverse('crits-campaigns-views-campaign_details', args=[name,])
         link = '<a href="%s">%s</a>' % (cgi.escape(rev), cgi.escape(name))
         i = "Campaign <b>%s</b> added with a confidence of <b>%s</b> and a \
                 description of '%s'" % (link,
@@ -70,7 +70,7 @@ def generate_timeline(obj_type, obj_id, user):
         type_ = obj.object_type
         value = obj.value
         rev = '%s?search_type=object&otype=%s&q=%s&force_full=1' \
-                % (reverse('crits.core.views.global_search_listing'),
+                % (reverse('crits-core-views-global_search_listing'),
                    "%s" % (type_),
                    urllib.quote(value))
         link = '<a href="%s">%s</a>' % (cgi.escape(rev), cgi.escape(value))
@@ -83,7 +83,7 @@ def generate_timeline(obj_type, obj_id, user):
         tobj = class_from_type(rel.rel_type)
         if tobj.objects(id=rel.object_id,
                         source__name__in=users_sources).only('id').first():
-            rev = reverse('crits.core.views.details', args=[rel.rel_type,
+            rev = reverse('crits-core-views-details', args=[rel.rel_type,
                                                             str(rel.object_id),])
             link = '<a href="%s">%s</a>' % (rev, rel.rel_type)
             i = "<b>%s</b> was added with a relationship of <b>%s</b>." % (link,
@@ -143,7 +143,7 @@ def generate_timeline(obj_type, obj_id, user):
                                                                'version',
                                                                'created')
         for version in versions:
-            rev = reverse('crits.raw_data.views.raw_data_details',
+            rev = reverse('crits-raw_data-views-raw_data_details',
                           args=[str(version.id),])
             link = '<a href="%s">%d</a>' % (rev, version.version)
             i = "Version %s was added." % link

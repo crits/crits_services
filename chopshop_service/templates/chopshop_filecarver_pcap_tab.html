@@ -4,7 +4,7 @@
 $(document).ready(function() {
     $.ajax({
         type: "GET",
-        url: "{% url 'chopshop_service.views.get_filecarver_config_form' %}",
+        url: "{% url 'chopshop_service-views-get_filecarver_config_form' %}",
         dataType: "json",
         success: function(data) {
             if (data) {
@@ -17,7 +17,7 @@ $(document).ready(function() {
       var form_data = $('#filecarver_config_form').serialize();
       $.ajax({
         type: "POST",
-        url: "{% url 'chopshop_service.views.run_filecarver' pcap.md5 %}",
+        url: "{% url 'chopshop_service-views-run_filecarver' pcap.md5 %}",
         data: form_data,
         dataType: "json",
         success: function(data) {

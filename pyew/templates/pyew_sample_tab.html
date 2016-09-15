@@ -10,7 +10,7 @@ $(document).ready(function() {
     var secure = false;
     $.ajax({
         type: 'POST',
-        url: "{% url 'pyew.views.pyew_port' %}",
+        url: "{% url 'pyew-views-pyew_port' %}",
         data: {},
         datatype: 'json',
         success: function(data) {
@@ -29,7 +29,7 @@ $(document).ready(function() {
             var token = null;
             $.ajax({
                 type: 'POST',
-                url: "{% url 'pyew.views.pyew_tokenize' %}",
+                url: "{% url 'pyew-views-pyew_tokenize' %}",
                 data: {},
                 async: false,
                 datatype: 'json',

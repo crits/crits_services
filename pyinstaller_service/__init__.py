@@ -130,7 +130,7 @@ class pyinstallerService(Service):
                                 if res['success']:
                                     obj.save(username=self.current_task.username)
                                     result['object'].save(username=self.current_task.username)
-                                    url = reverse('crits.core.views.details',
+                                    url = reverse('crits-core-views-details',
                                                 args=('RawData',
                                                         result['_id']))
                                     url = '<a href="%s">View Raw Data</a>' % url

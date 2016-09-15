@@ -58,7 +58,7 @@ $(document).ready(function() {
         data = {xml: xml};
         $.ajax({
             type: 'POST',
-            url: "{% url 'stix_validator_service.views.validate' %}",
+            url: "{% url 'stix_validator_service-views-validate' %}",
             data: data,
             datatype: 'json',
             success: function(data) {

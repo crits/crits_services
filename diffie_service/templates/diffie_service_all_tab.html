@@ -7,7 +7,7 @@ $(document).ready(function() {
       var form_data = $('#diffie_config_form').serialize();
       $.ajax({
         type: "POST",
-        url: "{% url 'diffie_service.views.diffie_results' subscription.type subscription.id %}",
+        url: "{% url 'diffie_service-views-diffie_results' subscription.type subscription.id %}",
         data: form_data,
         dataType: "json",
         success: function(data) {
@@ -26,7 +26,7 @@ $(document).ready(function() {
         // Only fetch the form when making it visible.
         $.ajax({
             type: "GET",
-            url: "{% url 'diffie_service.views.get_diffie_config_form' subscription.type subscription.id %}",
+            url: "{% url 'diffie_service-views-get_diffie_config_form' subscription.type subscription.id %}",
             dataType: "json",
             success: function(data) {
                 if (data.success) {

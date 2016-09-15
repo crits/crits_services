@@ -18,7 +18,7 @@
 
 {% if form.feeds.field.choices|length == 0 %}
     <br><br><br><br><br>
-    <h3 style="color:red;">Before polling for a TAXII message, you must first <a href="{% url 'crits.services.views.detail' 'taxii_service' %}">configure a TAXII server</a> and feed.</h3>
+    <h3 style="color:red;">Before polling for a TAXII message, you must first <a href="{% url 'crits-services-views-detail' 'taxii_service' %}">configure a TAXII server</a> and feed.</h3>
 {% else %}
 	<section id="taxii_config_container" class="taxii-container">
 		<form id="taxii_config_form">{% csrf_token %}

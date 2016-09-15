@@ -175,7 +175,7 @@
 $(document).ready(function() {
     $.ajax({
         type: "POST",
-        url: "{% url 'threatexchange.views.get_dropdowns' %}",
+        url: "{% url 'threatexchange-views-get_dropdowns' %}",
         success: function(data) {
             var precision = data.precision;
             var privacy_type = data.privacy_type;
@@ -265,7 +265,7 @@ $(document).ready(function() {
     });
     $.ajax({
         type: "POST",
-        url: "{% url 'threatexchange.views.get_members' %}",
+        url: "{% url 'threatexchange-views-get_members' %}",
         success: function(data) {
             if (data.success) {
                 $('#member_content').append(data.html);
@@ -274,7 +274,7 @@ $(document).ready(function() {
     });
     $.ajax({
         type: "POST",
-        url: "{% url 'threatexchange.views.get_groups' %}",
+        url: "{% url 'threatexchange-views-get_groups' %}",
         success: function(data) {
             if (data.success) {
                 $('#group_content').append(data.html);
@@ -310,7 +310,7 @@ $(document).ready(function() {
         }
         $.ajax({
              type: "POST",
-             url: "{% url 'threatexchange.views.export_object' %}",
+             url: "{% url 'threatexchange-views-export_object' %}",
              data: data,
              success: function(data) {
                  if (data.success) {

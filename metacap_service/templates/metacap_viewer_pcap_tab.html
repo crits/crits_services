@@ -6,7 +6,7 @@ $(document).ready(function() {
       $('.pdml_loader').html('<img src="/new_images/loader.gif" />');
       $.ajax({
         type: "GET",
-        url: "{% url 'metacap_service.views.get_pcap_pdml' pcap.md5 %}",
+        url: "{% url 'metacap_service-views-get_pcap_pdml' pcap.md5 %}",
         dataType: "json",
         success: function(data) {
           if (data) {

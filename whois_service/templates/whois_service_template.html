@@ -9,7 +9,7 @@
             'ind_type': 'Address - email-addr',
             'obj_type': 'Domain'
         };
-        url = "{% url 'crits.indicators.views.indicator_from_tlo' %}";
+        url = "{% url 'crits-indicators-views-indicator_from_tlo' %}";
         $.ajax({
             type: "POST",
             url: url,
@@ -87,7 +87,7 @@
             {% endif %}
             <td class="potential_indicator">
                 {% if result.result %}
-                <a class="potential_link" href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&q={{result.result|urlencode}}">{{result.result}}</a>
+                <a class="potential_link" href="{% url 'crits-core-views-global_search_listing' %}?search_type=global&q={{result.result|urlencode}}">{{result.result}}</a>
                 {% endif %}
             </td>
         </tr>

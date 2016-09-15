@@ -34,7 +34,7 @@ $(document).ready(function() {
         }
         $.ajax({
             type: "POST",
-            url: "{% url 'relationships_service.views.get_relationships' subscription.type subscription.id %}",
+            url: "{% url 'relationships_service-views-get_relationships' subscription.type subscription.id %}",
             dataType: "json",
             data: data,
             async: false,
@@ -66,7 +66,7 @@ $(document).ready(function() {
             data: { 'name': name,
                     'nodes': JSON.stringify(data),
                     'confidence': confidence },
-            url: "{% url 'relationships_service.views.add_campaign' %}",
+            url: "{% url 'relationships_service-views-add_campaign' %}",
             success: function(data) {
                 $('#campaign_results').text(data.message);
             }
@@ -83,7 +83,7 @@ $(document).ready(function() {
         // Get list of campaigns for selection.
         $.ajax({
             type: "GET",
-            url: "{% url 'crits.campaigns.views.campaign_names' %}",
+            url: "{% url 'crits-campaigns-views-campaign_names' %}",
             async: false,
             success: function(data) {
                 $.each(data, function (index, value) {

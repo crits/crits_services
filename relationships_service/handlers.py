@@ -239,7 +239,7 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
                 value += " (family)"
             else:
                 value += " (v:%s)" % obj.version
-        href = reverse('crits.core.views.details', args=(obj_type, obj_id))
+        href = reverse('crits-core-views-details', args=(obj_type, obj_id))
 
         if len(types) != 0 and obj_type not in types:
             continue
@@ -264,7 +264,7 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
                     for count in campaign_details['counts'].values():
                         total += count
                     campaign = name + " (" + str(total) + ")"
-                    campaign_href = reverse('crits.core.views.details', args=('Campaign', campaign_id))
+                    campaign_href = reverse('crits-core-views-details', args=('Campaign', campaign_id))
 
                     n = dict(tlo_styles_dict['Campaign'])
 

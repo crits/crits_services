@@ -4,11 +4,11 @@
     <a id="snugglefish-search-btn" href="#">Snugglefish Search</a>
 </li>
 <li class='mmenu_item'>
-    <a href="{% url 'snugglefish_service.views.snugglefish_status' %}">Snugglefish Status</a>
+    <a href="{% url 'snugglefish_service-views-snugglefish_status' %}">Snugglefish Status</a>
 </li>
 
 <div id="snuggle-search-form">
-    <form id="form-snuggle-search" action="{% url 'snugglefish_service.views.snugglefish_search' %}" method="POST" enctype="multipart/form-data">
+    <form id="form-snuggle-search" action="{% url 'snugglefish_service-views-snugglefish_search' %}" method="POST" enctype="multipart/form-data">
         <table id="snugglefish_form_table" class="form">
         </table>
         <button type="submit">Search</button>
@@ -19,7 +19,7 @@
     $(document).ready(function() {
         $.ajax({
             type: "GET",
-            url: "{% url 'snugglefish_service.views.get_snugglefish_search_form' %}",
+            url: "{% url 'snugglefish_service-views-get_snugglefish_search_form' %}",
             dataType: "json",
             success: function(data) {
                 if (data) {

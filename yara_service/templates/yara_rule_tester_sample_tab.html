@@ -6,7 +6,7 @@ $(document).ready(function() {
         data = {'rule': $('#rule_field').val()};
         $.ajax({
             type: "POST",
-            url: "{% url 'yara_service.views.get_yara_result' subscription.id %}",
+            url: "{% url 'yara_service-views-get_yara_result' subscription.id %}",
             data: data,
             dataType: "json",
             success: function(data) {

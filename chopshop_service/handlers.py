@@ -123,7 +123,7 @@ def chopshop_carver(pcap_md5, options, analyst):
         if handle_file(name, blob, source, related_md5=pcap_md5, user=analyst, method='ChopShop Filecarver', md5_digest=md5_digest, related_type='PCAP'):
             # Specifically not using name here as I don't want to deal
             # with sanitizing it
-            message += "Saved HTTP body: <a href=\"%s\">%s</a><br />" % (reverse('crits.samples.views.detail', args=[md5_digest]), md5_digest)
+            message += "Saved HTTP body: <a href=\"%s\">%s</a><br />" % (reverse('crits-samples-views-detail', args=[md5_digest]), md5_digest)
         else:
             message += "Failed to save file %s." % md5_digest
 
@@ -136,16 +136,16 @@ def chopshop_carver(pcap_md5, options, analyst):
             message += ret['reason']
             continue
 
-        message += "Saved email: <a href=\"%s\">%s</a><br />%i attachment(s)<br />" % (reverse('crits.emails.views.email_detail', args=[ret['object'].id]), ret['object'].id, len(ret['attachments'].keys()))
+        message += "Saved email: <a href=\"%s\">%s</a><br />%i attachment(s)<br />" % (reverse('crits-emails-views-email_detail', args=[ret['object'].id]), ret['object'].id, len(ret['attachments'].keys()))
 
         for md5_digest in ret['attachments'].keys():
-            message += "<a href=\"%s\">%s</a><br />" % (reverse('crits.samples.views.detail', args=[md5_digest]), md5_digest)
+            message += "<a href=\"%s\">%s</a><br />" % (reverse('crits-samples-views-detail', args=[md5_digest]), md5_digest)
 
     # Handle raw returns.
     for id_, blob in chopui.jsonclass.raw_returns.items():
         md5_digest = handle_file(id_, blob, source, related_md5=pcap_md5, user=analyst, method='ChopShop Filecarver', related_type='PCAP')
         if md5_digest:
-            message += "Saved raw %s: <a href=\"%s\">%s</a><br />" % (id_, reverse('crits.samples.views.detail', args=[md5_digest]), md5_digest)
+            message += "Saved raw %s: <a href=\"%s\">%s</a><br />" % (id_, reverse('crits-samples-views-detail', args=[md5_digest]), md5_digest)
         else:
             message += "Failed to save raw %s." % md5_digest
 

@@ -16,7 +16,7 @@
             'obj_type': 'IP',
             'ind_type': 'Port',
         };
-        url = "{% url 'crits.indicators.views.indicator_from_tlo' %}";
+        url = "{% url 'crits-indicators-views-indicator_from_tlo' %}";
         $.ajax({
             type: "POST",
             url: url,
@@ -93,7 +93,7 @@
         <tr>
             <td class="potential_indicator">
             {% if result.result and result.type == "port" %}
-                 <a class="potential_link" href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&q={{result.result|urlencode}}">{{result.result}}</a>
+                 <a class="potential_link" href="{% url 'crits-core-views-global_search_listing' %}?search_type=global&q={{result.result|urlencode}}">{{result.result}}</a>
             {% else %}
                  {{ result.result }}
             {% endif %}
