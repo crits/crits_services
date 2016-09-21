@@ -4,9 +4,8 @@ import re
 from datetime import datetime
 
 from django.http import HttpResponseRedirect
-from django.template import RequestContext
 from django.template.loader import render_to_string
-from django.shortcuts import render_to_response, HttpResponse
+from django.shortcuts import render, HttpResponse
 from django.core.urlresolvers import reverse
 from django.contrib.auth.decorators import user_passes_test
 
@@ -64,9 +63,7 @@ def taxii_poll(request):
         data = {'success': False, 'msg': msg}
         return HttpResponse(json.dumps(data), content_type="application/json")
 
-    return render_to_response('taxii_agent_form.html',
-                              {'form': form, 'errors': form.errors},
-                              RequestContext(request))
+    return render(request, 'taxii_agent_form.html', {'form': form, 'errors': form.errors})
 
 @user_passes_test(user_can_view_data)
 def stix_upload(request):
@@ -108,7 +105,7 @@ def stix_upload(request):
 
         data = {'success': True}
         data['html'] = render_to_string("taxii_agent_preview.html",
-                                        {'result' : result})
+                                        {'result' : result}, request=request)
 
         return HttpResponse(json.dumps(data), content_type="application/json")
 
@@ -120,9 +117,7 @@ def stix_upload(request):
         data = {'success': False, 'msg': msg}
         return HttpResponse(json.dumps(data), content_type="application/json")
 
-    return render_to_response('stix_upload_form.html',
-                              {'form': form, 'errors': form.errors},
-                              RequestContext(request))
+    return render(request, 'stix_upload_form.html', {'form': form, 'errors': form.errors})
 
 @user_passes_test(user_can_view_data)
 def list_saved_polls(request):
@@ -231,9 +226,7 @@ def get_taxii_config_form(request, crits_type, crits_id):
         return HttpResponse(json.dumps(taxii_form),
                             content_type="application/json")
     else:
-        return render_to_response('error.html',
-                                  {'error': "Must be AJAX."},
-                                  RequestContext(request))
+        return render(request, 'error.html', {'error': "Must be AJAX."})
 
 @user_passes_test(user_can_view_data)
 def preview_taxii_service(request, crits_type, crits_id):
@@ -248,9 +241,7 @@ def preview_taxii_service(request, crits_type, crits_id):
     if request.method == "POST":
         return get_taxii_result(request, crits_type, crits_id, True)
     else:
-        return render_to_response('error.html',
-                                  {'error': "Must be POST request."},
-                                  RequestContext(request))
+        return render(request, 'error.html', {'error': "Must be POST request."})
 
 @user_passes_test(user_can_view_data)
 def execute_taxii_service(request, crits_type, crits_id):
@@ -266,9 +257,7 @@ def execute_taxii_service(request, crits_type, crits_id):
         if request.method == "POST" and request.is_ajax():
 	        return get_taxii_result(request, crits_type, crits_id, False)
         else:
-	        return render_to_response('error.html',
-	                              {'error': "Must be AJAX."},
-	                              RequestContext(request))
+	        return render(request, 'error.html', {'error': "Must be AJAX."})
     except Exception as e:
         data = {'success': False, 'reason': str(type(e)) + str(e)}
         return HttpResponse(json.dumps(data), content_type="application/json")
@@ -352,23 +341,19 @@ def configure_taxii(request, server=None):
             return HttpResponseRedirect(reverse('crits-services-views-detail',
                                                 kwargs={'name':'taxii_service'}))
         srvr_form = handlers.add_feed_config_buttons(srvr_form)
-        return render_to_response('taxii_server_config.html',
+        return render(request, 'taxii_server_config.html',
                                   {'form': srvr_form, 'results': result,
-                                   'error': result['error']},
-                                  RequestContext(request))
+                                   'error': result['error']})
     elif request.method == "POST": # django form validation error occurred
         srvr_form = handlers.add_feed_config_buttons(srvr_form)
-        return render_to_response('taxii_server_config.html',
-                          {'form': srvr_form},
-                          RequestContext(request))
+        return render(request, 'taxii_server_config.html', {'form': srvr_form})
 
     result = handlers.get_taxii_server_config(server)
     if result['success']:
-        return render_to_response('taxii_server_config.html',
+        return render(request, 'taxii_server_config.html',
                           {'form': result['html'],
                            'form2': feed_form,
-                           'errors': result['form'].errors},
-                          RequestContext(request))
+                           'errors': result['form'].errors})
     else:
         return HttpResponseRedirect(reverse('taxii_service-views-configure_taxii'))
 
