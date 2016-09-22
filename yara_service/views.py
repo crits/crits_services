@@ -2,7 +2,6 @@ import json
 
 from django.contrib.auth.decorators import user_passes_test
 from django.shortcuts import HttpResponse, render
-from django.template import RequestContext
 
 from crits.core.user_tools import user_can_view_data
 from . import handlers
