@@ -163,10 +163,10 @@ class YaraService(Service):
             sfname = str(os.path.basename(sfpath))
             sfext = str(os.path.splitext(sfname))
             old = os.getcwd()
+            os.chdir(dirname)
             try:
                 with open(sigfile, "rt") as f:
                     data = f.read()
-                    os.chdir(dirname)
             except Exception as e:
                 logger.exception("File cannot be opened: %s" % sigfile)
                 raise ServiceConfigError(str(e))
