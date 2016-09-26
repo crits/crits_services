@@ -255,6 +255,8 @@ class OfficeParser(object):
                     prop['value'] = prop_data[offset+8: offset+8+(prop['str_len'] * 2)]
                 else:
                     prop['value'] = binascii.hexlify(prop_data[:8])
+                if isinstance(prop['value'], str):
+                    prop['value'] = prop['value'].decode('cp1252').encode('utf-8')
                 prop['result'] = "%s: %s" % (prop['name'], prop['value'])
                 if prop['id'] == 0x01:
                     properties['code_page'] = prop['result']
