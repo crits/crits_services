@@ -1,5 +1,5 @@
-# Copyright (c) 2015, The MITRE Corporation. All rights reserved.
-# Copyright (c) 2015, Adam Polkosnik, Team Cymru.  All rights reserved.
+# Copyright (c) 2016, The MITRE Corporation. All rights reserved.
+# Copyright (c) 2016, Adam Polkosnik, Team Cymru.  All rights reserved.
 
 # Source code distributed pursuant to license agreement.
 # PEhash computing code is from Team Cymru.

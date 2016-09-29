@@ -1,4 +1,4 @@
-# (c) 2015, Adam Polkosnik <adam.polkosnik@ny.frb.org> <apolkosnik@gmail.com>
+# (c) 2016, Adam Polkosnik <adam.polkosnik@ny.frb.org> <apolkosnik@gmail.com>
 #
 # All rights reserved.
 import logging
