@@ -195,10 +195,18 @@ class VirusTotalService(Service):
             self._error("Network connection error checking virustotal (%s)" % e)
             return
 
-        # Check to see if a VT provided valid results. If not throw error and
-        # exit
+        # Log and exit if no match found or error
         if response_dict.get('response_code', 0) != 1:
-            self._error("Exiting because Virustotal provided a negative response code.")
+            rcode = response_dict.get('response_code')
+            vmsg = response_dict.get('verbose_msg')
+            ctype = obj._meta['crits_type']
+            if rcode not in (-1, 0) or not vmsg:
+                self._error("Unexpected response from Virustotal")
+            elif ((rcode == 0 and ctype in ('Domain', 'IP'))
+                  or 'requested resource is not among' in vmsg):
+                self._info("%s not found in Virustotal" % ctype)
+            else:
+                self._error(vmsg)
             return
 
         # Process Results for Sample
