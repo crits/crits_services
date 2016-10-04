@@ -82,12 +82,15 @@ class FireeyeService(Service):
 
     @staticmethod
     def bind_runtime_form(analyst, config):
+        if 'force' not in config:
+            config['force'] = False
         machines = FireeyeService._tuplize_machines(config['machine'])
 
         # The integer values are submitted as a list for some reason.
         # Package and machine are submitted as a list too.
         data = { 'timeout': config['timeout'][0],
-                'machine': config['machine'][0]}
+                'machine': config['machine'][0],
+                'force' : config['force']}
         return forms.FireeyeRunForm(machines=machines, data=data)
 
     @staticmethod
@@ -181,7 +184,7 @@ class FireeyeService(Service):
                        "priority":"0",
                        "profiles":[machine],
                        "analysistype":"2",
-                       "force":"false",
+                       "force":self.config.get('force'),
                        "prefetch":"1"}
         jsondata = json.dumps(json_option)
 
@@ -285,7 +288,7 @@ class FireeyeService(Service):
                             data ['URL'] = url[0]
                         else:
                             data ['URL'] = ""
-                self._add_result('CNC-Services', domain, data) 
+                self._add_result('CNC-Services', domain, data)
 
         #Parsing the os-changes looking for "malicious-alert". If malicious alert exist then it will attempt to parse out certain nodes. 
         for node in os_changes_nodes:
