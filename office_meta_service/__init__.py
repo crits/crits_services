@@ -3,9 +3,11 @@ import hashlib
 
 from django.template.loader import render_to_string
 
+from crits.core.user_tools import get_user_info
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
 from crits.vocabulary.relationships import RelationshipTypes
+from crits.vocabulary.acls import SampleACL
 
 from office_meta import OfficeParser
 from . import forms
@@ -16,7 +18,7 @@ class OfficeMetaService(Service):
     """
 
     name = "office_meta"
-    version = '1.0.2'
+    version = '1.0.3'
     supported_types = ['Sample']
     description = "Parses metadata from Office documents."
 
@@ -54,6 +56,7 @@ class OfficeMetaService(Service):
         oparser = OfficeParser(obj.filedata.read())
         oparser.parse_office_doc()
         added_files = []
+        user = get_user_info(self.current_task.username)
         if not oparser.office_header.get('maj_ver'):
             self._error("Could not parse file as an office document")
             return
@@ -68,7 +71,7 @@ class OfficeMetaService(Service):
             }
             name = curr_dir['norm_name'].decode('ascii', errors='ignore')
             self._add_result('directory', name, result)
-            if config.get('save_streams', 0) == 1 and 'data' in curr_dir:
+            if user.has_access_to(SampleACL.WRITE) and config.get('save_streams', 0) == 1 and 'data' in curr_dir:
                 handle_file(name, curr_dir['data'], obj.source,
                             related_id=str(obj.id),
                             related_type=str(obj._meta['crits_type']),
@@ -91,4 +94,3 @@ class OfficeMetaService(Service):
                     self._add_result('doc_meta', prop_name, result)
         for f in added_files:
             self._add_result("file_added", f[0], {'md5': f[1]})
-

@@ -17,6 +17,7 @@ from crits.actors.handlers import add_new_actor, update_actor_tags
 from crits.certificates.handlers import handle_cert_file
 from crits.core.data_tools import validate_md5_checksum
 from crits.core.data_tools import validate_sha1_checksum, validate_sha256_checksum
+from crits.core.user_tools import get_user_info
 from crits.domains.handlers import upsert_domain
 from crits.emails.handlers import handle_email_fields
 from crits.events.handlers import add_new_event
@@ -33,6 +34,15 @@ from crits.signatures.signature import SignatureType
 from crits.core.crits_mongoengine import EmbeddedSource
 from crits.core.handlers import does_source_exist
 
+from crits.vocabulary.acls import (
+    CertificateACL,
+    EmailACL,
+    IndicatorACL,
+    PCAPACL,
+    RawDataACL,
+    SampleACL,
+    SignatureACL,
+)
 from crits.vocabulary.events import EventTypes
 from crits.vocabulary.indicators import (
     IndicatorAttackTypes,
@@ -567,7 +577,7 @@ class STIXParser():
                     ref = ', '.join(tmech.producer.references)
 
                     for rule in tmech.rules:
-                        if not self.preview:
+                        if not self.preview and user.has_access_to(SignatureACL.WRITE):
                             analyst = self.source_instance.analyst
                             res = handle_signature_file(str(rule),
                                                         self.source.name,
@@ -731,6 +741,7 @@ class STIXParser():
 
         try: # try to create CRITs object from Cybox Object
             analyst = self.source_instance.analyst
+            user = get_user_info(analyst)
             item = cbx_obj.properties
             val = cbx_obj.id_
             if isinstance(item, Address) and not is_ind:
@@ -777,7 +788,7 @@ class STIXParser():
                         title = "HTTP Header from STIX: %s" % self.package.id_
                         method = self.source_instance.method
                         ref = self.source_instance.reference
-                        if self.preview:
+                        if self.preview or not user.has_access_to(RawDataACL.WRITE):
                             res = None
                             val = title
                             rdtype = RawDataType.objects(name=dtype).first()
@@ -804,7 +815,7 @@ class STIXParser():
                         ind_type = IndicatorTypes.USER_AGENT
                         val = hdr.parsed_header.user_agent.value
                         val = ','.join(val) if isinstance(val, list) else val
-                        if self.preview:
+                        if self.preview or not user.has_access_to(IndicatorACL.WRITE):
                             res = None
                             val = "%s - %s" % (ind_type, val)
                         else:
@@ -831,7 +842,7 @@ class STIXParser():
                 if item.remarks:
                     data = item.remarks.value
                     title = "WHOIS Entry from STIX: %s" % self.package.id_
-                    if self.preview:
+                    if self.preview or not user.has_access_to(RawDataACL.WRITE):
                         res = None
                         val = title
                         rdtype = RawDataType.objects(name=dtype).first()
@@ -868,7 +879,7 @@ class STIXParser():
                 # TODO: find out proper ways to determine title, datatype,
                 #       tool_name, tool_version
                 title = "Artifact for Event: STIX Document %s" % self.package.id_
-                if self.preview:
+                if self.preview or not user.has_access_to(RawDataACL.WRITE):
                     res = None
                     val = title
                     rdtype = RawDataType.objects(name=dtype).first()
@@ -898,7 +909,7 @@ class STIXParser():
                 imp_type = "Certificate"
                 val = str(item.file_name)
                 data = None
-                if self.preview:
+                if self.preview or not user.has_access_to(CertificateACL.WRITE):
                     res = None
                 else:
                     for rel_obj in item.parent.related_objects:
@@ -915,7 +926,7 @@ class STIXParser():
                 imp_type = "PCAP"
                 val = str(item.file_name)
                 data = None
-                if self.preview:
+                if self.preview or not user.has_access_to(PCAPACL.WRITE):
                     res = None
                 else:
                     for rel_obj in item.parent.related_objects:
@@ -992,7 +1003,7 @@ class STIXParser():
                         res = None
                         if fname:
                             val = "%s (%s)" % (md5, fname)
-                    else:
+                    else if user.has_access_to(SampleACL.WRITE):
                         res = handle_file(val,
                                           data,
                                           self.source,
@@ -1038,7 +1049,7 @@ class STIXParser():
                     data['source'] = self.source.name
                     data['source_method'] = self.source_instance.method
                     data['source_reference'] = self.source_instance.reference
-                    if self.preview:
+                    if self.preview or user.has_access_to(EmailACL.WRITE):
                         res = None
                     else:
                         res = handle_email_fields(data,
@@ -1060,7 +1071,7 @@ class STIXParser():
                                     dtype = "Email Body"
                                 imp_type = 'RawData'
                                 title = title % cbx_obj.id_
-                                if self.preview:
+                                if self.preview or not user.has_access_to(RawDataACL.WRITE):
                                     res = None
                                     rdtype = RawDataType.objects(name=dtype)
                                     rdtype = rdtype.first()
@@ -1124,7 +1135,7 @@ class STIXParser():
                                                                      data[key]),
                                                         None))
                                     continue
-                                if self.preview:
+                                if self.preview or not user.has_access_to(IndicatorACL.WRITE):
                                     res = None
                                     data[key] = "%s - %s" % (ind_type,
                                                              data[key])
@@ -1183,7 +1194,7 @@ class STIXParser():
                                 and ('/' in val or ':' in val)):
                                 ind_type = "URI"
 
-                            if self.preview:
+                            if self.preview or not user.has_access_to(IndicatorACL.WRITE):
                                 res = None
                                 val = "%s - %s" % (ind_type, val)
                             else:

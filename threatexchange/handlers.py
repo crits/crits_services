@@ -45,6 +45,7 @@ from crits.indicators.indicator import Indicator
 from crits.samples.handlers import handle_file
 from crits.samples.sample import Sample
 from crits.services.handlers import get_config
+from crits.vocabulary.acls import IndicatorACL, SampleACL
 from crits.vocabulary.indicators import (
     IndicatorCI,
     IndicatorThreatTypes,
@@ -286,6 +287,8 @@ def export_object(request, type_, id_, params):
 
 def import_object(request, type_, id_):
     setup_access()
+    user = request.user
+
     if type_ == "Threat Descriptors":
         obj = ThreatDescriptor(id=id_)
         obj.details(
@@ -296,6 +299,11 @@ def import_object(request, type_, id_):
         if itype is None:
             return {'success': False,
                     'message': "Descriptor type is not supported by CRITs"}
+
+        if not user.has_access_to(IndicatorACL.WRITE):
+            return {'success': False,
+                    'message': "User does not have permission to add Indicators to CRITs"}
+
         ithreat_type = getattr(IndicatorThreatTypes, obj.get(td.THREAT_TYPE))
         results = handle_indicator_ind(
             obj.get(td.RAW_INDICATOR),
@@ -315,6 +323,9 @@ def import_object(request, type_, id_):
         )
         return results
     elif type_ == "Malware Analyses":
+        if not user.has_access_to(SampleACL.WRITE):
+            return {'success': False,
+                    'message': "User does not have permission to add Sample to CRITs"}
         obj = Malware(id=id_)
         obj.details(
             fields=[f for f in Malware._fields if f not in

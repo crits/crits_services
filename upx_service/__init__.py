@@ -5,9 +5,11 @@ import hashlib
 
 from django.template.loader import render_to_string
 
+from crits.core.user_tools import get_user_info
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
 from crits.vocabulary.relationships import RelationshipTypes
+from crits.vocabulary.acls import SampleACL
 
 from . import forms
 
@@ -20,7 +22,7 @@ class UpxService(Service):
     """
 
     name = "upx"
-    version = '1.0.2'
+    version = '1.0.3'
     supported_types = ['Sample']
     description = "Unpack a binary using UPX."
 
@@ -68,6 +70,12 @@ class UpxService(Service):
 
     def run(self, obj, config):
         upx_path = config.get("upx_path", "")
+
+        user = get_user_info(self.current_task.username)
+        if not user.has_access_to(SampleACL.WRITE):
+            self._info("User does not have permission to add Samples to CRITs")
+            self._add_result("Unpacking Canceled", "User does not have permission to add Samples to CRITs")
+            return
 
         # _write_to_file() will delete this file at the end of the "with" block.
         with self._write_to_file() as tmp_file:

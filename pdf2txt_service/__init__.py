@@ -11,6 +11,7 @@ from crits.vocabulary.relationships import RelationshipTypes
 # for computing the MD5
 from hashlib import md5
 
+from crits.core.user_tools import get_user_info
 # for adding the extracted files
 from crits.samples.handlers import handle_file
 # for adding the actionscript
@@ -21,6 +22,7 @@ from crits.core.class_mapper import class_from_id
 from django.conf import settings
 from django.template.loader import render_to_string
 from crits.services.core import Service, ServiceConfigError
+from crits.vocabulary.acls import RawDataACL
 
 from . import forms
 
@@ -33,7 +35,7 @@ class pdf2txtService(Service):
     """
 
     name = "pdf2txt"
-    version = '0.0.2'
+    version = '0.0.3'
     supported_types = ['Sample']
     description = "Extract text contained in Word and PDF documents using Antiword and pdftotext from poppler-utils."
 
@@ -111,6 +113,7 @@ class pdf2txtService(Service):
         obj.filedata.seek(0)
         data8 = obj.filedata.read(8)
         obj.filedata.seek(0)
+        user = get_user_info(self.current_task.username)
         self.config = config
         self.obj = obj
         self._debug("pdf2txt started")
@@ -134,6 +137,11 @@ class pdf2txtService(Service):
             else:
                 self._error("Not a valid PDF or Word document")
                 return False
+
+            if not user.has_access_to(RawDataACL.WRITE):
+                self._info("User does not have permission to add Raw Data to CRITs")
+                self._add_result("Parsing Cancelled", "User does not have permission to add Raw Data to CRITs")
+                return
             # pdftotext does not generate a lot of output, so we should not have to
             # worry about this hanging because the buffer is full
             proc = subprocess.Popen(args, env=new_env, stdout=subprocess.PIPE,
@@ -149,6 +157,7 @@ class pdf2txtService(Service):
                 self._warning(msg)
                 return
             raw_hash = md5(output).hexdigest()
+
             res = handle_raw_data_file(output, self.obj.source, self.current_task.username,
                         title="pdftotext", data_type='Text',
                         tool_name='pdftotext', tool_version='0.1', tool_details='http://poppler.freedesktop.org',
@@ -168,4 +177,3 @@ class pdf2txtService(Service):
                 self._warning("resy: %s" % (str(resy)) )
                 self._add_result("rawdata_added", raw_hash, {'md5': raw_hash})
         return
-

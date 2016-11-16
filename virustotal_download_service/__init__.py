@@ -6,10 +6,12 @@ from django.conf import settings
 from django.template.defaultfilters import filesizeformat
 from django.template.loader import render_to_string
 
+from crits.core.user_tools import get_user_info
 from crits.samples.handlers import handle_file
 from crits.samples.sample import Sample
 from crits.services.core import Service, ServiceConfigError
 from crits.services.handlers import run_triage
+from crits.vocabulary.acls import SampleACL
 
 from . import forms
 
@@ -26,7 +28,7 @@ class VirusTotalDownloadService(Service):
     """
 
     name = "VirusTotal_Download"
-    version = '1.1.0'
+    version = '1.1.1'
     description = "Check VT for a given MD5. If a match is found, download the sample to CRITs."
     supported_types = ['Sample']
     required_fields = ['md5']
@@ -115,6 +117,7 @@ class VirusTotalDownloadService(Service):
         replace = config.get('replace_sample', False)
         do_triage = config.get('run_triage', False)
 
+        user = get_user_info(self.current_task.username)
         sample = Sample.objects(md5=obj.md5).first()
         if not sample:
             sample = Sample()
@@ -125,6 +128,11 @@ class VirusTotalDownloadService(Service):
         if sample.filedata and replace == False: #if we already have this binary and don't have permission to replace
             self._info("CRITs already has this binary. Enable the 'Replace' option to overwrite with data from VirusTotal.")
             self._add_result("Download Canceled", "Binary already exists in CRITs.")
+            return
+
+        if not user.has_access_to(SampleACL.WRITE):
+            self._info("User does not have permission to add Samples to CRITs")
+            self._add_result("Download Canceled", "User does not have permission to add Samples to CRITs")
             return
 
         parameters = urllib.urlencode({"hash": obj.md5, "apikey": key})
@@ -147,6 +155,7 @@ class VirusTotalDownloadService(Service):
                         self._info("Replace = True. Deleting any previous binary with md5 {0}".format(obj.md5))
                         sample.filedata.delete()
                     self._info("Adding new binary to CRITs.")
+
                     handle_file(filename = obj.md5,
                                 data = data,
                                 source = "VirusTotal",
@@ -176,4 +185,3 @@ class VirusTotalDownloadService(Service):
             logger.error("VirusTotal: network connection error")
             self._error("Network connection error checking VirusTotal")
             return
-

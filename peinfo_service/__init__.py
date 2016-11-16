@@ -19,9 +19,11 @@ from time import localtime, strftime
 
 from django.template.loader import render_to_string
 
+from crits.core.user_tools import get_user_info
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
 from crits.vocabulary.relationships import RelationshipTypes
+from crits.vocabulary.acls import SampleACL
 
 from . import forms
 
@@ -38,7 +40,7 @@ class PEInfoService(Service):
     """
 
     name = "peinfo"
-    version = '1.1.4'
+    version = '1.1.5'
     supported_types = ['Sample']
     description = "Generate metadata about Windows PE/COFF files."
     added_files = []
@@ -160,21 +162,24 @@ class PEInfoService(Service):
         self._get_sections(pe)
         self._get_pehash(pe)
 
+        user = get_user_info(self.current_task.username)
+
         if hasattr(pe, 'DIRECTORY_ENTRY_RESOURCE'):
             self._dump_resource_data("ROOT",
                                      pe.DIRECTORY_ENTRY_RESOURCE,
                                      pe,
                                      config['resource'])
-            for f in self.added_files:
-                handle_file(f[0], f[1], obj.source,
-                            related_id=str(obj.id),
-                            related_type=str(obj._meta['crits_type']),
-                            campaign=obj.campaign,
-                            method=self.name,
-                            relationship=RelationshipTypes.CONTAINED_WITHIN,
-                            user=self.current_task.username)
-                rsrc_md5 = hashlib.md5(f[1]).hexdigest()
-                self._add_result("file_added", f[0], {'md5': rsrc_md5})
+            if user.has_access_to(SampleACL.WRITE):
+                for f in self.added_files:
+                    handle_file(f[0], f[1], obj.source,
+                                related_id=str(obj.id),
+                                related_type=str(obj._meta['crits_type']),
+                                campaign=obj.campaign,
+                                method=self.name,
+                                relationship=RelationshipTypes.CONTAINED_WITHIN,
+                                user=self.current_task.username)
+                    rsrc_md5 = hashlib.md5(f[1]).hexdigest()
+                    self._add_result("file_added", f[0], {'md5': rsrc_md5})
         else:
             self._debug("No resources")
 

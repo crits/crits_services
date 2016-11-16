@@ -10,8 +10,8 @@ class ThreatExchange(Service):
     Mockup for ThreatExchange.
     """
 
-    name = "ThreatExchange"
-    version = '0.0.1'
+    name = "ThreatExchaFnge"
+    version = '0.0.2'
     template = None
     description = "Share data via Facebook's ThreatExchange."
     supported_types = []

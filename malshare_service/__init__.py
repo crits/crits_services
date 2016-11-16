@@ -11,9 +11,11 @@ from django.conf import settings
 from django.template.loader import render_to_string
 from django.core.exceptions import ValidationError as DjangoValidationError
 
+from crits.core.user_tools import get_user_info
 from crits.services.core import Service, ServiceConfigError
 from django.template.loader import render_to_string
 from crits.samples.handlers import handle_file
+from crits.vocabulary.acls import SampleACL
 
 from . import forms
 
@@ -26,7 +28,7 @@ class MalShareService(Service):
     """
 
     name = "malshare"
-    version = '1.0'
+    version = '1.1'
     supported_types = ['Sample']
     description = "Download sample from MalShare."
 
@@ -75,7 +77,7 @@ class MalShareService(Service):
             logger.error("No valid MalShare API key found")
             self._error("No valid MalShare API key found")
             return
-        
+
         #Download URL: https://malshare.com/api.php?api_key=[API_KEY]&action=getfile&hash=[HASH]
 
         parameters = {"api_key": key, "action": "getfile", "hash": obj.md5}
@@ -114,6 +116,10 @@ class MalShareService(Service):
             logger.error("Error while downloading sample from MalShare, MD5 missmatch")
             self._error("Error while downloading sample from MalShare, MD5 missmatch")
             return
+        if not user.has_access_to(SampleACL.WRITE):
+            self._info("User does not have permission to add Samples to CRITs")
+            self._add_result("Download Canceled", "User does not have permission to add Samples to CRITs")
+            return
         else:
             logger.info("MD5 verification successfull!")
             self._info("MD5 verification successfull!")
@@ -127,5 +133,3 @@ class MalShareService(Service):
                         method=self.name,
                         user=self.current_task.username)
             self._add_result("file_downloaded", filename, {'md5': filename})
-
-
