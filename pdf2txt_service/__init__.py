@@ -113,7 +113,7 @@ class pdf2txtService(Service):
         obj.filedata.seek(0)
         data8 = obj.filedata.read(8)
         obj.filedata.seek(0)
-        user = get_user_info(self.current_task.username)
+        user = self.current_task.user
         self.config = config
         self.obj = obj
         self._debug("pdf2txt started")
@@ -158,7 +158,7 @@ class pdf2txtService(Service):
                 return
             raw_hash = md5(output).hexdigest()
 
-            res = handle_raw_data_file(output, self.obj.source, self.current_task.username,
+            res = handle_raw_data_file(output, self.obj.source, self.current_task.user,
                         title="pdftotext", data_type='Text',
                         tool_name='pdftotext', tool_version='0.1', tool_details='http://poppler.freedesktop.org',
                         method=self.name,
@@ -171,9 +171,9 @@ class pdf2txtService(Service):
                 resy = obj.add_relationship(rel_item=raw_obj,
                                         rel_type=rel_type,
                                         rel_date=datetime.now(),
-                                        analyst=self.current_task.username)
-                obj.save(username=self.current_task.username)
-                raw_obj.save(username=self.current_task.username)
+                                        analyst=self.current_task.user)
+                obj.save(username=self.current_task.user.username)
+                raw_obj.save(username=self.current_task.user.username)
                 self._warning("resy: %s" % (str(resy)) )
                 self._add_result("rawdata_added", raw_hash, {'md5': raw_hash})
         return

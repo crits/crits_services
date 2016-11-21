@@ -47,7 +47,7 @@ class unswfService(Service):
     def run(self, obj, config):
         self.config = config
         self.obj = obj
-        user = get_user_info(self.current_task.username)
+        user = self.current_task.user
         data = io.BytesIO(obj.filedata.read())
         swf = bytearray()
         try:
@@ -77,5 +77,5 @@ class unswfService(Service):
                 campaign=self.obj.campaign,
                 method=self.name,
                 relationship=RelationshipTypes.RELATED_TO,
-                user=self.current_task.username)
+                user=self.current_task.user)
             self._add_result("file_added", name, {'md5': h})

@@ -234,16 +234,16 @@ class CHMInfoService(Service):
 
         if config['chm_items']:
             #Data and details of each object/page in the CHM
-            user = get_user_info(self.current_task.username)
+            user = self.current_task.user
             if user.has_access_to(SampleACL.WRITE):
                 for f in self.added_files:
                     handle_file(f[0], f[3], obj.source,
                                 related_id=str(obj.id),
                                 related_type=str(obj._meta['crits_type']),
                                 campaign=obj.campaign,
-                                method=self.name,
+                                source_method=self.name,
                                 relationship=RelationshipTypes.CONTAINED_WITHIN,
-                                user=self.current_task.username)
+                                user=self.current_task.user)
                     self._add_result("chm_items_added", f[0], {'size': f[1],'md5': f[2]})
             else:
                 self._info("User does not have permission to add samples to CRITs.")

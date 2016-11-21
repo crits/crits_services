@@ -130,6 +130,6 @@ class MalShareService(Service):
                         related_id=str(obj.id),
                         related_type=str(obj._meta['crits_type']),
                         campaign=obj.campaign,
-                        method=self.name,
-                        user=self.current_task.username)
+                        source_method=self.name,
+                        user=self.current_task.user)
             self._add_result("file_downloaded", filename, {'md5': filename})

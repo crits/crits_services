@@ -56,7 +56,7 @@ class OfficeMetaService(Service):
         oparser = OfficeParser(obj.filedata.read())
         oparser.parse_office_doc()
         added_files = []
-        user = get_user_info(self.current_task.username)
+        user = self.current_task.user
         if not oparser.office_header.get('maj_ver'):
             self._error("Could not parse file as an office document")
             return
@@ -76,9 +76,9 @@ class OfficeMetaService(Service):
                             related_id=str(obj.id),
                             related_type=str(obj._meta['crits_type']),
                             campaign=obj.campaign,
-                            method=self.name,
+                            source_method=self.name,
                             relationship=RelationshipTypes.CONTAINED_WITHIN,
-                            user=self.current_task.username)
+                            user=self.current_task.user)
                 stream_md5 = hashlib.md5(curr_dir['data']).hexdigest()
                 added_files.append((name, stream_md5))
         for prop_list in oparser.properties:

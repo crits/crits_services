@@ -59,7 +59,7 @@ class SEPLQService(Service):
         name = h
         metaout = metaoutcsv.split(",")
         name = ntpath.basename(str(metaout[0]))
-        user = get_user_info(self.current_task.username)
+        user = self.current_task.user
         fields = (
         "Filename",
 	"Num Failed Remediations",
@@ -109,5 +109,5 @@ class SEPLQService(Service):
                 campaign=obj.campaign,
                 method=self.name,
                 relationship=RelationshipTypes.RELATED_TO,
-                user=self.current_task.username)
+                user=self.current_task.user)
         self._add_result("file_added", name, {'md5': h})

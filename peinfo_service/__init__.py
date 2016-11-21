@@ -162,7 +162,7 @@ class PEInfoService(Service):
         self._get_sections(pe)
         self._get_pehash(pe)
 
-        user = get_user_info(self.current_task.username)
+        user = self.current_task.user
 
         if hasattr(pe, 'DIRECTORY_ENTRY_RESOURCE'):
             self._dump_resource_data("ROOT",
@@ -175,9 +175,9 @@ class PEInfoService(Service):
                                 related_id=str(obj.id),
                                 related_type=str(obj._meta['crits_type']),
                                 campaign=obj.campaign,
-                                method=self.name,
+                                source_method=self.name,
                                 relationship=RelationshipTypes.CONTAINED_WITHIN,
-                                user=self.current_task.username)
+                                user=user)
                     rsrc_md5 = hashlib.md5(f[1]).hexdigest()
                     self._add_result("file_added", f[0], {'md5': rsrc_md5})
         else:

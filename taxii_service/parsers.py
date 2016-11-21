@@ -1003,7 +1003,7 @@ class STIXParser():
                         res = None
                         if fname:
                             val = "%s (%s)" % (md5, fname)
-                    else if user.has_access_to(SampleACL.WRITE):
+                    elif user.has_access_to(SampleACL.WRITE):
                         res = handle_file(val,
                                           data,
                                           self.source,

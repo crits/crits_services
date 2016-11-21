@@ -50,7 +50,7 @@ class CarverService(Service):
     def run(self, obj, config):
         start_offset = config['start']
         end_offset = config['end']
-        user = get_user_info(self.current_task.username)
+        user = self.current_task.user
 
         if not user.has_access_to(SampleACL.WRITE):
             self._info("User does not have permission to add Samples to CRITs")
@@ -73,9 +73,9 @@ class CarverService(Service):
                         related_id=str(obj.id),
                         related_type=str(obj._meta['crits_type']),
                         campaign=obj.campaign,
-                        method=self.name,
+                        source_method=self.name,
                         relationship=RelationshipTypes.CONTAINS,
-                        user=self.current_task.username)
+                        user=self.current_task.user)
             # Filename is just the md5 of the data...
             self._add_result("file_added", filename, {'md5': filename})
         return

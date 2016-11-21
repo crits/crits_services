@@ -71,7 +71,7 @@ class UpxService(Service):
     def run(self, obj, config):
         upx_path = config.get("upx_path", "")
 
-        user = get_user_info(self.current_task.username)
+        user = self.current_task.user
         if not user.has_access_to(SampleACL.WRITE):
             self._info("User does not have permission to add Samples to CRITs")
             self._add_result("Unpacking Canceled", "User does not have permission to add Samples to CRITs")
@@ -113,6 +113,6 @@ class UpxService(Service):
                         campaign=obj.campaign,
                         method=self.name,
                         relationship=RelationshipTypes.PACKED_FROM,
-                        user=self.current_task.username)
+                        user=self.current_task.user)
             # Filename is just the md5 of the data...
             self._add_result("file_added", filename, {'md5': filename})

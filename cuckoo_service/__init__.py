@@ -554,7 +554,7 @@ class CuckooService(Service):
         # Dropped is a byte string of the .tar.bz2 file
         self._debug("Processing dropped files.")
         self._notify()
-        user = get_user_info(str(self.current_task.username))
+        user = get_user_info(str(self.current_task.user))
         if not user.has_access_to(SampleACL.WRITE):
             self._info("User does not have permission to add samples to CRITs")
             self._add_result("Processing Dropped Files Cancelled", "User does not have permission to add Samples to CRITs")
@@ -582,9 +582,9 @@ class CuckooService(Service):
                         related_id=str(self.obj.id),
                         related_type=str(self.obj._meta['crits_type']),
                         campaign=self.obj.campaign,
-                        method=self.name,
+                        source_method=self.name,
                         relationship=RelationshipTypes.RELATED_TO,
-                        user=self.current_task.username)
+                        user=self.current_task.user)
             self._add_result("file_added", name, {'md5': h})
 
         t.close()
@@ -592,8 +592,8 @@ class CuckooService(Service):
     def _process_pcap(self, pcap):
         self._debug("Processing PCAP.")
         self._notify()
-        org = get_user_organization(self.current_task.username)
-        user = get_user_info(self.current_task.username)
+        org = get_user_organization(self.current_task.user)
+        user = self.current_task.user
         if not user.has_access_to(PCAPACL.WRITE):
             self._info("User does not have permission to add PCAP to CRITs")
             self._add_result("PCAP Processing Canceled", "User does not have permission to add PCAP to CRITs")
@@ -603,7 +603,7 @@ class CuckooService(Service):
         result = handle_pcap_file("%s.pcap" % h,
                                   pcap,
                                   org,
-                                  user=self.current_task.username,
+                                  user=self.current_task.user,
                                   related_id=str(self.obj.id),
                                   related_type=self.obj._meta['crits_type'],
                                   method=self.name)

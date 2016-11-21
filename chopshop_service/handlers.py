@@ -122,7 +122,7 @@ def chopshop_carver(pcap_md5, options, analyst):
 
     # Grab any carved HTTP bodies.
     for (md5_digest, (name, blob)) in chopui.jsonclass.http_files.items():
-        if user.has_access_to(SampleACL.WRITE) and handle_file(name, blob, source, related_md5=pcap_md5, user=analyst, method='ChopShop Filecarver', md5_digest=md5_digest, related_type='PCAP'):
+        if user.has_access_to(SampleACL.WRITE) and handle_file(name, blob, source, related_md5=pcap_md5, user=user, source_method='ChopShop Filecarver', md5_digest=md5_digest, related_type='PCAP'):
             # Specifically not using name here as I don't want to deal
             # with sanitizing it
             message += "Saved HTTP body: <a href=\"%s\">%s</a><br />" % (reverse('crits.samples.views.detail', args=[md5_digest]), md5_digest)
@@ -146,7 +146,7 @@ def chopshop_carver(pcap_md5, options, analyst):
     # Handle raw returns.
     for id_, blob in chopui.jsonclass.raw_returns.items():
         if user.has_access_to(SampleACL.WRITE):
-            md5_digest = handle_file(id_, blob, source, related_md5=pcap_md5, user=analyst, method='ChopShop Filecarver', related_type='PCAP')
+            md5_digest = handle_file(id_, blob, source, related_md5=pcap_md5, user=user, source_method='ChopShop Filecarver', related_type='PCAP')
         else:
             md5_digest = None
         if md5_digest:
