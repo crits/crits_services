@@ -22,7 +22,7 @@ class CRITsScript(CRITsBaseScript):
                     result = run_service(service,
                                          obj._meta['crits_type'],
                                          obj.id,
-                                         self.user.username,
+                                         self.user,
                                          obj=obj,
                                          custom_config=config,
                                          execute='process')

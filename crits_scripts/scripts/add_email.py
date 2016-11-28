@@ -3,6 +3,7 @@ from optparse import OptionParser
 # Crits imports
 from crits.emails.handlers import handle_eml, handle_json, handle_yaml
 from crits.core.basescript import CRITsBaseScript
+from crits.vocabulary.acls import EmailACL
 
 class CRITsScript(CRITsBaseScript):
 
@@ -23,6 +24,8 @@ class CRITsScript(CRITsBaseScript):
                 type="string", default="", help="source method")
         oparse.add_option("-r","--reference", action="store", dest="reference",
                 type="string", default="", help="source reference")
+        oparse.add_option("-t", "--tlp", action="store", dest="tlp",
+                type="string", default="red", help="TLP of data")
         (opts, args) = oparse.parse_args(argv)
 
         if not opts.eml and not opts.json and not opts.yaml:
@@ -31,6 +34,10 @@ class CRITsScript(CRITsBaseScript):
 
         if not opts.source:
             print "[-] Need a source."
+            return
+
+        if not user.has_access_to(EmailACL.WRITE):
+            print "[-] User does not have permission to add email"
             return
 
         if opts.eml:
@@ -49,6 +56,10 @@ class CRITsScript(CRITsBaseScript):
         if opts.method:
             method = method + " - " + opts.method
 
+        if not opts.tlp or opts.tlp not in ['red', 'amber', 'green', 'white']:
+            opts.tlp = 'red'
+
+
         try:
             fh = open(filename, 'rb')
             data = fh.read()
@@ -60,8 +71,8 @@ class CRITsScript(CRITsBaseScript):
             print "[-] Cannot open file."
             return
 
-        obj = handler(data, opts.source, opts.reference, self.user.username,
-                      method)
+        obj = handler(data, opts.source, opts.reference, method, opts.tlp,
+                      self.user)
         if obj['status']:
             try:
                 obj['object'].save()
