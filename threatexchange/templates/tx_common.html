@@ -1,0 +1,45 @@
+<tr>
+    <td class="tlp_{{data.share_level}} share_level">
+    </td>
+    <td>
+        {% include custom_template %}
+    </td>
+    <td>
+        {% if exists %}
+            {% if type == 'Threat Descriptors' %}
+                <a href="{% url 'crits.core.views.details' 'Indicator' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
+            {% elif type == 'Threat Indicators' %}
+                <a href="{% url 'crits.core.views.details' 'Indicator' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
+            {% elif type == 'Malware Analyses' %}
+                <a href="{% url 'crits.core.views.details' 'Sample' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
+            {% elif type == 'Malware Families' %}
+                <a href="{% url 'crits.core.views.details' 'Backdoor' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
+            {% endif %}
+        {% elif no_import  %}
+            <span class="ui-icon ui-icon-alert" title="Not enough data to import" style="display:inline-block; float: right";></span>
+        {% endif %}
+        {% if type != 'Threat Indicators' and type != 'Malware Families' %}
+            <button class="import" name="import" style="float: right;" data-id="{{data.id}}" data-type="{{type}}">Import</button>
+            <a href="#" style="display:inline-block; float: right"><span class="import_result"></span></a>
+        {% endif %}
+        {% if type != 'Threat Descriptors' %}
+            <span class="find_related_span">
+                <select class="find_related" name="find_related" style="float: right;" data-id="{{data.id}}" data-type="{{type}}">
+                    <option>Find Connections...</option>
+                    {% if type == 'Threat Indicators' %}
+                        <option value="descriptors">Descriptors</option>
+                        <option value="malware_analyses">Malware Analyses</option>
+                        <option value="related">Related</option>
+                    {% elif type == 'Malware Analyses' %}
+                        <option value="dropped">Dropped</option>
+                        <option value="dropped_by">Dropped By</option>
+                        <option value="families">Families</option>
+                        <option value="threat_indicators">Threat Indicators</option>
+                    {% elif type == 'Malware Families' %}
+                        <option value="variants">Variants</option>
+                    {% endif %}
+                </select>
+            </span>
+        {% endif %}
+    </td>
+</tr>

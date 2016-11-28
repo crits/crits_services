@@ -20,6 +20,7 @@ class WHOISConfigForm(forms.Form):
                                   initial='')
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(WHOISConfigForm, self).__init__(*args, **kwargs)
 
 class WHOISRunForm(forms.Form):
@@ -30,6 +31,7 @@ class WHOISRunForm(forms.Form):
                                     help_text="Perform a live query.")
 
     def __init__(self, pydat_url=None, dt_api_key=None, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(WHOISRunForm, self).__init__(*args, **kwargs)
 
         # If pyDat or DomainTools are configured, add a checkbox and

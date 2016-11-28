@@ -4,7 +4,7 @@
     <tbody>
     {% if imported %}
     <tr>
-        <td colspan="2" style="text-align: center"><b>Imported</b></td>
+        <td colspan="2" style="text-align: center"><b>Imported ({{imported|length}})</b></td>
     </tr>
             {% for key, item in imported.items %}
                 <tr>
@@ -12,7 +12,7 @@
                         {{item.0}}
                     </td>
                     <td>
-                        <a href="{% url 'crits.core.views.details' item.0 item.1.id %}">{{item.1.id}}</a>
+                        <a href="{% url 'crits.core.views.details' item.0 item.1 %}">{{item.1}}</a>
                     </td>
                 </tr>
             {% endfor %}
@@ -23,7 +23,7 @@
     {% endif %}
     {% if failed %}
     <tr>
-        <td colspan="2" style="text-align: center"><b>Failed</b></td>
+        <td colspan="2" style="text-align: center"><b>Failed ({{failed|length}})</b></td>
     </tr>
             {% for item in failed %}
                 <tr>

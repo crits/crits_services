@@ -101,6 +101,7 @@ class UpxService(Service):
             filename = md5 + ".upx"
             handle_file(filename, data, obj.source,
                         related_id=str(obj.id),
+                        related_type=str(obj._meta['crits_type']),
                         campaign=obj.campaign,
                         method=self.name,
                         relationship=RelationshipTypes.PACKED_FROM,

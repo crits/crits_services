@@ -1,0 +1,29 @@
+<tr>
+    <td>
+        {{group.name}}
+    </td>
+    <td>
+        {{group.description}}
+    </td>
+    <td>
+        {% if group.members %}
+            {{group.members}}
+        {% else %}
+            None
+        {% endif %}
+    </td>
+    <td>
+        {% if group.members_can_see %}
+            Yes
+        {% else %}
+            No
+        {% endif %}
+    </td>
+    <td>
+        {% if group.members_can_use %}
+            Yes
+        {% else %}
+            No
+        {% endif %}
+    </td>
+</tr>

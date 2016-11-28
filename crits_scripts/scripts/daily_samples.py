@@ -1,7 +1,7 @@
 import datetime
 import tarfile
 import time
-from StringIO import StringIO
+from io import BytesIO
 
 from crits.core.mongo_tools import mongo_connector, get_file
 from crits.core.basescript import CRITsBaseScript
@@ -25,5 +25,6 @@ class CRITsScript(CRITsBaseScript):
             info = tarfile.TarInfo(name="%s" % f)
             info.mtime = time.time()
             info.size = len(s)
-            tar.addfile(info, StringIO(s))
+            tar.addfile(info, BytesIO(s))
         tar.close()
+    

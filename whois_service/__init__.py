@@ -152,15 +152,21 @@ class WHOISService(Service):
         # "latest" results.
         versions = []
         for data in results['data']:
-            versions.append(data['Version'])
-            self._info('Version found: %s' % data['Version'])
+            try:
+                versions.append(data['Version'])
+                versions_check = data['Version']
+            except KeyError:
+                versions.append(data['dataVersion'])
+                versions_check = data['dataVersion']
+
+            self._info('Version found: %s' % versions_check)
 
         versions.sort()
         latest = versions[-1]
 
         for data in results['data']:
             # Only grab the most recent version.
-            if data['Version'] != latest:
+            if versions_check != latest:
                 continue
             for k, v in data.iteritems():
                 # Don't add empty strings.

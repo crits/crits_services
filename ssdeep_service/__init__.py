@@ -16,14 +16,21 @@ class SSDeepService(Service):
     """
 
     name = "ssdeep_compare"
-    version = '1.0.2'
+    version = '1.0.3'
     description = "Compare samples using ssdeep."
     supported_types = ['Sample']
 
     @staticmethod
     def bind_runtime_form(analyst, config):
         # The values are submitted as a list for some reason.
-        data = {'threshold': config['threshold'][0]}
+        if config:
+            # The values are submitted as a list for some reason.
+            data = {'threshold': config['threshold'][0]}
+        else:     
+            data = {}
+            fields = forms.SSDeepRunForm().fields
+            for name, field in fields.iteritems():
+                data[name] = field.initial
         return forms.SSDeepRunForm(data)
 
     @staticmethod
@@ -59,15 +66,15 @@ class SSDeepService(Service):
         query_filter["$or"].append({"ssdeep": {"$regex": "^%d:" % chunk_size * 2}})
         query_filter["$or"].append({"ssdeep": {"$regex": "^%d:" % chunk_size}})
         query_filter["$or"].append({"ssdeep": {"$regex": "^%d:" % (chunk_size / 2)}})
-        result_filter = {'md5': 1, 'ssdeep': 1}
+        result_filter = {'md5': 1, 'ssdeep': 1, 'description':1}
         candidate_space = Sample.objects(__raw__=query_filter).only(*result_filter)
         match_list = []
         for candidate in candidate_space:
             if "ssdeep" in candidate:
                 score = pydeep.compare(target_ssdeep, candidate["ssdeep"])
                 if score >= threshold and candidate["md5"] != target_md5:
-                    match_list.append({'md5': candidate["md5"], 'score': score})
+                    match_list.append({'md5': candidate["md5"], 'description': candidate["description"], 'score': score})
         # finally sort the results
         match_list.sort(key=lambda sample: sample["score"], reverse=True)
         for match in match_list:
-            self._add_result("ssdeep_match", match["md5"], {'md5': match["md5"], 'score': match["score"]})
+            self._add_result("ssdeep_match (MD5)", match["md5"], {'description': match["description"], 'score': match["score"]})

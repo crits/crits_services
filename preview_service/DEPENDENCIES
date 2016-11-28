@@ -1,0 +1,12 @@
+antiword
+poppler-utils
+Pillow
+
+Dependencies for Pillow on Ubuntu to get the wide variety of image formats supported:
+liblcms2-dev
+libfreetype6-dev
+libtiff-dev
+zlib1g-dev
+libwebp-dev
+libjpeg-dev
+libopenjpeg-dev

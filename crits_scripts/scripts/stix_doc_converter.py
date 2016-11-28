@@ -3,14 +3,13 @@
 import os
 import datetime
 import argparse
-from StringIO import StringIO
+from io import BytesIO
 
 from lxml import etree
 from crits.core.basescript import CRITsBaseScript
 from stix.core import STIXPackage
 
 class CRITsScript(CRITsBaseScript):
-
     """This script converts certain kinds of non-standard STIX documents to
     something which is reasonably more standard.
 
@@ -201,8 +200,8 @@ class CRITsScript(CRITsBaseScript):
         api_packages = []
         for package in packages:
             xml = etree.tostring(package)
-            stringio = StringIO(xml)
-            stix_package = STIXPackage.from_xml(stringio)
+            bytesio = BytesIO(xml)
+            stix_package = STIXPackage.from_xml(bytesio)
             api_packages.append(stix_package[0])
 
         return api_packages

@@ -15,7 +15,7 @@ def validate(request):
         xml = request.POST['xml']
         results = {'results': handlers.validate_stix(xml)}
         return HttpResponse(json.dumps(results),
-                            mimetype="application/json")
+                            content_type="application/json")
     else:
         return render_to_response("error.html",
                                   {"error" : 'Expected AJAX POST.'},

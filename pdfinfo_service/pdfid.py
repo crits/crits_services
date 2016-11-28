@@ -64,7 +64,7 @@ import json
 import zipfile
 import collections
 import glob
-import StringIO
+import io
 try:
     import urllib2
     urllib23 = urllib2
@@ -104,7 +104,7 @@ class cBinaryFile:
                 sys.exit()
         else:
             try:
-                self.infile = StringIO.StringIO(file)
+                self.infile = io.BytesIO(file)
             except:
                 print('Error opening file %s' % file)
                 print(sys.exc_info()[1])

@@ -1,0 +1,14 @@
+<tr>
+    <td>
+    {% if member.email %}
+        <a href="mailto:{{member.email}}">
+    {% endif %}
+        <span>{{member.name}}</span>
+    {% if member.email %}
+        </a>
+    {% endif %}
+    </td>
+    <td>
+        <span class="ui-icon ui-icon-plus add_privacy_member" title="Add to privacy members" data-id="{{member.id}}" name="{{member.name}}"></span>
+    </td>
+</tr>

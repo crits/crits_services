@@ -1,10 +1,11 @@
 import sys
 import time
 import tarfile
-from StringIO import StringIO
+from io import BytesIO
 from optparse import OptionParser
 
-from crits.core.mongo_tools import mongo_connector, get_file
+import bson
+from crits.core.mongo_tools import *
 from crits.core.basescript import CRITsBaseScript
 import settings
 
@@ -24,18 +25,27 @@ class CRITsScript(CRITsBaseScript):
             filename = "%s.tar.bz2" % opts.outfile
             try:
                 tar = tarfile.open(filename, "w:bz2")
-            except Exception, e:
-                print "Error when attempting to open %s for writing: %s" % (filename, e)
+            except Exception as e:
+                print ("Error when attempting to open %s for writing: %s" % (filename, e))
                 sys.exit(1)
-            samples = mongo_connector(settings.COL_SAMPLES)
-            results = samples.find({'analysis.results.result': '%s' % opts.yarahit}, {'filename': 1,'md5': 1})
+            samples = mongo_connector(settings.COL_ANALYSIS_RESULTS)
+            results = samples.find({'results.result': '%s' % opts.yarahit}, {'object_id': 1})
             count = results.count()
             if count <= 0:
-                print "No matching samples found!"
+                print ("No matching samples found!")
                 sys.exit(1)
             for result in results:
-                m = result['md5']
-                f = result['filename']
+                print ("oid next in %s " % settings.COL_SAMPLES )
+                boid = result['object_id']
+                print ("oid: %s" % str(boid))
+                try:
+                    fm = mongo_connector(settings.COL_SAMPLES)
+                    f = fm.find_one({'_id': bson.ObjectId(oid=str(boid))}, {'filename':1 })['filename']
+                    m = fm.find_one({ '_id' : bson.ObjectId(oid=str(boid))}, {'md5':1})['md5']
+                    print ("m: %s" % str(m))
+                except Exception as e:
+                    print ("Error : %s" % (e))
+                    return None
                 s = get_file(m)
                 info = tarfile.TarInfo(name="%s" % f)
                 info.mtime = time.time()
@@ -44,9 +54,9 @@ class CRITsScript(CRITsBaseScript):
                 else:
                     info.size = 0
                 try:
-                    tar.addfile(info, StringIO(s))
-                except Exception, e:
-                    "Error attempting to add %s to the tarfile: %s" % (f, e)
+                    tar.addfile(info, BytesIO(s))
+                except Exception as e:
+                    print ("Error attempting to add %s to the tarfile: %s" % (f, e))
                     pass
             tar.close()
-            print "Generated %s containing %s files." % (filename, count)
+            print ("Generated %s containing %s files." % (filename, count))

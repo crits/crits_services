@@ -1,23 +1,6 @@
-{% extends "base.html" %}
-{% load url from future %}
 
-{% block title %}TAXII Import Results{% endblock %}
 
 {% block content %}
-
-<div class="content_box">
-    <h3 class="titleheader">
-    <span>Results:</span>
-    </h3>
-    <div class="content_body">
-        {% if result.status %}
-            Status: <b>Success</b><br>
-        {% else %}
-            Status: <b>Failure</b><br>
-            Reason: {{ result.reason }}<br>
-        {% endif %}
-    </div>
-</div>
 
 <style>
     #ta_results tbody td:nth-child(2) {
@@ -59,7 +42,7 @@
                     <ul>
                     {% for event in result.Event %}
                         <li>
-                            <a href="{% url 'crits.core.views.details' 'Event' event.id %}">{{ event.id }}</a>
+                            <a href="{% url 'crits.core.views.details' 'Event' event.0 %}">{{ event.1 }}</a>
                         </li>
                     {% endfor %}
                     </ul>
@@ -71,7 +54,7 @@
                     <ul>
                     {% for certificate in result.Certificate %}
                         <li>
-                            <a href="{% url 'crits.core.views.details' 'Certificate' certificate.id %}">{{ certificate.id }}</a>
+                            <a href="{% url 'crits.core.views.details' 'Certificate' certificate.0 %}">{{ certificate.1 }}</a>
                         </li>
                     {% endfor %}
                     </ul>
@@ -83,7 +66,7 @@
                     <ul>
                     {% for domain in result.Domain %}
                         <li>
-                            <a href="{% url 'crits.core.views.details' 'Domain' domain.id %}">{{ domain.id }}</a>
+                            <a href="{% url 'crits.core.views.details' 'Domain' domain.0 %}">{{ domain.1 }}</a>
                         </li>
                     {% endfor %}
                     </ul>
@@ -95,7 +78,7 @@
                     <ul>
                     {% for email in result.Email %}
                         <li>
-                            <a href="{% url 'crits.core.views.details' 'Email' email.id %}">{{ email.id }}</a>
+                            <a href="{% url 'crits.core.views.details' 'Email' email.0 %}">{{ email.1 }}</a>
                         </li>
                     {% endfor %}
                     </ul>
@@ -107,7 +90,7 @@
                     <ul>
                     {% for indicator in result.Indicator %}
                         <li>
-                            <a href="{% url 'crits.core.views.details' 'Indicator' indicator.id %}">{{ indicator.id }}</a>
+                            <a href="{% url 'crits.core.views.details' 'Indicator' indicator.0 %}">{{ indicator.1 }}</a>
                         </li>
                     {% endfor %}
                     </ul>
@@ -119,7 +102,7 @@
                     <ul>
                     {% for ip in result.IP %}
                         <li>
-                            <a href="{% url 'crits.core.views.details' 'IP' ip.id %}">{{ ip.id }}</a>
+                            <a href="{% url 'crits.core.views.details' 'IP' ip.0 %}">{{ ip.1 }}</a>
                         </li>
                     {% endfor %}
                     </ul>
@@ -131,7 +114,7 @@
                     <ul>
                     {% for pcap in result.PCAP %}
                         <li>
-                            <a href="{% url 'crits.core.views.details' 'PCAP' pcap.id %}">{{ pcap.id }}</a>
+                            <a href="{% url 'crits.core.views.details' 'PCAP' pcap.0 %}">{{ pcap.1 }}</a>
                         </li>
                     {% endfor %}
                     </ul>
@@ -143,7 +126,7 @@
                     <ul>
                     {% for rd in result.RawData %}
                         <li>
-                            <a href="{% url 'crits.core.views.details' 'RawData' rd.id %}">{{ rd.id }}</a>
+                            <a href="{% url 'crits.core.views.details' 'RawData' rd.0 %}">{{ rd.1 }}</a>
                         </li>
                     {% endfor %}
                     </ul>
@@ -155,7 +138,19 @@
                     <ul>
                     {% for sample in result.Sample %}
                         <li>
-                            <a href="{% url 'crits.core.views.details' 'Sample' sample.id %}">{{ sample.id }}</a>
+                            <a href="{% url 'crits.core.views.details' 'Sample' sample.0 %}">{{ sample.1 }}</a>
+                        </li>
+                    {% endfor %}
+                    </ul>
+                </td>
+            </tr>
+            <tr>
+                <td>Signatures</td><td>{{ result.Signature|length }}</td>
+                <td>
+                    <ul>
+                    {% for signature in result.Signature %}
+                        <li>
+                            <a href="{% url 'crits.core.views.details' 'Signature' signature.0 %}">{{ signature.1 }}</a>
                         </li>
                     {% endfor %}
                     </ul>

@@ -1,0 +1,14 @@
+<div id="add_edit_privacy_group" title="Add/Edit Privacy Group">
+    <div id="form_privacy_member_list" style="float: right;">
+    </div>
+    <form id="form-add-edit-privacy-group" 
+	  action='{% url "threatexchange.views.add_edit_privacy_group" %}' 
+	  method='POST' enctype="multipart/form-data" 
+      data-id="">
+        <table class="form" width="400px">
+            {{privacy_group_form.as_table }}
+        </table>
+    </form>
+    <div id="add_edit_privacy_group_results">
+    </div>
+</div>

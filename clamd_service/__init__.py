@@ -1,4 +1,4 @@
-# (c) 2015, Adam Polkosnik <adam.polkosnik@ny.frb.org>
+# (c) 2016, Adam Polkosnik <adam.polkosnik@ny.frb.org>
 #
 import logging
 import os
@@ -24,7 +24,7 @@ class clamdService(Service):
     """
 
     name = "clamd"
-    version = '0.0.3'
+    version = '0.0.4'
     supported_types = ['Sample']
     description = "Scan files for known viruses using clamd (ClamAv)."
 
@@ -124,5 +124,7 @@ class clamdService(Service):
         if output:
             out = output['stream']
             self._add_result('clamd',out[1], {'Status': out[0]})
-
+            obj.add_bucket_list(out[1], self.current_task.username)
+            obj.save(self.current_task.username)
+            obj.reload()
 

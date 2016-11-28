@@ -1,7 +1,6 @@
-# (c) 2015, Adam Polkosnik <adam.polkosnik@ny.frb.org>
+# (c) 2016, Adam Polkosnik <adam.polkosnik@ny.frb.org>
 #
 import logging
-import os
 import io
 import zlib
 import pylzma
@@ -12,8 +11,6 @@ from hashlib import md5
 # for adding the extracted files
 from crits.samples.handlers import handle_file
 
-from django.conf import settings
-from django.template.loader import render_to_string
 from crits.services.core import Service, ServiceConfigError
 
 from crits.vocabulary.relationships import RelationshipTypes
@@ -21,11 +18,11 @@ from crits.vocabulary.relationships import RelationshipTypes
 
 logger = logging.getLogger(__name__)
 class unswfService(Service):
-     
+
     """
     Uncompress flash files.
     """
-     
+
     name = "unswf"
     version = '0.0.2'
     supported_types = ['Sample']
@@ -68,10 +65,9 @@ class unswfService(Service):
             self._info("New file: %s (%d bytes, %s)" % (name, len(swf), h))
             handle_file(name, swf, self.obj.source,
                 related_id=str(self.obj.id),
+                related_type=str(self.obj._meta['crits_type']),
                 campaign=self.obj.campaign,
                 method=self.name,
                 relationship=RelationshipTypes.RELATED_TO,
                 user=self.current_task.username)
             self._add_result("file_added", name, {'md5': h})
-
-

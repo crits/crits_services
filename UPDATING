@@ -3,6 +3,25 @@ should be aware of. This will also include things like dependency changes or
 references to changes in other repositories. Updates are sorted by commit date
 descending.
 
+Author: frbapolkosnik
+Date:   2016-02-03
+
+    You can run your CRITs-master on Django 1.7 with the latest commit!
+    In order to run on 1.7 you'll have to add an one-liner to forms.py in your
+    custom-made services.
+    You'll need to add the following line:
+        kwargs.setdefault('label_suffix', ':')
+    before every occurrence of the following:
+        super(YourCustomServiceConfigForm, self).__init__(*args, **kwargs)
+    in forms.py inside your custom-made services.
+
+Author: frbapolkosnik
+Date:   2015-10-23
+
+    The bootstrap has been added to the services in order to simplify the 
+    installation process. Please review Readme.md for a quick overview of how
+    it works.
+
 Author: wxs
 Date:   2015-06-09
 
