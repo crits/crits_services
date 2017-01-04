@@ -83,7 +83,7 @@ class RtfParser(object):
         }
         
     def parse(self):
-        if (self.features.get('data_len') <= 0) and self.is_valid() == False:
+        if (self.features.get('data_len') <= 0) or self.is_valid() == False:
             self.features['valid_rtf'] = 0
             return
         self.features['valid_rtf'] = 1
@@ -309,7 +309,9 @@ class RtfParser(object):
                     props, prop_len = self.parse_embedded(d)
                     obj.update(props)
                     if d[prop_len:props.get('data_size', 0)] > 0:
-                        self.objects.append(d[prop_len:props.get('data_size', 0)])
+                        final_obj_data = d[prop_len:props.get('data_size', 0)]
+                        obj['content_md5'] = hashlib.md5(final_obj_data).hexdigest()
+                        self.objects.append(final_obj_data)
                     obj['parsed'] = 1
                 except Exception as e:
                     obj['parsed'] = 0
@@ -344,7 +346,9 @@ class RtfParser(object):
                 obj['raw_size'] = len(d)
                 props, prop_len = self.parse_embedded(d)
                 obj.update(props)
-                self.objects.append(d[prop_len:props.get('data_size', 0)])
+                final_obj_data = d[prop_len:props.get('data_size', 0)]
+                obj['content_md5'] = hashlib.md5(final_obj_data).hexdigest()
+                self.objects.append(final_obj_data)
                 datastore_objects.append(obj)
             except Exception as e:
                 if self.debug:
