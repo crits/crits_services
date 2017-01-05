@@ -96,6 +96,7 @@ class RtfParser(object):
         self.parse_data_object()
         self.parse_datastore_object()
         self.hash_data_blob()
+        self.parse_rsid()
 
     def is_valid(self):
         return self.data.startswith('{\\rt')
@@ -354,6 +355,13 @@ class RtfParser(object):
                 if self.debug:
                     print "%s barf - %s" % (self.features.get('file_md5'), e)
         self.features.update({'datastores': datastore_objects})
+
+    def parse_rsid(self):
+        rsids = []
+        data = self.balanced_braces(self.data[self.data.find('{\\*\\rsidtbl'):])
+        if data:
+            rsids = re.findall('\\\\(rsid[\d]+)', data)
+        self.features.update({'rsids': rsids})
     
     def output(self):
         print "File MD5: %s" % self.features.get('file_md5')
@@ -377,6 +385,9 @@ class RtfParser(object):
         print "Rtf Blipuid:"
         for scheme in self.features.get('blipuid', []):
             print "%40s" % scheme
+        print "Rtf RSIDs:"
+        for rsid in self.features.get('rsids', []):
+            print "%40s" % rsid
         print "Rtf Meta Info:"
         for (k, v) in self.features.get('info', {}).items():
             print "%20s: %s" % (k,v)

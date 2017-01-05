@@ -54,7 +54,7 @@ class RTFMetaService(Service):
         rparser = RtfParser(obj.filedata.read())
         rparser.parse()
         added_files = []
-        if not rparser.features.get('rtf_header_version'):
+        if not rparser.features.get('valid_rtf'):
             self._error("Could not parse file as an RTF document")
             return
         props = [
@@ -75,7 +75,7 @@ class RTFMetaService(Service):
                 'result': value,
             }
             self._add_result('rtf_meta', prop, result)
-        for (k,v) in rparser.features.get('info', []).items():
+        for (k,v) in rparser.features.get('info', {}).items():
             result = {
                 'name': k,
                 'value': v,
@@ -86,6 +86,7 @@ class RTFMetaService(Service):
             'themedata',
             'blipuid',
             'colorschememapping',
+            'rsids',
         ]
         for hash_type in hashes:
             items = rparser.features.get(hash_type, [])
@@ -119,7 +120,7 @@ class RTFMetaService(Service):
                     'result': v,
                 }
                 self._add_result(name, name, result)
-            obj_num += 1
+            obj_num += 1            
         if config.get('save_streams', 0) == 1:
             for i in range(len(rparser.objects)):
                 stream_md5 = hashlib.md5(rparser.objects[i]).hexdigest()
