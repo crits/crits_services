@@ -61,7 +61,6 @@ class Bit9Service(Service):
 
         return display_config
 
-
     def run(self, obj, config):
         try:
             key = config.get('bit9_api_key', '')
