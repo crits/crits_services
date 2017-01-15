@@ -1,5 +1,1 @@
-<<<<<<< 3f179aafac25719c29b6d751275f24c25b8fa8c0
-BIT9_service will query a BIT9 API to check for hash values that match uploaded samples. 
-=======
-BIT9_service will query a BIT9 API to check for hash values that match uploaded samples. 
->>>>>>> commit
+BIT9_service will query a BIT9 API to check for hash values that match uploaded samples and indicators. 
