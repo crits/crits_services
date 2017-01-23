@@ -186,16 +186,16 @@ function make_heattable(data) {
 
     $('#heattable td.ecount').each(function(){
         var num = parseFloat($(this).text());
-        if (num > 0) {
-            $(this).addClass('enone');
-        } else if (num > 2) {
-            $(this).addClass('elow');
-        } else if (num > 5) {
-            $(this).addClass('emed');
+        if (num > 15) {
+            $(this).addClass('ealert');
         } else if (num > 10) {
             $(this).addClass('ehigh');
-        } else if (num > 15) {
-            $(this).addClass('ealert');
+        } else if (num > 5) {
+            $(this).addClass('emed');
+        } else if (num > 2) {
+            $(this).addClass('elow');
+        } else if (num > 0) {
+            $(this).addClass('enone');
         }
     });
 
