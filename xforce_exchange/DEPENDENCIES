@@ -1,0 +1,5 @@
+The IBM XForce Exchange service requires the following python modules:
+requests
+base64
+IPWhois
+
