@@ -16,6 +16,8 @@ def campaign_heatmap(request):
                 if [l.location,0] not in country_list:
                     country_list.append([l.location,0])
     country_list.sort()
+    # For those campaigns with no location assigned, have an Unknown location.
+    country_list.append(['Unknown', 0])
 
     # list of campaigns in order of country, then alphabetical by name
     campaign_list = []
@@ -32,6 +34,17 @@ def campaign_heatmap(request):
                         if cam.name not in tmp:
                             tmp.append(cam.name)
                         break
+            else:
+                # Assuming we are checking the Unknown location, if this
+                # campaign has no location assigned, add it to Unknown.
+                if c[0] == 'Unknown':
+                    c[1] += 1
+                    if cam.name not in tmp:
+                        tmp.append(cam.name)
+        # If we haven't added a campaign to this location, show "No Campaigns".
+        # This also prevents a left-shift in the counting and header rows.
+        if len(tmp) == 0:
+            tmp.append("No Campaigns")
         tmp.sort()
         campaign_list += tmp
 
