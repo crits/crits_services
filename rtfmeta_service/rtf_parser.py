@@ -1,3 +1,7 @@
+'''
+Copyright 2004-present Facebook. All Rights Reserved.
+'''
+
 import sys
 import time
 import array
@@ -97,9 +101,16 @@ class RtfParser(object):
         self.parse_datastore_object()
         self.hash_data_blob()
         self.parse_rsid()
+        self.parse_bliptag()
 
     def is_valid(self):
         return self.data.startswith('{\\rt')
+        
+    def unique_list(self, input_list):
+        output_list = []
+        for i in input_list:
+            if i not in output_list: output_list.append(i)
+        return output_list
 
     def binary_percent(self):
         ascii_bytes = 0
@@ -175,7 +186,7 @@ class RtfParser(object):
                 except Exception as e:
                     if self.debug:
                         print "%s barf - %s" % (self.features.get('file_md5'), e)
-            self.features[name] = hashes
+            self.features[name] = self.unique_list(hashes)
         
     def balanced_braces(self, arg, strip=True):
         if '{' not in arg:
@@ -245,7 +256,7 @@ class RtfParser(object):
         return match.group(1)
 
     def normalize_data_stream(self, data):
-        return re.sub('\W', '', re.sub('\{.+?\}', '', re.sub('\\\\([\d]{2})', self.binhex_convert, data)))
+        return re.sub('\W', '', re.sub('\{.+?\}', '', re.sub('\\\\([a-fA-F0-9]{2})', self.binhex_convert, data)))
             
             
     def read_length_prefixed_string(self, data):
@@ -259,6 +270,7 @@ class RtfParser(object):
         
             
     def parse_embedded(self, data):
+        # structure documented here
         # https://msdn.microsoft.com/en-us/library/dd942076.aspx
         if len(data) < 13:
             return {}, len(data)
@@ -292,11 +304,13 @@ class RtfParser(object):
                     if m:
                         obj[name] = m.group(1)
                 data = data.replace('\r', '').replace('\n', '').lower()
-                obj_offset = data.find('{\\*\\objdata')
+                marker = '{\\*\\objdata'
+                marker_len = len(marker)
+                obj_offset = data.find(marker)
                 if obj_offset < 0:
                     continue
                 obj['offset'] = start
-                obj['data_offset'] = start + obj_offset + 12
+                obj['data_offset'] = start + obj_offset + marker_len + 1
                 objdata = self.balanced_braces(data[obj_offset:])
                 obj['raw_md5'] = hashlib.md5(objdata).hexdigest()
                 obj['raw_sha1'] = hashlib.sha1(objdata).hexdigest()
@@ -361,7 +375,13 @@ class RtfParser(object):
         data = self.balanced_braces(self.data[self.data.find('{\\*\\rsidtbl'):])
         if data:
             rsids = re.findall('\\\\(rsid[\d]+)', data)
-        self.features.update({'rsids': rsids})
+        rsids = self.unique_list(rsids)
+        self.features.update({'rsid': rsids})
+
+    def parse_bliptag(self):
+        bliptags = re.findall('\\\\(bliptag[\d]+)', self.data)
+        bliptags = self.unique_list(bliptags)
+        self.features.update({'bliptag': bliptags})
     
     def output(self):
         print "File MD5: %s" % self.features.get('file_md5')
@@ -386,8 +406,11 @@ class RtfParser(object):
         for scheme in self.features.get('blipuid', []):
             print "%40s" % scheme
         print "Rtf RSIDs:"
-        for rsid in self.features.get('rsids', []):
+        for rsid in self.features.get('rsid', []):
             print "%40s" % rsid
+        print "Rtf BlipTags:"
+        for blip in self.features.get('bliptag', []):
+            print "%40s" % blip
         print "Rtf Meta Info:"
         for (k, v) in self.features.get('info', {}).items():
             print "%20s: %s" % (k,v)
