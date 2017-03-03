@@ -1,6 +1,8 @@
-from django.conf.urls import patterns
+from django.conf.urls import url
 
-urlpatterns = patterns('stix_validator_service.views',
-    (r'^stix_validator/$', 'stix_validator'),
-    (r'^validate/$', 'validate'),
-)
+from . import views
+
+urlpatterns = [
+    url(r'^stix_validator/$', views.stix_validator),
+    url(r'^validate/$', views.validate),
+]

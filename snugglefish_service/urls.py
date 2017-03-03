@@ -1,7 +1,9 @@
-from django.conf.urls import patterns
+from django.conf.urls import url
 
-urlpatterns = patterns('snugglefish_service.views',
-    (r'^snugglefish_search/$', 'snugglefish_search'),
-    (r'^snugglefish_status/$', 'snugglefish_status'),
-    (r'^get_snugglefish_search_form/$', 'get_snugglefish_search_form'),
-)
+from . import views
+
+urlpatterns = [
+    url(r'^snugglefish_search/$', views.snugglefish_search),
+    url(r'^snugglefish_status/$', views.snugglefish_status),
+    url(r'^get_snugglefish_search_form/$', views.get_snugglefish_search_form),
+]

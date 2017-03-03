@@ -1,5 +1,7 @@
-from django.conf.urls import patterns
+from django.conf.urls import url
 
-urlpatterns = patterns('yara_service.views',
-    (r'^test_yara_rule/(?P<id_>.+?)/$', 'get_yara_result'),
-)
+from . import views
+
+urlpatterns = [
+    url(r'^test_yara_rule/(?P<id_>.+?)/$', views.get_yara_result),
+]
