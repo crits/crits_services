@@ -5,7 +5,7 @@ from io import BytesIO
 from optparse import OptionParser
 
 from crits.core.basescript import CRITsBaseScript
-from crits.samples.handlers import Sample
+from crits.samples.sample import Sample
 
 class CRITsScript(CRITsBaseScript):
     def __init__(self, username=None):
