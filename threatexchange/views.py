@@ -35,6 +35,7 @@ def submit_related_query(request):
             'dropped_by': "Malware Analyses",
             'families': "Malware Families",
             'related': "Threat Indicators",
+            'similar_malware': "Malware Analyses",
             'threat_indicators': "Threat Indicators",
             'variants': "Malware Analyses"
         }
