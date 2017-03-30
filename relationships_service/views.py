@@ -19,7 +19,7 @@ def get_relationships(request, ctype, cid):
                                                       types)
     result['success'] = True
 
-    return HttpResponse(json.dumps(result), mimetype="application/json")
+    return HttpResponse(json.dumps(result), content_type="application/json")
 
 @user_passes_test(user_can_view_data)
 def add_campaign(request):
@@ -27,23 +27,23 @@ def add_campaign(request):
 
     if not (request.method == 'POST' and request.is_ajax()):
         result["message"] = "Expected AJAX post"
-        return HttpResponse(json.dumps(result), mimetype="application/json")
+        return HttpResponse(json.dumps(result), content_type="application/json")
 
     nodes = request.POST.get('nodes', [])
     name = request.POST.get('name', '')
     confidence = request.POST.get('confidence', 'low')
     if not nodes or not name:
         result["message"] = "Need nodes and name."
-        return HttpResponse(json.dumps(result), mimetype="application/json")
+        return HttpResponse(json.dumps(result), content_type="application/json")
 
     try:
         nodes = json.loads(nodes)
     except Exception as e:
         result['message'] = str(e)
-        return HttpResponse(json.dumps(result), mimetype="application/json")
+        return HttpResponse(json.dumps(result), content_type="application/json")
 
     result = handlers.add_campaign_from_nodes(name,
                                               confidence,
                                               nodes,
                                               request.user.username)
-    return HttpResponse(json.dumps(result), mimetype="application/json")
+    return HttpResponse(json.dumps(result), content_type="application/json")

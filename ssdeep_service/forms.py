@@ -9,4 +9,5 @@ class SSDeepRunForm(forms.Form):
                                    initial=50)
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(SSDeepRunForm, self).__init__(*args, **kwargs)

@@ -13,9 +13,10 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 
 from crits.services.core import Service, ServiceConfigError
 from crits.pcaps.handlers import handle_pcap_file
-from crits.domains.handlers import get_domain, upsert_domain
+from crits.domains.handlers import upsert_domain
 from crits.domains.domain import Domain
 from crits.core.user_tools import get_user_organization
+from crits.vocabulary.relationships import RelationshipTypes
 
 from . import forms
 
@@ -194,10 +195,18 @@ class VirusTotalService(Service):
             self._error("Network connection error checking virustotal (%s)" % e)
             return
 
-        # Check to see if a VT provided valid results. If not throw error and
-        # exit
+        # Log and exit if no match found or error
         if response_dict.get('response_code', 0) != 1:
-            self._error("Exiting because Virustotal provided a negative response code.")
+            rcode = response_dict.get('response_code')
+            vmsg = response_dict.get('verbose_msg')
+            ctype = obj._meta['crits_type']
+            if rcode not in (-1, 0) or not vmsg:
+                self._error("Unexpected response from Virustotal")
+            elif ((rcode == 0 and ctype in ('Domain', 'IP'))
+                  or 'requested resource is not among' in vmsg):
+                self._info("%s not found in Virustotal" % ctype)
+            else:
+                self._error(vmsg)
             return
 
         # Process Results for Sample
@@ -787,7 +796,7 @@ class VirusTotalService(Service):
                                   related_type="Sample",
                                   method=self.name,
                                   reference=None,
-                                  relationship='Related_To')
+                                  relationship=RelationshipTypes.RELATED_TO)
         self._add_result("pcap added", h, {'md5': h})
 
     def _process_domain(self, domain, ip, scandate):
@@ -806,43 +815,31 @@ class VirusTotalService(Service):
         self._info("Adding domain %s and creating relationship to %s" % (str(domain), str(self.obj.id)))
         self._notify()
 
-        url_contains_ip = False
-        #domain_host = urlparse.urlparse(domain).hostname
-        (sdomain, fqdn) = get_domain(domain)
-        if sdomain == "no_tld_found_error":
-            try:
-                validate_ipv46_address(domain_or_ip)
-                url_contains_ip = True
-            except DjangoValidationError:
-                pass
-        if not url_contains_ip:
-            result = None
-            result = upsert_domain(sdomain,
-                                   fqdn,
-                                   self.obj.source,
-                                   username=self.current_task.username,
-                                   campaign=None,
-                                   confidence=None,
-                                   bucket_list=None,
-                                   ticket=None)
+        result = upsert_domain(domain,
+                               self.obj.source,
+                               username=self.current_task.username,
+                               campaign=None,
+                               confidence=None,
+                               bucket_list=None,
+                               ticket=None)
 
-            # If domain was added, create relationship.
-            if not result['success']:
-                self._info("Cannot add domain %s. reason: %s" % (str(domain), str(result['message'])))
-            else:
-                # add relationshiop
-                dmain = result['object']
+        # If domain was added, create relationship.
+        if not result['success']:
+            self._info("Cannot add domain %s. reason: %s" % (str(domain), str(result['message'])))
+        else:
+            # add relationship
+            dmain = result['object']
 
-                msg = dmain.add_relationship(rel_item=self.obj,
-                                             rel_type='Related_To',
-                                             rel_date=scandate,
-                                             analyst=self.current_task.username,
-                                             rel_confidence='unknown',
-                                             rel_reason='Provided by VirusTotal. Date is from when vt analysis was performed',
-                                             get_rels=False)
+            msg = dmain.add_relationship(rel_item=self.obj,
+                                         rel_type=RelationshipTypes.RELATED_TO,
+                                         rel_date=scandate,
+                                         analyst=self.current_task.username,
+                                         rel_confidence='unknown',
+                                         rel_reason='Provided by VirusTotal. Date is from when vt analysis was performed',
+                                         get_rels=False)
 
-                if not msg['success']:
-                    self._info("Cannot add relationship because %s" % (str(msg['message'])))
+            if not msg['success']:
+                self._info("Cannot add relationship because %s" % (str(msg['message'])))
 
-                dmain.save(username=self.current_task.username)
-                self.obj.save(username=self.current_task.username)
+            dmain.save(username=self.current_task.username)
+            self.obj.save(username=self.current_task.username)

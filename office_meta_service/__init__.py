@@ -5,6 +5,7 @@ from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
+from crits.vocabulary.relationships import RelationshipTypes
 
 from office_meta import OfficeParser
 from . import forms
@@ -70,9 +71,10 @@ class OfficeMetaService(Service):
             if config.get('save_streams', 0) == 1 and 'data' in curr_dir:
                 handle_file(name, curr_dir['data'], obj.source,
                             related_id=str(obj.id),
+                            related_type=str(obj._meta['crits_type']),
                             campaign=obj.campaign,
                             method=self.name,
-                            relationship='Extracted_From',
+                            relationship=RelationshipTypes.CONTAINED_WITHIN,
                             user=self.current_task.username)
                 stream_md5 = hashlib.md5(curr_dir['data']).hexdigest()
                 added_files.append((name, stream_md5))
@@ -90,5 +92,3 @@ class OfficeMetaService(Service):
         for f in added_files:
             self._add_result("file_added", f[0], {'md5': f[1]})
 
-    def _parse_error(self, item, e):
-        self._error("Error parsing %s (%s): %s" % (item, e.__class__.__name__, e))

@@ -14,4 +14,5 @@ class OpenDNSConfigForm(forms.Form):
                                       initial='https://investigate.api.opendns.com/')
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(OpenDNSConfigForm, self).__init__(*args, **kwargs)

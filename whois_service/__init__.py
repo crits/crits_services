@@ -147,26 +147,27 @@ class WHOISService(Service):
         link = base + 'domains/domainName/' + obj.domain
         self._info('pyDat URL: %s' % link)
 
+        # Collect available versions and present them in the log. The list
+        # will be sorted and the highest value will be used to fetch the
+        # "latest" results.
+        versions = []
         for data in results['data']:
-            self._info('Version found: %s' % data['Version'])
+            try:
+                versions.append(data['Version'])
+                versions_check = data['Version']
+            except KeyError:
+                versions.append(data['dataVersion'])
+                versions_check = data['dataVersion']
 
-        url = base + 'ajax/domain/' + obj.domain + '/latest/'
+            self._info('Version found: %s' % versions_check)
 
-        r = requests.get(url, proxies=self.proxies)
-        if r.status_code != 200:
-            self._error("Response code not 200.")
-            return
-
-        results = r.json()
-        if not results['success']:
-            self._error(results['error'])
-            return
-
-        if results['total'] == 0:
-            self._info("No pyDat results found.")
-            return
+        versions.sort()
+        latest = versions[-1]
 
         for data in results['data']:
+            # Only grab the most recent version.
+            if versions_check != latest:
+                continue
             for k, v in data.iteritems():
                 # Don't add empty strings.
                 if v:

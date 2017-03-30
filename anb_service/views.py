@@ -12,7 +12,7 @@ def get_anb_data(request, ctype, cid):
 
     sources = user_sources("%s" % request.user)
     if not sources:
-        return HttpResponse(json.dumps(result), mimetype="application/json")
+        return HttpResponse(json.dumps(result), content_type="application/json")
 
     data = handlers.execute_anb(ctype, cid, sources)
     # If any of the values are not an empty string we have data.
@@ -22,4 +22,4 @@ def get_anb_data(request, ctype, cid):
             result['message'] = data
             break
 
-    return HttpResponse(json.dumps(result), mimetype="application/json")
+    return HttpResponse(json.dumps(result), content_type="application/json")

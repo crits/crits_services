@@ -22,6 +22,7 @@ class FileCarverForm(forms.Form):
                               help_text="Carve raw TCP (one per side).")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(FileCarverForm, self).__init__(*args, **kwargs)
 
 class ChopShopConfigForm(forms.Form):
@@ -33,6 +34,7 @@ class ChopShopConfigForm(forms.Form):
                               help_text="The base directory where all the modules and libraries exist.")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(ChopShopConfigForm, self).__init__(*args, **kwargs)
 
 class ChopShopRunForm(forms.Form):
@@ -47,4 +49,5 @@ class ChopShopRunForm(forms.Form):
                                         help_text="Generate metadata for these protocols.")
 
     def __init__(self, *args, **kwargs):
+        kwargs.setdefault('label_suffix', ':')
         super(ChopShopRunForm, self).__init__(*args, **kwargs)

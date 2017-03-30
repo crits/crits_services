@@ -1,0 +1,8 @@
+The RATDecoder service requires:
+
+- yara 3.3
+- yara-python
+- pefile: https://code.google.com/p/pefile/
+- pycrypto
+- pype32
+- upx

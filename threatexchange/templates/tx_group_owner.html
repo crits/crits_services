@@ -1,0 +1,29 @@
+<tr>
+    <td>
+        <span class="modify_group" data-id="{{group.id}}" data-name="{{group.name}}" data-description="{{group.description}}" data-members="{{group.members}}" data-can-see="{{group.members_can_see}}" data-can-use="{{group.members_can_use}}" style="float: left;">{{group.name}}</span>
+    </td>
+    <td>
+        {{group.description}}
+    </td>
+    <td>
+        {% if group.members %}
+            {{group.members}}
+        {% else %}
+            None
+        {% endif %}
+    </td>
+    <td>
+        {% if group.members_can_see %}
+            Yes
+        {% else %}
+            No
+        {% endif %}
+    </td>
+    <td>
+        {% if group.members_can_use %}
+            Yes
+        {% else %}
+            No
+        {% endif %}
+    </td>
+</tr>

@@ -1,4 +1,4 @@
-{% load url from future %}
+
 {% load service_tags %}
 
 <style>
@@ -29,7 +29,7 @@
             'ind_type': ind_type,
             'obj_type': otype
         };
-        url = "{% url 'crits.indicators.views.indicator_from_obj' %}";
+        url = "{% url 'crits.indicators.views.indicator_from_tlo' %}";
         $.ajax({
             type: "POST",
             url: url,
@@ -92,30 +92,17 @@
             e.preventDefault();
             e.stopPropagation();
             var me = $(this);
-            var value = me.closest('tr').find('a').text();
-            var type = me.attr('data-type');
-            if (type == "Domain") {
-                ind_type = 'URI - Domain Name';
-            } else if (type == "IP Address") {
-                ind_type = 'Address - ipv4-addr';
-            } else if (type == "Email") {
-                ind_type = 'Address - email-addr';
-            }
+            var value = me.attr('data-val');
+            var ind_type = me.attr('data-type');
             otype = "{{ subscription.type }}";
             create_indicator(otype, ind_type, value, me);
         });
         $(document).on('click', '.edit_raw_indicator', function(e) {
             var me = $(this);
-            var value = me.closest('tr').find('a').text();
+            var value = me.attr('data-val');
             var type = me.attr('data-type');
             $('#raw_indicator_value').val(value);
-            if (type == "Domain") {
-                $('#raw_indicator_type').text('URI - Domain Name');
-            } else if (type == "IP Address") {
-                $('#raw_indicator_type').text('Address - ipv4-addr');
-            } else if (type == "Email") {
-                $('#raw_indicator_type').text('Address - email-addr');
-            }
+            $('#raw_indicator_type').text(type);
             $('#creation_result').text('');
             generate_dialog(me);
         });
@@ -144,8 +131,8 @@
     <tbody>
     {% endif %}
         <tr>
-            <td class="ui-icon ui-icon-plusthick create_raw_indicator" data-type="{{ result.Type }}"></td>
-            <td class="ui-icon ui-icon-pencil edit_raw_indicator" data-type="{{ result.Type }}"></td>
+            <td class="ui-icon ui-icon-plusthick create_raw_indicator" data-type="{{ result.Type }}" data-val="{{result.result}}"></td>
+            <td class="ui-icon ui-icon-pencil edit_raw_indicator" data-type="{{ result.Type }}" data-val="{{result.result}}"></td>
             <td class="potential_indicator">
                 {% if result.result %}
                 <a class="potential_link" href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&q={{result.result|urlencode}}">{{result.result}}</a>
@@ -154,7 +141,11 @@
             <td>
                 <span class="indicator_exists">
                     {% if result.exists %}
+                        {% if result_subtype.grouper = "Potential Samples" %}
+                        <a href="{% url 'crits.core.views.details' 'Sample' result.exists %}">Existed</a>
+                        {% else %}
                         <a href="{% url 'crits.indicators.views.indicator' result.exists %}">Existed</a>
+                        {% endif %}
                     {% endif %}
                 </span>
             </td>

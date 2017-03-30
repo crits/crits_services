@@ -1,0 +1,4 @@
+Dependencies for pdf2txt (is/are):
+antiword - you need Antiword binary in /usr/bin/
+poppler-utils - you need pdftotext binary in /usr/bin/
+

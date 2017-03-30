@@ -10,6 +10,7 @@ from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
+from crits.vocabulary.relationships import RelationshipTypes
 
 from . import forms
 
@@ -234,9 +235,10 @@ class CHMInfoService(Service):
             for f in self.added_files:
                 handle_file(f[0], f[3], obj.source,
                             related_id=str(obj.id),
+                            related_type=str(obj._meta['crits_type']),
                             campaign=obj.campaign,
                             method=self.name,
-                            relationship='Extracted_From',
+                            relationship=RelationshipTypes.CONTAINED_WITHIN,
                             user=self.current_task.username)
                 self._add_result("chm_items_added", f[0], {'size': f[1],'md5': f[2]})
         else:

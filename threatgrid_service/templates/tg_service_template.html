@@ -1,4 +1,4 @@
-{% load url from future %}
+
 {% load service_tags %}
 
 <script>
@@ -9,7 +9,7 @@
             'ind_type': ind_type,
             'obj_type': otype
         };
-        url = "{% url 'crits.indicators.views.indicator_from_obj' %}";
+        url = "{% url 'crits.indicators.views.indicator_from_tlo' %}";
         $.ajax({
             type: "POST",
             url: url,
@@ -74,28 +74,15 @@
             var me = $(this);
             var value = me.closest('tr').find('a').text();
             var type = me.attr('data-type');
-            if (type == "Domain") {
-                ind_type = 'URI - Domain Name';
-            } else if (type == "IP Address") {
-                ind_type = 'Address - ipv4-addr';
-            } else if (type == "Email") {
-                ind_type = 'Address - email-addr';
-            }
             otype = "{{ subscription.type }}";
-            create_indicator(otype, ind_type, value, me);
+            create_indicator(otype, type, value, me);
         });
         $(document).on('click', '.edit_raw_indicator', function(e) {
             var me = $(this);
             var value = me.closest('tr').find('a').text();
             var type = me.attr('data-type');
             $('#raw_indicator_value').val(value);
-            if (type == "Domain") {
-                $('#raw_indicator_type').text('URI - Domain Name');
-            } else if (type == "IP Address") {
-                $('#raw_indicator_type').text('Address - ipv4-addr');
-            } else if (type == "Email") {
-                $('#raw_indicator_type').text('Address - email-addr');
-            }
+            $('#raw_indicator_type').text(type);
             $('#creation_result').text('');
             generate_dialog(me);
         });

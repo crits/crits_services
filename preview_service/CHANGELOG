@@ -1,0 +1,17 @@
+Version 0.0.1
+-------------
+
+This is an attempt at integrating a crits service with pdftotext - a part of Poppler-utils (http://poppler.freedesktop.org).
+
+Version 0.0.2
+-------------
+Misc fixes
+
+Version 0.0.3
+-------------
+Added Pillow for image conversion and screenshots
+
+Version 0.0.4
+-------------
+Added Antiword for previewing Word documents
+

@@ -1,4 +1,4 @@
-{% load url from future %}
+
 {% load service_tags %}
 
 <style>
@@ -16,7 +16,7 @@
             'obj_type': 'IP',
             'ind_type': 'Port',
         };
-        url = "{% url 'crits.indicators.views.indicator_from_obj' %}";
+        url = "{% url 'crits.indicators.views.indicator_from_tlo' %}";
         $.ajax({
             type: "POST",
             url: url,

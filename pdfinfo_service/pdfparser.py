@@ -72,11 +72,11 @@ import traceback
 from numpy import zeros
 
 if sys.version_info[0] >= 3:
-    from io import StringIO
+    from io import BytesIO
     import urllib.request
     urllib23 = urllib.request
 else:
-    from cStringIO import StringIO
+    from io import BytesIO
     import urllib2
     urllib23 = urllib2
 try:
@@ -147,8 +147,8 @@ class cPDFDocument:
                 sys.exit()
         else:
             try:
-                import StringIO
-                self.infile = StringIO.StringIO(file)
+                import io
+                self.infile = io.BytesIO(file)
             except:
                 print('Error opening file %s' % file)
                 print(sys.exc_info()[1])
@@ -196,7 +196,7 @@ class cPDFTokenizer:
             self.oPDF = None
             return None
         elif CharacterClass(self.byte) == CHAR_WHITESPACE:
-            file_str = StringIO()
+            file_str = BytesIO()
             while self.byte != None and CharacterClass(self.byte) == CHAR_WHITESPACE:
                 file_str.write(chr(self.byte))
                 self.byte = self.oPDF.byte()
@@ -207,7 +207,7 @@ class cPDFTokenizer:
             self.token = file_str.getvalue()
             return (CHAR_WHITESPACE, self.token)
         elif CharacterClass(self.byte) == CHAR_REGULAR:
-            file_str = StringIO()
+            file_str = BytesIO()
             while self.byte != None and CharacterClass(self.byte) == CHAR_REGULAR:
                 file_str.write(chr(self.byte))
                 self.byte = self.oPDF.byte()
@@ -233,7 +233,7 @@ class cPDFTokenizer:
                     self.oPDF.unget(self.byte)
                     return (CHAR_DELIMITER, '>')
             elif self.byte == 0x25:
-                file_str = StringIO()
+                file_str = BytesIO()
                 while self.byte != None:
                     file_str.write(chr(self.byte))
                     if self.byte == 10 or self.byte == 13:
@@ -801,7 +801,7 @@ def FlateDecode(data):
     return zlib.decompress(C2BIP3(data))
 
 def RunLengthDecode(data):
-    f = StringIO(data)
+    f = BytesIO(data)
     decompressed = ''
     runLength = ord(f.read(1))
     while runLength:
@@ -899,7 +899,7 @@ class LZWDecoder(object):
 ####
 
 def LZWDecode(data):
-    return ''.join(LZWDecoder(StringIO(data)).run())
+    return ''.join(LZWDecoder(BytesIO(data)).run())
 
 def PrintGenerateObject(object, options):
     dataPrecedingStream = object.ContainsStream()

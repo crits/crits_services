@@ -40,19 +40,16 @@
 			}
 		});
 
-		/*
-		* Get the URL that downloads STIX content for current configuration options.
-		*/
-		function get_preview_url() {
-			return "{% url 'taxii_service.views.preview_taxii_service' type item.id %}?" 
-				+ $('#taxii_config_form').serialize();
-		}
 
 		/*
 		* Open STIX content preview for current form selections in new window.
 		*/
 		function open_preview() {
-			window.open(get_preview_url(), "_blank");
+                        var form = $('#taxii_config_form')[0];
+                        form.action = "{% url 'taxii_service.views.preview_taxii_service' type item.id %}";
+                        form.method = "post";
+                        form.target = "_blank";
+                        form.submit();
 		}
 
 		/*

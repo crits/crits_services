@@ -1,0 +1,11 @@
+This service checks the VirusTotal database to see if it contains a sample matching the given MD5.
+If VirusTotal has the sample, the sample is downloaded to CRITs.
+
+By default, this service leverages the VirusTotal Intelligence service.  You can instead use the VirusTotal Private API by changing the Download URL in the service configuration.
+VirusTotal Intelligence: https://www.virustotal.com/intelligence/download
+VirusTotal Private API: https://www.virustotal.com/vtapi/v2/file/download
+
+Requirements:
+   -Paid access to either VirusTotal's Intelligence service, or VirusTotal's Private API
+   -An API key available from virustotal.com
+   -Add Source "VirusTotal" to CRITs and assign to User for viewing of related Source Instances

@@ -3,6 +3,7 @@ import hashlib
 
 from crits.services.core import Service, ServiceConfigError
 from crits.certificates.handlers import handle_cert_file
+from crits.vocabulary.relationships import RelationshipTypes
 
 from machoinfo import MachOEntity, MachOParser, MachOParserError
 
@@ -101,9 +102,9 @@ class MachOInfoService(Service):
                             filename = hashlib.md5(data).hexdigest()
                             handle_cert_file(filename, data, obj.source,
                                              related_id=str(obj.id),
-                                             related_type=obj._meta['crits_type'],
+                                             related_type=str(obj._meta['crits_type']),
                                              method=self.name,
-                                             relationship='Extracted_From',
+                                             relationship=RelationshipTypes.CONTAINED_WITHIN,
                                              user=self.current_task.username)
                             self._add_result("cert_added", filename, {'md5': filename})
 

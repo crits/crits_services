@@ -1,6 +1,7 @@
-Check the PassiveTotal database to see if it contains this domain or IP
-	
-This service relys on a user's allowed searches within the PassiveTotal system
-of which are earned through accurate domain/IP classifications
-	
-Requires an API key available from passivetotal.org
+Use PassiveTotal in order to enrich your existing indicators. This service
+faciliates queries to PassiveTotal using their public API. Datasets include
+passive DNS, WHOIS, SSL certificates, web components, OSINT, malware and trackers.
+
+Registration to PassiveTotal is free and is required to use this service. Users
+need to associate their email address and API key with the service in order to
+successfully make calls.

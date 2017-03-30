@@ -1,5 +1,5 @@
-# Copyright (c) 2015, The MITRE Corporation. All rights reserved.
-# Copyright (c) 2015, Adam Polkosnik, Team Cymru.  All rights reserved.
+# Copyright (c) 2016, The MITRE Corporation. All rights reserved.
+# Copyright (c) 2016, Adam Polkosnik, Team Cymru.  All rights reserved.
 
 # Source code distributed pursuant to license agreement.
 # PEhash computing code is from Team Cymru.
@@ -21,6 +21,7 @@ from django.template.loader import render_to_string
 
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
+from crits.vocabulary.relationships import RelationshipTypes
 
 from . import forms
 
@@ -37,7 +38,7 @@ class PEInfoService(Service):
     """
 
     name = "peinfo"
-    version = '1.1.3'
+    version = '1.1.4'
     supported_types = ['Sample']
     description = "Generate metadata about Windows PE/COFF files."
     added_files = []
@@ -72,6 +73,8 @@ class PEInfoService(Service):
         #image characteristics
         img_chars = bitstring.BitArray(hex(exe.FILE_HEADER.Characteristics))
         #pad to 16 bits
+        if len(img_chars) == 8:
+            img_chars = bitstring.BitArray('0b00000000') + img_chars
         img_chars = bitstring.BitArray(bytes=img_chars.tobytes())
         img_chars_xor = img_chars[0:7] ^ img_chars[8:15]
 
@@ -149,6 +152,7 @@ class PEInfoService(Service):
 
     def run(self, obj, config):
         try:
+            self._debug("Version: %s" % pefile.__version__ )
             pe = pefile.PE(data=obj.filedata.read())
         except pefile.PEFormatError as e:
             self._error("A PEFormatError occurred: %s" % e)
@@ -164,9 +168,10 @@ class PEInfoService(Service):
             for f in self.added_files:
                 handle_file(f[0], f[1], obj.source,
                             related_id=str(obj.id),
+                            related_type=str(obj._meta['crits_type']),
                             campaign=obj.campaign,
                             method=self.name,
-                            relationship='Extracted_From',
+                            relationship=RelationshipTypes.CONTAINED_WITHIN,
                             user=self.current_task.username)
                 rsrc_md5 = hashlib.md5(f[1]).hexdigest()
                 self._add_result("file_added", f[0], {'md5': rsrc_md5})
@@ -267,7 +272,7 @@ class PEInfoService(Service):
                             "resource_id": i.id,
                             "language": x.lang,
                             "sub_language": x.sublang,
-                            "address": x.struct.OffsetToData,
+                            "address": hex(x.struct.OffsetToData),
                             "size": len(data),
                             "md5": hashlib.md5(data).hexdigest(),
                     }
@@ -287,7 +292,7 @@ class PEInfoService(Service):
                 if section_name == "":
                     section_name = "NULL"
                 data = {
-                        "virt_address": section.VirtualAddress,
+                        "virt_address": hex(section.VirtualAddress),
                         "virt_size": section.Misc_VirtualSize,
                         "size": section.SizeOfRawData,
                         "md5": section.get_hash_md5(),
@@ -310,6 +315,7 @@ class PEInfoService(Service):
                             "dll": "%s" % entry.dll,
                             "ordinal": "%s" % imp.ordinal,
                     }
+                    self._debug("import_data: '%s'" % data )
                     self._add_result('pe_import', name, data)
         except Exception as e:
             self._parse_error("imports", e)
@@ -317,9 +323,12 @@ class PEInfoService(Service):
     def _get_exports(self, pe):
         try:
             for entry in pe.DIRECTORY_ENTRY_EXPORT.symbols:
-                data = {"rva_offset": pe.OPTIONAL_HEADER.ImageBase
-                                        + entry.address}
-                self._add_result('pe_export', entry.name, data)
+                data = {"rva_offset": hex(pe.OPTIONAL_HEADER.ImageBase
+                                        + entry.address)}
+                ename = 'NULL'
+                if entry.name:
+                    ename = entry.name
+                self._add_result('pe_export', ename, data)
         except Exception as e:
             self._parse_error("exports", e)
 
@@ -342,7 +351,7 @@ class PEInfoService(Service):
                     result = {
                          'MajorVersion': dbg.struct.MajorVersion,
                          'MinorVersion': dbg.struct.MinorVersion,
-                         'PointerToRawData': dbg.struct.PointerToRawData,
+                         'PointerToRawData': hex(dbg.struct.PointerToRawData),
                          'SizeOfData': dbg.struct.SizeOfData,
                          'TimeDateStamp': dbg.struct.TimeDateStamp,
                          'TimeDateString': strftime('%Y-%m-%d %H:%M:%S', localtime(dbg.struct.TimeDateStamp)),

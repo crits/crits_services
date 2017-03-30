@@ -1,0 +1,69 @@
+<table>
+    <colgroup>
+        <col width="450px">
+        <col width="300px">
+        <col width="350px">
+    </colgroup>
+    <tr>
+        <td>
+            <table>
+                <colgroup>
+                    <col width="100px">
+                    <col width="350px">
+                </colgroup>
+                <tr>
+                    <td><b>Indicator:</b></td>
+                    <td>{{ data.raw_indicator }}</td>
+                </tr>
+                <tr>
+                    <td><b>Type:</b></td>
+                    <td>{{ data.type }}</td>
+                </tr>
+                <tr>
+                    <td><b>Threat Type:</b></td>
+                    <td>{{ data.threat_type }}</td>
+                </tr>
+                <tr>
+                    <td><b>Owner:</b></td>
+                    <td>{{ data.owner.name }}</td>
+                </tr>
+            </table>
+        </td>
+        <td>
+            <table>
+                <tr>
+                    <td><b>Status:</b></td>
+                    <td>{{ data.status }}</td>
+                </tr>
+                <tr>
+                    <td><b>Confidence:</b></td>
+                    <td>{{ data.confidence }}</td>
+                </tr>
+                <tr>
+                    <td><b>Severity:</b></td>
+                    <td>{{ data.severity }}</td>
+                </tr>
+                <tr>
+                    <td><b>Review Status:</b></td>
+                    <td>{{ data.review_status }}</td>
+                </tr>
+            </table>
+        </td>
+        <td>
+            <table>
+                <tr>
+                    <td><b>Precision:</b></td>
+                    <td>{{ data.precision }}</td>
+                </tr>
+                <tr>
+                    <td><b>Added On:</b></td>
+                    <td>{{ data.added_on }}</td>
+                </tr>
+                <tr>
+                    <td><b>Last Updated:</b></td>
+                    <td>{{ data.last_updated }}</td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>
