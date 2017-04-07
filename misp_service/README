@@ -1,0 +1,20 @@
+The MISP service works for every top-level object. It grabs Indicators related 
+to a specific TLO and leverages PyMISP to submit them to a MISP instance
+accessible from the CRITs server.
+
+Its code is based heavily on the Relationships service as well as a few
+snippets from the Data Miner service to allow for the instant creation of
+related indicators before submission.
+
+PLEASE NOTE:
+
+This code needs a LOT of cleanup! Blame that on my hatred of JQuery...
+
+Also, the "To IDS" feature may not work properly until the pip
+version of pymisp is updated. Alternatively, the following appears to work on
+MISP version 2.4.69:
+
+git clone https://github.com/CIRCL/PyMISP.git && cd PyMISP
+git checkout becaeca
+git checkout -b old-schema
+python setup.py install
