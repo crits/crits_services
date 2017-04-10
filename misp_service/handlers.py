@@ -406,6 +406,12 @@ def gather_relationships(obj_type, obj_id, user, depth, types):
                 step1[str(obj_type)][str(obj.id)]['domain']=str(obj.domain)
             elif str(obj_type)=="Indicator":
                 step1[str(obj_type)][str(obj.id)]['type']=str(obj.ind_type)
+            elif str(obj_type)=="Event":
+                step1[str(obj_type)][str(obj.id)]['event_title']=str(obj.title)
+                step1[str(obj_type)][str(obj.id)]['event_type']=str(obj.event_type)
+            elif str(obj_type)=="IP":
+                step1[str(obj_type)][str(obj.id)]['ip']=str(obj.ip)
+                #step1[str(obj_type)][str(obj.id)]['ip_type']=str(obj.ip_type)
 
     
     n['tlo_labels']=tlo_labels

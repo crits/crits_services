@@ -480,6 +480,7 @@ $(document).ready(function() {
             'email_subject':'Email Subject',
             'email_x_mailer':'Email X-Mailer',
             'email_x_originating_ip':'Email X-Originating IP',
+            'event_title': 'Event Title',
             'filename':'File Name',
             'File Path':'File Path',
             'GET Parameter':'GET Parameter',
@@ -811,7 +812,8 @@ $(document).ready(function() {
                 
             }
             //Ignore objects that don't translate well to MISP
-            else if(key=="RawData"||key=="PCAP"||key=="Target"||key=="Backdoors"||key=="Exploit"||key=="Campaign"){}
+            else if(key=="RawData"||key=="PCAP"||key=="Target"||key=="Backdoors"||key=="Exploit"||key=="Campaign"||key="Event"){}
+            // Need to figure out how to handle the Event data to add an internal reference to MISP
             else{           
                 // If not excluded TLO or Indicator, build Step 1
                 html_step1+="<div id='step1-header'><h4>";
@@ -863,16 +865,21 @@ $(document).ready(function() {
                             //});
                             
                             
-                            html_step1+="</tr></tbody>"
+                            html_step1+="</tr></tbody>";
                         }
                     });
                 });
-                html_step1+="</table></div>"
+                html_step1+="</table></div>";
             }
         });
 
-        html_step1+="</div>"
-        html_step2+="</div>"
+        html_step1+="</div>";
+        if (typeof html_step2!='undefined'){
+            html_step2+="</div>";
+        }else{
+            html_step2="";
+        }
+        
         full_html=html_step1+html_step2
         $('#main_container').html(full_html);
         //$('#debug_container').html(misp_configs);
