@@ -1,3 +1,4 @@
+'''
 from tastypie import authorization
 from tastypie.exceptions import BadRequest
 from tastypie.authentication import MultiAuthentication
@@ -78,3 +79,4 @@ class RelationshipsServiceResource(CRITsAPIResource):
         gobj.nodes = rels['nodes']
         gobj.links = rels['links']
         return [gobj]
+'''
