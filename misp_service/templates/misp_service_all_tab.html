@@ -7,14 +7,24 @@
 
 <script type="text/javascript">
 
+
 // Pulled from Data Miner Service
 function create_indicator(otype, ind_type, value, me) {
-    data = {
-        'value': value,
-        'oid': "{{ subscription.id }}",
-        'ind_type': ind_type,
-        'obj_type': otype
-    };
+    if(otype=="Campaign"){
+        data = {
+            'value': value,
+            'oid': me.attr('data-objid'),
+            'ind_type': ind_type,
+            'obj_type': me.attr('data-objtype')
+        };
+    }else{
+        data = {
+            'value': value,
+            'oid': "{{ subscription.id }}",
+            'ind_type': ind_type,
+            'obj_type': otype
+        };
+    }
     url = "{% url 'crits.indicators.views.indicator_from_tlo' %}";
     $.ajax({
         type: "POST",
@@ -44,6 +54,10 @@ function create_indicator(otype, ind_type, value, me) {
     });
     
 }
+
+
+
+
 function clear_create_clicks() {
     $('.create_raw_indicator_misp').off('click');
 }
@@ -486,7 +500,7 @@ $(document).ready(function() {
             'GET Parameter':'GET Parameter',
             'HEX String':'HEX String',
             'imphash':'IMPHASH',
-            'IPv4 Address':'IPv4 Address',
+            'ip':'IPv4 Address',
             'IPv4 Subnet':'IPv4 Subnet',
             'IPv6 Address':'IPv6 Address',
             'IPv6 Subnet':'IPv6 Subnet',
@@ -812,7 +826,7 @@ $(document).ready(function() {
                 
             }
             //Ignore objects that don't translate well to MISP
-            else if(key=="RawData"||key=="PCAP"||key=="Target"||key=="Backdoors"||key=="Exploit"||key=="Campaign"||key="Event"){}
+            else if(key=="RawData"||key=="PCAP"||key=="Target"||key=="Backdoors"||key=="Exploit"||key=="Campaign"||key=="Event"){}
             // Need to figure out how to handle the Event data to add an internal reference to MISP
             else{           
                 // If not excluded TLO or Indicator, build Step 1
@@ -829,8 +843,8 @@ $(document).ready(function() {
                     $.each(objv, function(k, v){
                         if(k in indicator_type_dict && ignored_values.indexOf(v)<0 && v!=''){
                             ind_k = indicator_type_dict[k]
-                            html_step1+="<tbody><tr><td class='ui-icon ui-icon-plusthick create_raw_indicator_misp' data-type='"+$('<div/>').text(ind_k).html()+"' data-val='"+$('<div/>').text(v).html()+"'></td>"
-                            html_step1+="<td class='ui-icon ui-icon-pencil edit_raw_indicator_misp' data-type='"+$('<div/>').text(ind_k).html()+"' data-val='"+$('<div/>').text(v).html()+"'></td>"
+                            html_step1+="<tbody><tr><td class='ui-icon ui-icon-plusthick create_raw_indicator_misp' data-type='"+$('<div/>').text(ind_k).html()+"' data-val='"+$('<div/>').text(v).html()+"' data-objid='"+$('<div/>').text(objk).html()+"' data-objtype='"+$('<div/>').text(key).html()+"'></td>"
+                            html_step1+="<td class='ui-icon ui-icon-pencil edit_raw_indicator_misp' data-type='"+$('<div/>').text(ind_k).html()+"' data-val='"+$('<div/>').text(v).html()+"' data-objid='"+$('<div/>').text(objk).html()+"' data-objtype='"+$('<div/>').text(key).html()+"'></td>"
                             html_step1+="<span class='tlo'><td class='potential_indicator'><a class='potential_link' href='/search/?search_type=global&q="+$('<div/>').text(v).html()+"'>"+$('<div/>').text(v).html()+"</a></td></span>"
                             html_step1+="<td>"+$('<div/>').text(ind_k).html()+"</td>"
                             
