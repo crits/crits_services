@@ -30,7 +30,6 @@ from pytx.vocabulary import (
     ThreatDescriptor as td,
     ThreatIndicator as ti,
     ThreatPrivacyGroup as tpg,
-    ThreatType,
     Types
 )
 
@@ -49,6 +48,7 @@ from crits.vocabulary.acls import IndicatorACL, SampleACL
 from crits.vocabulary.indicators import (
     IndicatorCI,
     IndicatorThreatTypes,
+    IndicatorAttackTypes,
     IndicatorTypes
 )
 
@@ -245,7 +245,6 @@ def get_dropdowns():
     result['severity'] = get_class_attribute_values(Severity)
     result['share_level'] = get_class_attribute_values(ShareLevel)
     result['status'] = get_class_attribute_values(Status)
-    result['threat_type'] = get_class_attribute_values(ThreatType)
     result['types'] = get_class_attribute_values(Types)
     return result
 
@@ -296,6 +295,7 @@ def import_object(request, type_, id_):
                     (td.PRIVACY_MEMBERS, td.METADATA)]
         )
         itype = get_mapped_itype(obj.get(td.TYPE))
+        tags = obj.get(td.TAGS)
         if itype is None:
             return {'success': False,
                     'message': "Descriptor type is not supported by CRITs"}
@@ -309,8 +309,8 @@ def import_object(request, type_, id_):
             obj.get(td.RAW_INDICATOR),
             "ThreatExchange",
             itype,
-            ithreat_type,
-            None,
+            IndicatorThreatTypes.UNKNOWN,
+            IndicatorAttackTypes.UNKNOWN,
             request.user.username,
             method="ThreatExchange Service",
             reference="id: %s, owner: %s, share_level: %s" % (obj.get(td.ID),
@@ -319,7 +319,8 @@ def import_object(request, type_, id_):
             add_domain=True,
             add_relationship=True,
             confidence=build_ci(obj.get(td.CONFIDENCE)),
-            description=obj.get(td.DESCRIPTION)
+            description=obj.get(td.DESCRIPTION),
+            bucket_list=tags
         )
         return results
     elif type_ == "Malware Analyses":
@@ -332,6 +333,7 @@ def import_object(request, type_, id_):
                     (m.METADATA)]
         )
         filename = obj.get(m.MD5)
+        tags = obj.get(m.TAGS)
         try:
             data = obj.rf
         except:
@@ -349,6 +351,7 @@ def import_object(request, type_, id_):
             sha256_digest = obj.get(m.SHA256),
             size = obj.get(m.SAMPLE_SIZE),
             mimetype = obj.get(m.SAMPLE_TYPE),
+            bucket_list=tags,
         )
         return {'success': True,
                 'md5': results}
