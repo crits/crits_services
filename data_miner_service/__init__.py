@@ -2,6 +2,7 @@ import re
 import logging
 
 from crits.services.core import Service, ServiceConfigError
+from crits.emails.email import Email
 from crits.events.event import Event
 from crits.raw_data.raw_data import RawData
 from crits.samples.sample import Sample
@@ -25,7 +26,7 @@ class DataMinerService(Service):
     name = "DataMiner"
     version = '1.0.0'
     template = "data_miner_service_template.html"
-    supported_types = ['Event', 'RawData', 'Sample']
+    supported_types = ['Event', 'RawData', 'Sample', 'Email']
     description = "Mine a chunk of data for useful information."
 
     @staticmethod
@@ -39,6 +40,8 @@ class DataMinerService(Service):
             data = obj.description
         elif isinstance(obj, RawData):
             data = obj.data
+        elif isinstance(obj, Email):
+            data = obj.raw_body
         elif isinstance(obj, Sample):
             samp_data = obj.filedata.read()
             data = make_ascii_strings(data=samp_data)
@@ -63,6 +66,13 @@ class DataMinerService(Service):
             if id_:
                 tdict['exists'] = str(id_.id)
             self._add_result('Potential Domains', domain, tdict)
+        uris = extract_uris(data)
+        for uri in uris:
+            tdict = {'Type': IndicatorTypes.URI}
+            id_ = Indicator.objects(value=uri).only('id').first()
+            if id_:
+                tdict['exists'] = str(id_.id)
+            self._add_result('Potential URIs', uri, tdict)
         emails = extract_emails(data)
         for email in emails:
             tdict = {'Type': IndicatorTypes.EMAIL_ADDRESS}
@@ -116,6 +126,17 @@ def extract_domains(data):
             except:
                 pass
     return final_domains
+
+# hack of a parser to extract potential URIs from data
+def extract_uris(data):
+    pattern = r'(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?'
+    results = re.findall(pattern,data)
+    #domains = [each[1] for each in results if len(each) > 0]
+    uris = [each[2] for each in results if len(each) > 0]
+    final_uris = []
+    for item in uris:
+        final_uris.append(item)
+    return final_uris
 
 # hack of a parser to extract potential emails from data
 def extract_emails(data):
