@@ -2,6 +2,7 @@ import re
 import logging
 
 from crits.services.core import Service, ServiceConfigError
+from crits.emails.email import Email
 from crits.events.event import Event
 from crits.raw_data.raw_data import RawData
 from crits.samples.sample import Sample
@@ -25,7 +26,7 @@ class DataMinerService(Service):
     name = "DataMiner"
     version = '1.0.0'
     template = "data_miner_service_template.html"
-    supported_types = ['Event', 'RawData', 'Sample']
+    supported_types = ['Event', 'RawData', 'Sample', 'Email']
     description = "Mine a chunk of data for useful information."
 
     @staticmethod
@@ -39,6 +40,8 @@ class DataMinerService(Service):
             data = obj.description
         elif isinstance(obj, RawData):
             data = obj.data
+        elif isinstance(obj, Email):
+            data = obj.raw_body
         elif isinstance(obj, Sample):
             samp_data = obj.filedata.read()
             data = make_ascii_strings(data=samp_data)
@@ -63,6 +66,13 @@ class DataMinerService(Service):
             if id_:
                 tdict['exists'] = str(id_.id)
             self._add_result('Potential Domains', domain, tdict)
+        urls = extract_urls(data)
+        for url in urls:
+            tdict = {'Type': IndicatorTypes.URI}
+            id_ = Indicator.objects(value=url).only('id').first()
+            if id_:
+                tdict['exists'] = str(id_.id)
+            self._add_result('Potential URLs', url, tdict)
         emails = extract_emails(data)
         for email in emails:
             tdict = {'Type': IndicatorTypes.EMAIL_ADDRESS}
@@ -117,6 +127,18 @@ def extract_domains(data):
                 pass
     return final_domains
 
+# hack of a parser to extract potential URLs (Links) from data
+def extract_urls(data):
+    pattern = r'(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?'
+    results = re.findall(pattern,data)
+    urls = [each for each in results if len(each) >0]
+    final_urls = []
+    for item in urls:
+        url = item[0]+"://"+item[1]+item[2]
+        final_urls.append(url)
+    return final_urls
+
+
 # hack of a parser to extract potential emails from data
 def extract_emails(data):
     pattern = r'[a-zA-Z0-9-\.\+]+@.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?[\.[a-zA-Z]{2,}'
@@ -159,4 +181,3 @@ def extract_hashes(data):
         [(ssdeep,each) for each in re.findall(re_ssdeep, data) if len(each) > 0]
     )
     return final_hashes
-
