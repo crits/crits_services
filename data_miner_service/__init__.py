@@ -66,13 +66,13 @@ class DataMinerService(Service):
             if id_:
                 tdict['exists'] = str(id_.id)
             self._add_result('Potential Domains', domain, tdict)
-        uris = extract_uris(data)
-        for uri in uris:
+        urls = extract_urls(data)
+        for url in urls:
             tdict = {'Type': IndicatorTypes.URI}
-            id_ = Indicator.objects(value=uri).only('id').first()
+            id_ = Indicator.objects(value=url).only('id').first()
             if id_:
                 tdict['exists'] = str(id_.id)
-            self._add_result('Potential URIs', uri, tdict)
+            self._add_result('Potential URLs', url, tdict)
         emails = extract_emails(data)
         for email in emails:
             tdict = {'Type': IndicatorTypes.EMAIL_ADDRESS}
@@ -127,16 +127,17 @@ def extract_domains(data):
                 pass
     return final_domains
 
-# hack of a parser to extract potential URIs from data
-def extract_uris(data):
+# hack of a parser to extract potential URLs (Links) from data
+def extract_urls(data):
     pattern = r'(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?'
     results = re.findall(pattern,data)
-    #domains = [each[1] for each in results if len(each) > 0]
-    uris = [each[2] for each in results if len(each) > 0]
-    final_uris = []
-    for item in uris:
-        final_uris.append(item)
-    return final_uris
+    urls = [each for each in results if len(each) >0]
+    final_urls = []
+    for item in urls:
+        url = item[0]+"://"+item[1]+item[2]
+        final_urls.append(url)
+    return final_urls
+
 
 # hack of a parser to extract potential emails from data
 def extract_emails(data):
