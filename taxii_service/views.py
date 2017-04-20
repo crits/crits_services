@@ -6,7 +6,10 @@ from datetime import datetime
 from django.http import HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.shortcuts import render, HttpResponse
-from django.core.urlresolvers import reverse
+try:
+    from django.urls import reverse
+except ImportError:
+    from django.core.urlresolvers import reverse
 from django.contrib.auth.decorators import user_passes_test
 
 from crits.core.class_mapper import class_from_id

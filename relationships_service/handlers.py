@@ -1,4 +1,7 @@
-from django.core.urlresolvers import reverse
+try:
+    from django.urls import reverse
+except ImportError:
+    from django.core.urlresolvers import reverse
 
 from crits.campaigns.campaign import Campaign
 from crits.campaigns.handlers import get_campaign_details

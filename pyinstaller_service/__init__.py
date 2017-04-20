@@ -1,7 +1,10 @@
 import logging
 import zlib
 
-from django.core.urlresolvers import reverse
+try:
+    from django.urls import reverse
+except ImportError:
+    from django.core.urlresolvers import reverse
 from hashlib import md5, sha1, sha256
 from PyInstaller.utils.cliutils.archive_viewer import get_archive
 

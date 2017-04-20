@@ -1,7 +1,10 @@
 import cgi
 import urllib
 
-from django.core.urlresolvers import reverse
+try:
+    from django.urls import reverse
+except ImportError:
+    from django.core.urlresolvers import reverse
 from django.template.loader import render_to_string
 
 from crits.core.user_tools import user_sources

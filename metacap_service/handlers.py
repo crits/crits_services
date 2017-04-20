@@ -4,7 +4,10 @@ import hashlib
 from lxml import etree
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
+try:
+    from django.urls import reverse
+except ImportError:
+    from django.core.urlresolvers import reverse
 from subprocess import Popen, STDOUT, PIPE
 
 from crits.pcaps.pcap import PCAP

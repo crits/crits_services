@@ -8,7 +8,10 @@ import hashlib
 import json
 from base64 import b64decode
 
-from django.core.urlresolvers import reverse
+try:
+    from django.urls import reverse
+except ImportError:
+    from django.core.urlresolvers import reverse
 
 from crits.pcaps.pcap import PCAP
 from crits.samples.handlers import handle_file

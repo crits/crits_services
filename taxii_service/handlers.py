@@ -795,7 +795,7 @@ def import_content_blocks(block_ids, action, analyst):
         pids[block.poll_time] = 1 # save unique poll timestamps
 
     if action == "import_delete":
-        taxii.TaxiiContent.objects(poll_time__in=pids.keys(), errors=[]).delete()
+        taxii.TaxiiContent.objects(poll_time__in=pids.keys(), errors=[]).delete_one()
 
     ret.update(tlos) # add the TLO lists to the return dict
 
