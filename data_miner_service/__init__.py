@@ -181,4 +181,3 @@ def extract_hashes(data):
         [(ssdeep,each) for each in re.findall(re_ssdeep, data) if len(each) > 0]
     )
     return final_hashes
-
