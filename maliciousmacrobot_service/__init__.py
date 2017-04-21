@@ -1,5 +1,4 @@
 from mmbot import MaliciousMacroBot
-import tempfile
 
 from crits.services.core import Service, ServiceConfigError
 from django.template.loader import render_to_string
@@ -14,7 +13,8 @@ class MMBotService(Service):
     name = 'mmbot'
     version = '1.0.0'
     supported_types = ['Sample']
-    description = "Takes a sample with a macro and run it against your define model/vocab set. Service uses Malicious Macro Bot Project created by Evan Gaustad"
+    description = "Runs Evan Gaustad Malicious Macro Bot Project against samples with macros." 
+                   
 
     @staticmethod
     def parse_config(config):
@@ -55,13 +55,15 @@ class MMBotService(Service):
         mmb = MaliciousMacroBot()
         mmb.mmb_init_model()
         mmb.set_model_paths(benign_path=None, malicious_path=None, model_path=self.model)
-        f = tempfile.NamedTemporaryFile()
-        f.write(obj.filedata.read())
-        result = mmb.mmb_predict(f.name, datatype='filepath')
-        f.close()
+        fc =(obj.filedata.read())
+        result = mmb.mmb_predict(fc, datatype='filecontents')
         json = mmb.mmb_prediction_to_json(result)[0]
         for k,v in json.iteritems():
-            self._add_result("Prediction", k, {"value": v})
+            if k == 'prediction':
+                self._add_result("Prediction", k, {"value": v})
+        for k,v in json.iteritems():
+            if k != 'prediction': 
+                self._add_result("Features", k, {"value": v})
         
          
         
