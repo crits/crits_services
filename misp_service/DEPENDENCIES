@@ -1,4 +1,0 @@
-The MISP Service requires:
-
-- PyMISP
-    - pip install pymisp
