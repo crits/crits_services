@@ -1,0 +1,18 @@
+The Splunk Search service works against Samples, Emails, and Raw Data.
+It will grab all metadata of the top-level object (TLO) and use that data to run 
+predetermined Splunk searches found in searches.py.
+
+Additionally, it has the option to parse out the contents of the TLO, and use 
+any domains, IPs, email addresses, hashes, or URLs it may find in additional 
+Splunk searches.
+
+There is also an option to exclude certain filetypes matching a given regex
+if the service is launched based on a triage, rather than being run manually.
+
+For example, if an email is uploaded that contains multiple JPEG attachments 
+(for which a Splunk search of their hash may not be necessary in most cases),
+when the JPEGs are added to CRITs as Sample TLOs, and Splunk is set to run on
+triage, the default regex will tell the service not to execute those Splunk 
+searches. However, if it is determined later that running those searches for a
+particular JPEG may be of some use, manually launching the service will run
+the searches.
