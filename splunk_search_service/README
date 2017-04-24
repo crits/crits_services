@@ -37,9 +37,7 @@ with the TLO's md5 attribute:
 
 "samples": [
              {"name":"MD5 Search for {md5}",
-             "search":("index=files  md5=\"{md5}\" "
-                       "| stats values(dest_ip) AS dest_ip values(uid) As uid "
-                       "values(fuid) AS fuid count by src_ip")
+             "search":"index=files  md5=\"{md5}\" | stats values(dest_ip) AS dest_ip values(uid) As uid values(fuid) AS fuid count by src_ip"
              }
            ],
            
@@ -49,14 +47,10 @@ look like this, where {} will be replaced with the domain:
 
 "domains": [
             {"name":"HTTP search for {}",
-             "search":("index=http domain=\"{}\" "
-                      "| stats values(src_ip) AS src_ip "
-                      "values(url) AS url count by index")
+             "search":"index=http domain=\"{}\" | stats values(src_ip) AS src_ip values(url) AS url count by index"
             },
             {"name":"SMTP search for {}",
-             "search":("index=smtp sender_domain=\"*{}\" "
-                       "| stats values(src_ip) AS src_ip "
-                       "values(src_user) AS src_user count by subject")
+             "search":"index=smtp sender_domain=\"*{}\" | stats values(src_ip) AS src_ip values(src_user) AS src_user count by subject"
             }
            ],
            
