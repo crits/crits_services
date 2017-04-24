@@ -38,11 +38,11 @@ class SplunkSearchConfigForm(forms.Form):
                                       initial='-2d@d',
                                       widget=forms.TextInput(),
                                       help_text="Using Splunk time syntax, this value will be the earliest your search runs.")
-    data_miner = forms.BooleanField(required=False,
-                                   label="DataMiner",
-                                   initial='',
-                                   widget=forms.CheckboxInput(),
-                                   help_text="Run Splunk searches based on potential indicators found by the DataMiner service.")
+    search_config = forms.CharField(required=True,
+                                    label="Search Config",
+                                    initial='/opt/crits/crits_services/splunk_search_service/searches.json',
+                                    widget=forms.TextInput(),
+                                    help_text="Full path of your Splunk search config file.")
     url_search = forms.BooleanField(required=False,
                                    label="URL Search",
                                    initial='',
@@ -58,6 +58,16 @@ class SplunkSearchConfigForm(forms.Form):
                                    initial='',
                                    widget=forms.CheckboxInput(),
                                    help_text="Explicitly run Splunk searches based on potential IPs mined from this object.")
+    email_addy_search = forms.BooleanField(required=False,
+                                   label="Email Search",
+                                   initial='',
+                                   widget=forms.CheckboxInput(),
+                                   help_text="Explicitly run Splunk searches based on potential Email Addresses mined from this object.")
+    hash_search = forms.BooleanField(required=False,
+                                   label="Hash Search",
+                                   initial='',
+                                   widget=forms.CheckboxInput(),
+                                   help_text="Explicitly run Splunk searches based on potential hashes mined from this object.")
     ignore_filetypes = forms.CharField(required=False,
                                        label="Ignore filetypes",
                                        initial='^[A-Za-z0-9]*( image data|ASCII text| archive data)',

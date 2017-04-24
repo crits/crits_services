@@ -34,7 +34,7 @@ class SplunkSearchService(Service):
     name = "SplunkSearch"
     version = '1.0.0'
     template = "splunk_search_service_template.html"
-    supported_types = ['RawData', 'Sample', 'Email']
+    supported_types = ['RawData', 'Sample', 'Email', 'Indicator']
     description = "Craft custom Splunk searches based on metadata."
     
     
@@ -122,6 +122,8 @@ class SplunkSearchService(Service):
             if not data:
                 self._debug("Could not find sample data to parse.")
                 return
+        elif isinstance(obj, Indicator):
+            data = ""
         else:
             self._debug("This type is not supported by this service.")
             return
@@ -136,6 +138,7 @@ class SplunkSearchService(Service):
         
         all_splunk_searches = []
         
+        '''
         if self.config['data_miner']==True:        
             ips = dedup(extract_ips(data))
             domains = dedup(extract_domains(data))
@@ -149,32 +152,48 @@ class SplunkSearchService(Service):
                          'ips': ips,
                          'hashes': hashes,
                          'emails': emails}
-            splunk_obj = SplunkSearches(datamined)
+            splunk_obj = SplunkSearches(datamined,self.config['search_config'])
             splunk_searches_datamined = splunk_obj.datamined()
             all_splunk_searches.append(splunk_searches_datamined)
+        '''
             
         if self.config['url_search']==True:
             urls = dedup(extract_urls(data))
             # Run searches for URLs
-            splunk_obj = SplunkSearches(urls)
+            splunk_obj = SplunkSearches(urls,self.config['search_config'])
             splunk_searches_urls = splunk_obj.url_searches()
             all_splunk_searches.append(splunk_searches_urls)
             
         if self.config['domain_search']==True:
             domains = dedup(extract_domains(data))
             # Run searches for domains
-            splunk_obj = SplunkSearches(domains)
+            splunk_obj = SplunkSearches(domains,self.config['search_config'])
             splunk_searches_domains = splunk_obj.domain_searches()
             all_splunk_searches.append(splunk_searches_domains)
             
         if self.config['ip_search']==True:
             ips = dedup(extract_ips(data)) 
             # Run searches for IPs
-            splunk_obj = SplunkSearches(ips)
+            splunk_obj = SplunkSearches(ips,self.config['search_config'])
             splunk_searches_ips = splunk_obj.ip_searches()
             all_splunk_searches.append(splunk_searches_ips)
             
-        splunk_obj = SplunkSearches(obj)
+        if self.config['hash_search']==True:
+            hashes = dedup(extract_hashes(data)) 
+            # Run searches for hashes
+            splunk_obj = SplunkSearches(hashes,self.config['search_config'])
+            splunk_searches_hashes = splunk_obj.hash_searches()
+            all_splunk_searches.append(splunk_searches_hashes)
+        
+        if self.config['email_addy_search']==True:
+            email_addys = dedup(extract_emails(data)) 
+            # Run searches for Email addresses
+            splunk_obj = SplunkSearches(email_addys,self.config['search_config'])
+            splunk_searches_email_addys = splunk_obj.email_addy_searches()
+            all_splunk_searches.append(splunk_searches_email_addys)
+            
+        # Set splunk_obj for TLO
+        splunk_obj = SplunkSearches(obj,self.config['search_config'])
         
         if isinstance(obj, Email):
             splunk_searches = splunk_obj.email_searches()
@@ -185,7 +204,9 @@ class SplunkSearchService(Service):
             splunk_searches = splunk_obj.sample_searches()
             all_splunk_searches.append(splunk_searches)
             
-        
+        elif isinstance(obj, Indicator):
+            splunk_searches = splunk_obj.indicator_searches()
+            all_splunk_searches.append(splunk_searches)
         
         '''
         all_splunk_searches = [{'description': 'Searches Splunk based on email attibutes',
@@ -216,25 +237,25 @@ class SplunkSearchService(Service):
                 
                 
                 for search in search_group['searches']:
-                    
-                    ## Set the timeframe and search limit
-                    search['search']="earliest="+self.config['search_earliest']+" "+search['search']
-                    search['search']+="|head "+self.config['search_limit']
-                    # Make sure it starts with 'search' or a | 
-                    if not (search['search'].startswith("search") or search['search'].startswith("|")):
-                        search['search']="search "+search['search']
-                    
-                    # Start a Splunk Search Job
-                    job_sid = start_splunk_search_job(self.config, sessionKey, search['search'])
-                    
-                    # Add the job_sid to a list of jobs to poll
-                    all_jobs[search['name']]=job_sid
-                    
+                    if search['search']!="":
+                        ## Set the timeframe and search limit
+                        search['search']="earliest="+self.config['search_earliest']+" "+search['search']
+                        search['search']+="|head "+self.config['search_limit']
+                        # Make sure it starts with 'search' or a | 
+                        if not (search['search'].startswith("search") or search['search'].startswith("|")):
+                            search['search']="search "+search['search']
+                        
+                        # Start a Splunk Search Job
+                        job_sid = start_splunk_search_job(self.config, sessionKey, search['search'])
+                        
+                        # Add the job_sid to a list of jobs to poll
+                        all_jobs[search['name']]=job_sid
+                        
 
-                    # Build a dict of search names and their searches
-                    search_base=self.config['splunk_browse_url']+"en-US/app/search/search?q="
-                    full_search=search_base+quote_plus(search['search'])
-                    full_search_dict[search['name']] = full_search
+                        # Build a dict of search names and their searches
+                        search_base=self.config['splunk_browse_url']+"en-US/app/search/search?q="
+                        full_search=search_base+quote_plus(search['search'])
+                        full_search_dict[search['name']] = full_search
                     
                 
         # Poll the jobs now that we have a list of sids
