@@ -1,6 +1,6 @@
-The Splunk Search service works against Samples, Emails, and Raw Data.
+The Splunk Search service works against Samples, Emails, Indicators, and Raw Data.
 It will grab all metadata of the top-level object (TLO) and use that data to run 
-predetermined Splunk searches found in searches.py.
+predetermined Splunk searches found in searches.json.
 
 Additionally, it has the option to parse out the contents of the TLO, and use 
 any domains, IPs, email addresses, hashes, or URLs it may find in additional 
