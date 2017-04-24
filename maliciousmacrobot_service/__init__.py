@@ -37,6 +37,12 @@ class MMBotService(Service):
             for key, value in existing_config.iteritems():
                 config[key] = value
         return config
+   
+    @staticmethod
+    def valid_for(obj):
+        # Only run on Office files
+        if not obj.is_office():
+            raise ServiceConfigError("Not a valid Office file.")
 
     @classmethod
     def generate_config_form(self, config):
@@ -60,10 +66,10 @@ class MMBotService(Service):
         json = mmb.mmb_prediction_to_json(result)[0]
         for k,v in json.iteritems():
             if k == 'prediction':
-                self._add_result("Prediction", k, {"value": v})
+                self._add_result("Prediction", v, {"name": k})
         for k,v in json.iteritems():
             if k != 'prediction': 
-                self._add_result("Features", k, {"value": v})
+                self._add_result("Features", v, {"name": k})
         
          
         
