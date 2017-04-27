@@ -228,14 +228,11 @@ class SplunkSearchService(Service):
         # Get the Session Key for talking with Splunk
         sessionKey = get_splunk_session_key(self.config)
         self._debug("Session key %s obtained." % sessionKey)
-        
+                        
+        splunk_results = []
+	
         for search_group in all_splunk_searches:
             if 'searches' in search_group and search_group['searches']:
-                
-                splunk_results = []
-                
-                
-                
                 for search in search_group['searches']:
                     if search['search']!="":
                         ## Set the timeframe and search limit
