@@ -15,7 +15,7 @@ import libtaxii as t
 import libtaxii.clients as tc
 import libtaxii.messages as tm
 import libtaxii.messages_11 as tm11
-from stix.utils import set_id_namespace
+from mixbox.idgen import set_id_namespace
 
 from django.conf import settings
 from django import forms as dforms
