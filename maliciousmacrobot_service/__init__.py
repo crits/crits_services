@@ -41,7 +41,7 @@ class MMBotService(Service):
     @staticmethod
     def valid_for(obj):
         # Only run on Office files
-        if not obj.is_office():
+        if not (obj.is_office() or obj.mimetype.startswith('application/vnd.openxmlformats-officedocument')):
             raise ServiceConfigError("Not a valid Office file.")
 
     @classmethod
