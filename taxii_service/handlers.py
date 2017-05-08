@@ -15,14 +15,23 @@ import libtaxii as t
 import libtaxii.clients as tc
 import libtaxii.messages as tm
 import libtaxii.messages_11 as tm11
-from stix.utils import set_id_namespace
 
+# set_id_namespace moved to mixbox with more recent stix packages
+try:
+    from stix.utils import set_id_namespace
+except ImportError:
+    from mixbox.idgen import set_id_namespace
+    
 from django.conf import settings
 from django import forms as dforms
 from django.template.loader import render_to_string
 from django.utils.safestring import SafeText
 
-from mongoengine.base import ValidationError
+# ValidationError moved to errors starting with mongoengine 0.12. or 0.13
+try:
+    from mongoengine.base import ValidationError
+except ImportError:
+    from mongoengine.errors import ValidationError
 
 from cybox.common import String, DateTime, Hash, UnsignedLong
 from cybox.common.object_properties import CustomProperties, Property
