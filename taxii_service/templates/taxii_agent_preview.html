@@ -72,7 +72,7 @@
          - <font color="red">{{ poll.failures }}</font></span>
     {% endif %}
 </h3>
-<table class="chart" id="poll_data" width="100%">
+<table class="chart" id="poll_data" width="100%" style="margin-bottom: 15px;">
     <colgroup>
         <col width="175px">
         <col width="75px">
@@ -110,16 +110,74 @@
 	    $('#sel_none').click(function() {
             $('.cbx').prop('checked', false);
 	    });
+
+	    var pid = "{{ poll.poll_id }}";
+	    var cur_page = {{ poll.page }};
+	    var max_page = {{ poll.pages }};
+	    var cur_mult = {{ poll.mult }};
 </script>
+<style>
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f9f9f9;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    overflow: hidden;
+}
+
+.num {
+    padding: 4px 25px;
+    display: block;
+}
+
+.mult {
+    padding: 4px 15px 4px 25px;
+    display: block;
+}
+
+.dropbtn:hover .dropdown-content {
+    display: block;
+}
+
+.num:hover, .mult:hover {
+    background: #F3D673;
+}
+
+.page_btn {
+    cursor: pointer;
+</style>
 <br>
 <div style="position:absolute; text-align:left; z-index:1;">
 <a href="#" id="sel_all">Select All</a> |
 <a href="#" id="sel_none">Select None</a>
 </div>
+<div class="dropdown" style="position:absolute;width:95%;text-align:center;">
+    <span id="page_first" class="page_btn" style="padding-right: 10px; font-size: 120%;">&laquo;</span>
+    <span id="page_prev" class="page_btn" style="padding-right: 10px;">&lt;</span>
+    <span class="scrolldrop">Page {{ poll.page }} of {{ poll.pages }}
+      <div class="dropdown-content" style="right: 48%; padding-bottom: 15px;">
+        {% for i in poll.page_range %}
+        <a class="page_btn num" id="{{ i }}">{{ i }}</a>
+        {% endfor %}
+      </div>
+    </span>
+    <span id="page_next" class="page_btn" style="padding-left: 10px;">&gt;</span>
+    <span id="page_last" class="page_btn" style="padding-left: 10px; font-size: 120%;">&raquo;</span>
+</div>
+<div class="dropdown" style="text-align:right;">
+  Blocks/Page: <span class="dropbtn">{{ poll.mult }}<br>
+      <div class="dropdown-content" style="right: 0%;">
+        <a class="page_btn mult" id="10">10</a>
+        <a class="page_btn mult" id="25">25</a>
+        <a class="page_btn mult" id="50">50</a>
+        <a class="page_btn mult" id="100">100</a>
+      </div>
+    </span>
+</div>
 {% endif %}
 
     {% for block in poll.blocks %}
-    <div class="content_box">
+    <div class="content_box" style="margin-top:2px;">
         <h3 class="titleheader">
             <input id="{{ block.id }}" class="cbx" type="checkbox" value="{{ block.id }}" checked />
             <span>Block {{ block.num }}: {{ block.block_label }}</span>
@@ -190,6 +248,58 @@
         }
 	});
 
+    $(".page_btn").click(function() {
+		$("#current_state").text("Processing...");
+		$("#taxii-loader").show();
+
+		if (this.id == "page_prev" && cur_page > 1) {
+            var page = cur_page - 1;
+            var mult = cur_mult;
+		} else if (this.id == "page_next" && cur_page < max_page) {
+		    var page = cur_page + 1;
+		    var mult = cur_mult;
+		} else if (this.id == "page_first") {
+		    var page = 1;
+		    var mult = cur_mult;
+		} else if (this.id == "page_last") {
+		    var page = max_page;
+		    var mult = cur_mult;
+		} else if (!isNaN(this.id)) {
+		    if (this.classList.contains('mult')) {
+		        var mult = this.id;
+		        var page = cur_page;
+		    } else if (this.classList.contains('num')) {
+		        var page = this.id;
+		        var mult = cur_mult;
+		    } else {
+		        var page = cur_page;
+		        var mult = cur_mult;
+		    }
+		} else {
+	        var page = cur_page;
+	        var mult = cur_mult;
+	    }
+
+		$.ajax({
+			type: "GET",
+			url: "{% url 'taxii_service.views.get_import_preview' 'xxx' 'yyy' 'zzz' %}".replace('xxx', pid).replace("yyy", page).replace("zzz", mult),
+		}).done(function(data) { // run on successful request
+			if (data.success) { // at least some feeds were successfully processed
+				$("#results_container").html(data.html);
+				$("#current_state").text("STIX Import Preview");
+                $("#view_saved").prop('hidden', false);
+			} else { // some issue occurred
+				$("#error_container").children(".taxii_notice").html(data.msg);
+				$("#current_state").text("Problems");
+			}
+		}).fail(function(data) { // server error
+			$("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+			$("#current_state").text("Problems");
+		}).always(function() {
+			$("#taxii-loader").hide();
+		});
+	});
+
     function import_blocks(ids, action) {
 		$("#current_state").text("Processing...");
 		$("#taxii-loader").show();
@@ -216,4 +326,54 @@
 			$("#taxii-loader").hide();
 		});
     }
+
+
+    $(".scrolldrop").hover(function() {
+
+         var $container = $(this),
+             $list = $container.find("div"),
+             $anchor = $container.find("a"),
+             height = $list.height() * 1.1, // make sure there is enough room at the bottom
+             multiplier = height / 400;     // needs to move faster if list is taller
+
+        // need to save height here so it can revert on mouseout
+        $container.data("origHeight", $container.height());
+
+        // make sure dropdown appears directly below parent list item
+        $list
+            .show()
+            .css({
+                paddingTop: $container.data("origHeight")
+            });
+
+        // don't do any animation if list shorter than max
+        if (multiplier > 1) {
+            $container
+                .css({
+                    height: 400,
+                    overflow: "hidden"
+                })
+                .mousemove(function(e) {
+                    var offset = $container.offset();
+                    var relativeY = ((e.pageY - offset.top) * multiplier) - ($container.data("origHeight") * multiplier);
+                    if (relativeY > $container.data("origHeight")) {
+                        $list.css("top", -relativeY + $container.data("origHeight"));
+                    };
+                });
+        }
+
+    }, function() {
+
+        var $el = $(this);
+
+        // put things back to normal
+        $el
+            .height($(this).data("origHeight"))
+            .find("div")
+            .css({ top: 0 })
+            .hide()
+            .end()
+            .find("a");
+
+    });
 </script>

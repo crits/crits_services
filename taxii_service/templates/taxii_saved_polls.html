@@ -113,7 +113,7 @@
         var pid = $(this).attr('id');
 		$.ajax({
 			type: "GET",
-			url: "{% url 'taxii_service.views.get_import_preview' '1234' %}".replace(/1234/, pid),
+			url: "{% url 'taxii_service.views.get_import_preview' '1234' '1' '10' %}".replace("1234", pid),
 		}).done(function(data) { // run on successful request
 			if (data.success) { // at least some feeds were successfully processed
 				$("#results_container").html(data.html);

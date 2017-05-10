@@ -556,7 +556,7 @@ def save_standards_doc(data, analyst, message_id, hostname, feed, block_label,
         taxii_content.import_failed = False
         taxii_content.save()
 
-def generate_import_preview(poll_id, analyst):
+def generate_import_preview(poll_id, analyst, page=1, mult=10):
     """
     Given a Poll ID (unix timestamp), parse all associated content blocks and
     generate preview data for the CRITs TLOs that can be imported into CRITs
@@ -565,6 +565,10 @@ def generate_import_preview(poll_id, analyst):
     :type poll_id: string
     :param analyst: Userid of the analyst requesting the preview
     :type analyst: string
+    :param page: The desired page number
+    :type page: int
+    :param mult: The desired number of blocks/page
+    :type mult: int
     :returns: dict with keys:
               "successes" (int) - Count of successful preview objects
               "failures" (list) - Failure messages
@@ -580,9 +584,16 @@ def generate_import_preview(poll_id, analyst):
     """
     tsvc = get_config('taxii_service')
     hdr_events = tsvc['header_events']
+    mult = int(mult)
+    page = int(page)
+    skip = mult * (page - 1)
     p_time = datetime.utcfromtimestamp(float(poll_id))
     block_count = taxii.TaxiiContent.objects(poll_time=p_time).count()
-    blocks = taxii.TaxiiContent.objects(poll_time=p_time)
+    pages = (block_count / mult) + (1 if block_count % mult else 0)
+    while skip > block_count: # prevent invalid skip value
+        page -= 1
+        skip = mult * (page - 1)
+    blocks = taxii.TaxiiContent.objects(poll_time=p_time).limit(mult).skip(skip)
     if not blocks:
         ret = {
           'failures': ['No data exists for Timestamp %s' % p_time],
@@ -601,10 +612,14 @@ def generate_import_preview(poll_id, analyst):
             'taxii_msg_id': blocks[0].taxii_msg_id,
             'source': blocks[0].hostname,
             'feed': blocks[0].feed,
-            'analyst': blocks[0].analyst
+            'analyst': blocks[0].analyst,
+            'page': page,
+            'pages': pages,
+            'page_range': range(1, pages + 1),
+            'mult': mult,
           }
 
-    for block in blocks:
+    for num, block in enumerate(blocks):
         tlos = {}
         failures = []
 
@@ -629,6 +644,7 @@ def generate_import_preview(poll_id, analyst):
                                                          tlo_meta[2]))
 
         ret['blocks'].append({'id': block.id,
+                              'num': num + skip + 1,
                               'block_label': block.block_label,
                               'tlos': tlos,
                               'failures': failures})
