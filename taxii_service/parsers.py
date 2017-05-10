@@ -4,6 +4,7 @@ import pytz
 from contextlib import closing
 from copy import copy
 from io import StringIO
+from lxml.etree import XMLSyntaxError
 
 from .object_mapper import (
     make_crits_object,
@@ -153,8 +154,10 @@ class STIXParser():
                     updated = ramrod.update(f, to_=v)
                     doc = updated.document.as_stringio()
                     self.package = STIXPackage.from_xml(doc)
+                except XMLSyntaxError:
+                    self.package = STIXPackage.from_json(f)
             except Exception as e:
-                msg = "Failed to create STIX/CybOX from XML"
+                msg = "Failed to create STIX/CybOX from XML or JSON"
                 self.failed.append((e.message,
                                     "STIX Package (%s)" % msg,
                                     '')) # note for display in UI
