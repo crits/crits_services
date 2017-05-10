@@ -57,6 +57,7 @@ import stix
 from stix.common import StructuredText
 from stix.common.related import RelatedTTP
 from stix.core import STIXPackage, STIXHeader
+import stix.extensions.marking.ais
 from stix.extensions.test_mechanism.generic_test_mechanism import GenericTestMechanism
 from stix.extensions.test_mechanism.open_ioc_2010_test_mechanism import OpenIOCTestMechanism
 from stix.extensions.test_mechanism.snort_test_mechanism import SnortTestMechanism
