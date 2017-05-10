@@ -2,28 +2,55 @@
 
 {% block content %}
 
-
+{% if poll_msg %}
+<div class="content_box">
+    <h3 class="titleheader">
+        Status: <b>{% if status %}Success{% else %}Failure{% endif %}</b>
+    </h3>
+    <div class="content_body">
+        {% if status %}Message:{% else %}Reason:{% endif %} {{ poll_msg }}
+    </div>
+</div>
+<br>
+<table class="chart" id="poll_data" width="100%" style="margin-bottom: 15px;">
+    <colgroup>
+        <col>
+        <col>
+        <col>
+        <col>
+        <col>
+        <col>
+        <col>
+    </colgroup>
+    <thead>
+        <th>Hostname</th>
+        <th>Feed Name</th>
+        <th>Message ID</th>
+        <th>Block Count</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Status</th>
+    </thead>
+    <tbody>
+    {% for poll in polls %}
+        <tr>
+            <td>{{ poll.hostname }}</td><td>{{ poll.feed }}</td>
+            <td>{{ poll.mid }}</td><td>{{ poll.blk_count }}</td>
+            <td>{{ poll.start }}</td><td>{{ poll.end }}</td>
+            {% if poll.success %}
+                <td><font color="green">Poll Successful</font></td>
+            {% else %}
+                <td><font color="red">{{ poll.msg }}</font></td>
+            {% endif %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
 <div style="text-align: center; padding-bottom: 10px; margin-top: 15px;">
 	<button id="import_delete" class="import_btn">Import Selected & Delete Others</button>
 	<button id="import_keep" class="import_btn">Import Selected & Keep Others</button>
 </div>
-
-{% if result.msg %}
-<div class="content_box">
-    <h3 class="titleheader">
-    <span>Poll Results:</span>
-    </h3>
-    <div class="content_body">
-        {% if result.status %}
-            Status: <b>Success</b><br>
-            Message: {{ result.msg }}<br>
-        {% else %}
-            Status: <b>Failure</b><br>
-            Reason: {{ result.msg }}<br>
-        {% endif %}
-    </div>
-</div>
-<br><hr><br>
 {% endif %}
 
 <style>
@@ -38,9 +65,9 @@
     }
 </style>
 
-{% for poll in result.polls %}
+{% if poll %}
 <h3 class="titleheader">
-    <span>Poll {{ forloop.counter }}
+    <span>Summary
     {% if poll.failures %}
          - <font color="red">{{ poll.failures }}</font></span>
     {% endif %}
@@ -75,25 +102,27 @@
 </table>
 
 {% if poll.blocks %}
-<br>
-<a href="#" id="sa_{{ poll.taxii_msg_id }}">Select All</a> |
-<a href="#" id="sn_{{ poll.taxii_msg_id }}">Select None</a>
 <script>
-	    $('#sa_{{ poll.taxii_msg_id }}').click(function() {
-            $('.cbx_{{ poll.taxii_msg_id }}').prop('checked', true);
+	    $('#sel_all').click(function() {
+            $('.cbx').prop('checked', true);
 	    });
 
-	    $('#sn_{{ poll.taxii_msg_id }}').click(function() {
-            $('.cbx_{{ poll.taxii_msg_id }}').prop('checked', false);
+	    $('#sel_none').click(function() {
+            $('.cbx').prop('checked', false);
 	    });
 </script>
+<br>
+<div style="position:absolute; text-align:left; z-index:1;">
+<a href="#" id="sel_all">Select All</a> |
+<a href="#" id="sel_none">Select None</a>
+</div>
 {% endif %}
 
     {% for block in poll.blocks %}
     <div class="content_box">
         <h3 class="titleheader">
-            <input id="{{ block.id }}" class="cbx_{{ poll.taxii_msg_id }} cbx" type="checkbox" value="{{ block.id }}" checked />
-            <span>Block {{ forloop.counter }}: {{ block.timestamp }}</span>
+            <input id="{{ block.id }}" class="cbx" type="checkbox" value="{{ block.id }}" checked />
+            <span>Block {{ block.num }}: {{ block.block_label }}</span>
             <span style="float:right; margin-right:5px; margin-top:4px; font-size:75%;"><a href="{% url 'taxii_service.views.download_taxii_content' block.id %}">Download</a></span>
         </h3>
         <table class="chart" id="block_data" width="100%">
@@ -141,7 +170,7 @@
     </div>
     {% endfor %}
 <br><hr><br>
-{% endfor %}
+{% endif %}
 {% endblock %}
 
 <script>

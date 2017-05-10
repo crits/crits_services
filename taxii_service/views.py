@@ -44,13 +44,9 @@ def taxii_poll(request):
         try:
             result = handlers.poll_taxii_feeds(feeds, analyst,
                                                begin=begin, end=end)
-
-            if 'all_fail' in result and result['all_fail']:
-                data = {'success': False, 'msg': result['msg']}
-            else:
-                data = {'success': True}
-                data['html'] = render_to_string("taxii_agent_preview.html",
-                                                {'result' : result})
+            data = {'success': True}
+            data['html'] = render_to_string("taxii_agent_preview.html",
+                                            result)
         except Exception as e:
             data = {'success': False, 'msg': str(type(e)) + str(e)}
 
@@ -158,7 +154,7 @@ def download_taxii_content(request, tid):
     return resp
 
 @user_passes_test(user_can_view_data)
-def get_import_preview(request, taxii_msg_id):
+def get_import_preview(request, taxii_msg_id, page=1, mult=10):
     """
     Given a particular TAXII poll, get a preview of the content that is
     available for import from that poll's data. Should be an AJAX GET.
@@ -167,14 +163,17 @@ def get_import_preview(request, taxii_msg_id):
     :type request: :class:`django.http.HttpRequest`
     :param taxii_msg_id: The message ID of the desired TAXII poll
     :param taxii_msg_id: string
+    :param page: The desired page number
+    :type page: int
+    :param mult: The desired number of blocks/page
+    :type mult: int
     :returns: :class:`django.http.HttpResponse`
     """
-    analyst = request.user.username
-    content = handlers.generate_import_preview(taxii_msg_id, analyst)
-    content = {'polls': [content]}
+    user = request.user.username
+    content = handlers.generate_import_preview(taxii_msg_id, user, page, mult)
     data = {'success': True}
     data['html'] = render_to_string("taxii_agent_preview.html",
-                                    {'result' : content})
+                                    {'poll': content})
     return HttpResponse(json.dumps(data), content_type="application/json")
 
 @user_passes_test(user_can_view_data)

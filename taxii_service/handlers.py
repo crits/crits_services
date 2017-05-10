@@ -71,13 +71,13 @@ def poll_taxii_feeds(feeds, analyst, begin=None, end=None):
     :param end: Inclusive end component of the timerange to be polled
     :type end: :class:`datetime.datetime`
     :returns: dict with keys:
-              "polls" (list) - The preview and metadata for each poll
+              "polls" (list) - The metadata for each poll
               "status" (bool) - False if any poll failed
-              "msg" (str) - Status message
-              "all_fail" (bool) - True if no feeds were successful
+              "poll_msg" (str) - Status message
     """
-    results = {'polls': []}
-    success_feeds = []
+    results = {'polls': [], 'status': True}
+    success_polls = failed_polls = 0
+    poll_details = []
     sc = get_config('taxii_service').taxii_servers
     for feed in feeds:
         svrc = sc[feed[0]]
@@ -101,30 +101,30 @@ def poll_taxii_feeds(feeds, analyst, begin=None, end=None):
                                      user, pword, ecert, ekey, begin, end)
 
         fails = result['failures']
-        results['polls'].append(result)
         fails = "<br>".join(cgi.escape(x) for x in fails)
 
-        if not fails:
-            success_feeds.append("%s - %s" % (feed[0], feedc['feedname']))
-        else:
+        if fails:
             results['status'] = False
-            msg = " Feed '%s' failed <br><br>%s<br><br>"
-            if len(success_feeds) == 0:
-                msg += "%s feeds were processed successfully%s"
-            elif len(success_feeds) == 1:
-                msg += "%s feed was processed successfully: %s"
-            else:
-                msg += "%s feeds were processed successfully: %s"
+            failed_polls += 1
+            success = False
+        else:
+            success = True
+            success_polls += 1
 
-            msg = msg % (("%s - %s" % (feed[0], feedc['feedname'])), fails,
-                         len(success_feeds), ", ".join(success_feeds))
-            results['msg'] = result['msg'] + msg
-            results['all_fail'] = len(success_feeds) == False
-            return results
+        poll_details = {'hostname': hostname,
+                        'feed': feed_name,
+                        'mid': result['taxii_msg_id'],
+                        'blk_count': result['blk_count'],
+                        'start': result['start'],
+                        'end': result['end'],
+                        'success': success,
+                        'msg': fails}
+        results['polls'].append(poll_details)
 
-    results['status'] = True
-    msg = "All %s feed(s) processed successfully: %s"
-    results['msg'] = msg % (len(success_feeds), ', '.join(success_feeds))
+    total_polls = success_polls + failed_polls
+    msg = "%s of %s polls were processed successfully" % (success_polls,
+                                                          total_polls)
+    results['poll_msg'] = msg
     return results
 
 
@@ -169,30 +169,19 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     :param end: Inclusive end component of the timerange to be polled
     :type end: :class:`datetime.datetime`
     :returns: dict with keys:
-              "successes" (int) - Count of successful preview objects
               "failures" (list) - Failure messages
-              "blocks" (list) - Content blocks, their metadata, and preview objects
+              "blk_count" (int) - The count of content blocks retrieved
               "start" (string) - Exclusive begin component of the timerange that was polled
               "end" (string) - Inclusive end component of the timerange that was polled
-              "poll_time" (:class:`datetime.datetime`) - Datetime the feed was polled
               "taxii_msg_id" (string) - TAXII Message ID of the poll
-              "source" (string) - Hostname of the TAXII server that was polled
-              "feed" (string) - Name of the TAXII feed/collection that was polled
-                                or name of the file that was uploaded
-              "analyst" (string) - Userid of the anaylst that initiated the poll
-              "msg" (string) - OPTIONAL - Error message
     """
 
     ret = {
-            'successes': 0,
             'failures': [],
-            'blocks': [],
+            'blk_count': 0,
             'start': start,
             'end': end,
-            'source': hostname,
-            'feed': feed,
-            'analyst': analyst,
-            'msg': ''
+            'taxii_msg_id': None,
           }
 
     save_datetimes = False
@@ -230,13 +219,15 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     else:
         ret['start'] = 'None'
     ret['end'] = end.strftime('%Y-%m-%d %H:%M:%S')
-    ret['poll_time'] = runtime
 
     # compare start and end to make sure:
     # 1) start time is before end time
     # 2) end time is not in the future
-    if (start != None and start >= end) and end > runtime:
-        ret['failures'].append("Bad timestamp(s)")
+    if (start != None and start >= end):
+        ret['failures'].append("Start time must be before end time")
+        return ret
+    if end > runtime:
+        ret['failures'].append("End time cannot be in the future")
         return ret
 
     # subID & port must be none if not provided
@@ -360,8 +351,8 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         return ret
 
     mid = taxii_msg.message_id
+    ret['taxii_msg_id'] = mid
     if not taxii_msg.content_blocks:
-        ret['taxii_msg_id'] = mid
         if save_datetimes:
             crits_taxii.save()
         return ret
@@ -369,16 +360,13 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     for content_block in taxii_msg.content_blocks:
         label = content_block.timestamp_label.strftime("%Y-%m-%d %H:%M:%S")
         data = parse_content_block(content_block, tm_, ekey, ecert)
-
         errors = ["%s: %s" % ("Content Block", data[1])] if data[1] else []
 
         save_standards_doc(data[0], analyst, mid, hostname, feed, label,
                            start, end, poll_time=runtime, errors=errors)
-
+        ret['blk_count'] += 1
     if save_datetimes:
         crits_taxii.save()
-    poll_id = (runtime.replace(tzinfo=None)-datetime(1970,1,1)).total_seconds()
-    ret = generate_import_preview(poll_id, analyst)
 
     return ret
 
@@ -697,12 +685,13 @@ def get_saved_polls(action, poll_id=None):
 
     content = taxii.TaxiiContent.objects()
     polls = {}
-    ret = {'unimported': {}, 'errored': {}}
+    ret = {'unimported': [], 'errored': []}
     for block in content:
         time = str(block.poll_time)
         poll_id = '%.3f' % (block.poll_time-datetime(1970,1,1)).total_seconds()
         if time not in polls:
-            polls[time] = {'poll_id': poll_id,
+            polls[time] = {'time': time,
+                           'poll_id': poll_id,
                            'msg_id': block.taxii_msg_id,
                            'source': block.hostname,
                            'feed': block.feed,
@@ -719,9 +708,14 @@ def get_saved_polls(action, poll_id=None):
 
     for poll in polls:
         if polls[poll]['import_failed']:
-            ret['errored'][poll] = polls[poll]
+            ret['errored'].append(polls[poll])
         else:
-            ret['unimported'][poll] = polls[poll]
+            ret['unimported'].append(polls[poll])
+
+    # sort the lists chronologically
+    ret['unimported'].sort(key=lambda k: k['time'])
+    ret['errored'].sort(key=lambda k: k['time'])
+
     ret['success'] = True
     return ret
 
