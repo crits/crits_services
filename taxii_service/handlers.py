@@ -140,6 +140,7 @@ def poll_taxii_feeds(feeds, analyst, begin=None, end=None, import_now=False):
         poll_details = {'hostname': hostname,
                         'feed': feed_name,
                         'mid': result['taxii_msg_id'],
+                        'poll_id': result['poll_id'],
                         'blk_count': result['blk_count'],
                         'start': result['start'],
                         'end': result['end'],
@@ -212,6 +213,7 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     ret = {
             'failures': [],
             'blk_count': 0,
+            'poll_id': None,
             'start': start,
             'end': end,
             'taxii_msg_id': None,
@@ -424,6 +426,8 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         else:
             content.save()
         ret['blk_count'] += 1
+        time_offset = runtime.replace(tzinfo=None)-datetime(1970,1,1)
+        ret['poll_id'] = '%.3f' % time_offset.total_seconds()
     if save_datetimes:
         crits_taxii.save()
     if import_now:
