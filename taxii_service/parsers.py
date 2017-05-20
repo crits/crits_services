@@ -260,7 +260,7 @@ class STIXParser():
                         if event_date.tzinfo:
                             event_date = event_date.astimezone(pytz.utc)
                             event_date = event_date.replace(tzinfo=None)
-                    description = str(header.description or description)
+                    description = getattr(header.description, 'value', "")
 
             if self.preview and not is_from_crits:
                 self.imported[package.id_] = ('Event', None, title)
@@ -409,7 +409,7 @@ class STIXParser():
                 if isinstance(threat_actor, ThreatActor):
                     name = str(threat_actor.title)
                     if not self.preview:
-                        description = str(threat_actor.description)
+                        description = threat_actor.description
                         res = add_new_actor(name=name,
                                             description=description,
                                             source=[self.source],
@@ -549,7 +549,7 @@ class STIXParser():
                 if indicator.description:
                     desc = indicator.description
                     description.append('STIX Indicator Description: %s' % desc)
-                description = '\n'.join(str(x) for x in description if x)
+                description = '\n'.join(x for x in description if x)
 
                 ci_vals = IndicatorCI.values()
                 if (indicator.confidence
@@ -566,8 +566,8 @@ class STIXParser():
                 self.parse_observables(indicator.observables, description,
                                        True, indicator.id_, (conf, impact))
 
-            except Exception, e:
-                self.failed.append((e.message,
+            except Exception as e:
+                self.failed.append((e.message or str(e),
                                     "Indicator (%s)" % indicator.id_,
                                     indicator.id_)) # note for display in UI
 
@@ -707,7 +707,7 @@ class STIXParser():
                 description.append('STIX Observable Title: %s' % ob.title)
             if ob.description:
                 description.append('STIX Observable Description: %s' % ob.description)
-            description = '\n'.join(str(x) for x in description if x)
+            description = '\n'.join(x for x in description if x)
             self.parse_cybox_object(ob.object_, description, is_ind, ind_id, ind_ci)
 
 
@@ -729,6 +729,10 @@ class STIXParser():
         :param ind_ci: The (confidence, impact) of a parent STIX Indicator.
         :type ind_ci: tuple
         """
+
+        # Convert description to unicode if str
+        if isinstance(description, str):
+            description = description.decode('utf-8')
 
         # Setup indicator confidence/impact
         if not ind_ci: # if not provided, use defaults
@@ -1194,34 +1198,41 @@ class STIXParser():
                 val = cbx_obj.id_
                 c_obj = make_crits_object(item)
 
-                # Ignore what was already caught above
-                if (is_ind or c_obj.object_type not in IPTypes.values()):
+                # Ignore what was already caught above and check for ind_type
+                if ((is_ind or c_obj.object_type not in IPTypes.values())
+                    and c_obj.object_type):
                     ind_type = c_obj.object_type
-                    for val in [str(v).strip() for v in c_obj.value if v]:
-                        if ind_type:
-                            # handle URIs mislabeled as Domains
-                            if (c_obj.object_type == 'Domain'
-                                and ('/' in val or ':' in val)):
-                                ind_type = "URI"
+                    for val in c_obj.value:
+                        if isinstance(val, int):
+                            val = unicode(val)
+                        elif not val: # skip empty strings
+                            continue
+                        else:
+                            val = val.strip()
 
-                            if self.preview:
-                                res = None
-                                val = "%s - %s" % (ind_type, val)
-                            else:
-                                res = handle_indicator_ind(val,
-                                                        self.source,
-                                                        ind_type,
-                                                        IndicatorThreatTypes.UNKNOWN,
-                                                        IndicatorAttackTypes.UNKNOWN,
-                                                        analyst,
-                                                        add_domain=True,
-                                                        add_relationship=True,
-                                                        description=str(description),
-                                                        confidence=ind_ci[0],
-                                                        impact=ind_ci[1])
-                            self.parse_res(imp_type, val, cbx_obj, res, ind_id)
+                        # handle URIs mislabeled as Domains
+                        if (c_obj.object_type == 'Domain'
+                            and ('/' in val or ':' in val)):
+                            ind_type = "URI"
 
-        except Exception, e: # probably caused by cybox object we don't handle
+                        if self.preview:
+                            res = None
+                            val = "%s - %s" % (ind_type, val)
+                        else:
+                            res = handle_indicator_ind(val,
+                                                    self.source,
+                                                    ind_type,
+                                                    IndicatorThreatTypes.UNKNOWN,
+                                                    IndicatorAttackTypes.UNKNOWN,
+                                                    analyst,
+                                                    add_domain=True,
+                                                    add_relationship=True,
+                                                    description=description,
+                                                    confidence=ind_ci[0],
+                                                    impact=ind_ci[1])
+                        self.parse_res(imp_type, val, cbx_obj, res, ind_id)
+
+        except Exception as e: # probably caused by cybox object we don't handle
             self.failed.append((e.message or str(e),
                                 "%s (%s)" % (imp_type, val),
                                 cbx_obj.id_)) # note for display in UI
