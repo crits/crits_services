@@ -9,8 +9,9 @@ from crits.core.mongo_tools import mongo_connector
 from crits.core.basescript import CRITsBaseScript
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username=None):
-        self.username = username
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def convert_ascii(self, data):
         if len(data) > 0:

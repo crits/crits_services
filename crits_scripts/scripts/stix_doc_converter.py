@@ -10,13 +10,12 @@ from crits.core.basescript import CRITsBaseScript
 from stix.core import STIXPackage
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username):
-        self.username = username
     """This script converts certain kinds of non-standard STIX documents to
     something which is reasonably more standard.
 
     This script may not convert completely correctly, caveat emptor.
     """
+
     XML_NS_PREFIX_XSI = "xsi"
     XML_NS_XSI = "http://www.w3.org/2001/XMLSchema-instance"
 
@@ -46,7 +45,9 @@ class CRITsScript(CRITsBaseScript):
                    XML_NS_PREFIX_OBJ_DOMAIN : XML_NS_OBJ_DOMAIN,
                    XML_NS_PREFIX_OBJ_URI : XML_NS_OBJ_URI}
 
-    def __init__(self):
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
+
         etree.register_namespace(self.XML_NS_PREFIX_STIX, self.XML_NS_STIX)
         etree.register_namespace(self.XML_NS_PREFIX_STIX_COMMON, self.XML_NS_STIX_COMMON)
         etree.register_namespace(self.XML_NS_PREFIX_CISCP, self.XML_NS_CISCP)
@@ -80,11 +81,6 @@ class CRITsScript(CRITsBaseScript):
         Keyword arguments:
         xml -- filename or file-like object containing xml
         """
-
-        if isinstance(xml, basestring):
-            f = open(xml, 'rb')
-        else:
-            f = xml
 
         tree = etree.parse(xml)
         root = self._add_namespaces(tree.getroot())

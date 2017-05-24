@@ -18,7 +18,7 @@ class TAXIIClient(Service):
     """
 
     name = "taxii_service"
-    version = "2.1.0"
+    version = "2.1.1"
     supported_types = []
     required_fields = ['_id']
     description = "Send TAXII messages to a TAXII server."

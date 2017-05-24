@@ -135,7 +135,7 @@ def start_pyew_shell(request, id_, token):
         pass
 
     # Make sure we have a sample to work with that this user has access to
-    sample = Sample.objects(id=id_, source__name__in=user.sources).first()
+    sample = Sample.objects(id=id_, source__name__in=user.get_sources_list()).first()
     if not sample:
         text = "\nNo Sample found"
         request.ws_stream.send_message(base64.b64encode(text),

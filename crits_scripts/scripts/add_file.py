@@ -4,10 +4,12 @@ import os
 
 from crits.samples.handlers import handle_file
 from crits.core.basescript import CRITsBaseScript
+from crits.vocabulary.acls import SampleACL
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username=None):
-        self.username = username
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def run(self, argv):
         parser = OptionParser()
@@ -27,6 +29,9 @@ class CRITsScript(CRITsBaseScript):
                 type="string", help="reference field")
         parser.add_option("-b", "--bucket", action="store", dest="bucket_list",
                 type="string", help="bucket list")
+        parser.add_option("-T", "--tlp", action="store", dest="tlp",
+                type="string", default="red", help="TLP of data")
+
         (opts, args) = parser.parse_args(argv)
 
         md5hash = hashlib.md5()
@@ -38,6 +43,12 @@ class CRITsScript(CRITsBaseScript):
         if opts.parent_md5 and opts.parent_id:
             print "[-] Specify one of -p or -i!"
             return
+        if not user.has_access_to(SampleACL.WRITE):
+            print "[-] User does not have permission to add Samples."
+            return
+        if not opts.tlp or opts.tlp not in ['red', 'amber', 'green', 'white']:
+            opts.tlp = 'red'
+
         try:
             fin = open(opts.filename, 'rb')
             data = fin.read()
@@ -67,13 +78,14 @@ class CRITsScript(CRITsBaseScript):
             filename,
             data,
             source,
-            reference=opts.reference,
+            source_reference=opts.reference,
+            source_tlp=opts.tlp,
             backdoor=trojan,
-            user=self.username,
+            user=self.user,
             related_md5=parent_md5,
             related_id=parent_id,
             related_type=parent_type,
-            method="Command line add_file.py",
+            source_method="Command line add_file.py",
             bucket_list=opts.bucket_list)
         if sourcemd5 != sample:
             print "[-] Source MD5: %s is not the same as the returned MD5: %s" % (sourcemd5, sample)
