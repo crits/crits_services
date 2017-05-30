@@ -207,7 +207,7 @@ class YaraService(Service):
                               'object_id': str(obj.id),
                               'analysis_id': self.current_task.task_id,
                               'start_date': self.current_task.start_date,
-                              'username': self.current_task.username,
+                              'username': self.current_task.user,
                               'api_key': config['api_key']
                          }
                     },
@@ -219,7 +219,7 @@ class YaraService(Service):
                               'object_id': str(obj.id),
                               'analysis_id': self.current_task.task_id,
                               'start_date': self.current_task.start_date,
-                              'username': self.current_task.username,
+                              'username': self.current_task.user,
                               'api_key': config['api_key']
                              }
                     },

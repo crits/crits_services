@@ -30,7 +30,7 @@ class MacroExtractService(Service):
         return
 
     def run(self, obj, config):
-        username = self.current_task.username
+        username = self.current_task.user
         filename = obj.filename
         filedata = obj.filedata.read()
         try:

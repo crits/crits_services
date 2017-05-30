@@ -8,8 +8,9 @@ from crits.core.basescript import CRITsBaseScript
 import settings
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username=None):
-        self.username = username
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def run(self, argv):
         samples = mongo_connector(settings.COL_SAMPLES)
