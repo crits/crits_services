@@ -49,6 +49,16 @@
 	                {{ form.reference }}
                 </td>
             </tr>
+            <tr>
+                <td colspan="2">
+	                <strong class="taxii_ctype_label required">
+		                Import Option
+	                </strong>
+	                <br/>
+                    <span title='If this box is checked, the uploaded data will be immediately imported into CRITs and then deleted.  You will not be given the opportunity to preview the data.'>
+	                    {{form.import_all}}{{ form.import_all.label }}</span>
+                </td>
+            </tr>
 		</table>
 	</form>
     {{ form.errors }}

@@ -70,16 +70,16 @@ class TaxiiContent(CritsSchemaDocument, CritsDocument, Document):
             'import_failed'
         ],
         "schema_doc": {
-            'taxii_msg_id': 'The ID of the TAXII message from which this content came',
-            'hostname': 'The hostname of the TAXII server',
+            'taxii_msg_id': 'A reference to the data (ID of the TAXII message)',
+            'hostname': 'The source of the data (or TAXII server hostname)',
             'use_hdr_src': 'Indicates if STIX Header Info Source is preferred',
-            'feed': 'The name of the TAXII feed/collection',
+            'feed': 'Name of the TAXII feed/collection, or ZIP file name',
             'block_label': 'STIX filename, or when block submitted to TAXII server',
-            'poll_time': 'A timestamp representing when this data was polled',
-            'timerange': 'The timerange of the TAXII poll',
-            'analyst': 'The analyst who polled the data',
-            'content': 'The content being stored',
-            'errors': 'Any errors that prevented import of the content',
+            'poll_time': 'When the data was polled or uploaded',
+            'timerange': 'Timerange of the TAXII poll, or indication of upload',
+            'analyst': 'The analyst who retrieved or provided the data',
+            'content': 'The content being stored (STIX)',
+            'errors': 'Errors that occurred while parsing or importing content',
             'import_failed': 'Boolean indicating that an attempt to import failed'
         },
     }
@@ -95,6 +95,54 @@ class TaxiiContent(CritsSchemaDocument, CritsDocument, Document):
     content = StringField(required=True)
     errors = ListField(StringField(required=True))
     import_failed = BooleanField(required=True, default=False)
+
+    def populate(self, data, analyst, message_id, hostname, feed, block_label,
+                 begin=None, end=None, poll_time=None, use_hdr_src=False,
+                 errors=[]):
+        """
+        Populate the class attributes
+
+        :param data: The STIX content
+        :type data: string
+        :param analyst: The analyst who retrieved or provided the data
+        :type analyst: string
+        :param message_id: A reference to the data (ID of the TAXII message)
+        :type message_id: string
+        :param hostname: The source of the data (or TAXII server hostname)
+        :type hostname: string
+        :param feed: Name of the TAXII feed/collection, or ZIP file name
+        :type feed: string
+        :param block_label: Filename, or when block submitted to TAXII server
+        :type block_label: string
+        :param begin: Exclusive begin component of the timerange that was polled
+        :type begin: :class:`datetime.datetime`
+        :param end: Inclusive end component of the timerange that was polled
+        :type end: :class:`datetime.datetime`
+        :param poll_time: When the data was polled or uploaded
+        :type poll_time: :class:`datetime.datetime`
+        :param use_hdr_src: Indicates if STIX Header Info Source is preferred
+        :type use_hdr_src: boolean
+        :param errors: Errors that occurred while parsing or importing content
+        :type errors: list
+        """
+
+        if data or errors:
+            self.taxii_msg_id = message_id
+            self.hostname = hostname
+            self.use_hdr_src = use_hdr_src
+            self.feed = feed
+            self.block_label = block_label
+            self.poll_time = poll_time or datetime.now()
+            if end: # TAXII poll will always have end timestamp
+                end = end.strftime('%Y-%m-%d %H:%M:%S')
+                begin = begin.strftime('%Y-%m-%d %H:%M:%S') if begin else 'None'
+                self.timerange = '%s to %s' % (begin, end)
+            else: # Must be a STIX file upload
+                self.timerange = 'STIX File Upload'
+            self.analyst = analyst
+            self.content = data or ""
+            self.errors = errors
+            self.import_failed = False
 
     def migrate(self):
         migrate_taxii_content(self)

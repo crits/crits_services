@@ -32,6 +32,7 @@ def taxii_poll(request):
     if form.is_valid():
         # Use service configuration from DB.
         feeds = [feed.split(' - ') for feed in form.cleaned_data['feeds']]
+        import_all = form.cleaned_data['import_all']
         begin = end = None
         if not form.cleaned_data['use_last']:
             begin = form.cleaned_data['begin']
@@ -43,9 +44,9 @@ def taxii_poll(request):
                                     content_type="application/json")
         try:
             result = handlers.poll_taxii_feeds(feeds, analyst,
-                                               begin=begin, end=end)
+                                               begin, end, import_all)
             data = {'success': True}
-            data['html'] = render_to_string("taxii_agent_preview.html",
+            data['html'] = render_to_string("taxii_agent_results.html",
                                             result)
         except Exception as e:
             data = {'success': False, 'msg': str(type(e)) + str(e)}
@@ -85,12 +86,19 @@ def stix_upload(request):
         source = form.cleaned_data['source']
         reference = form.cleaned_data['reference']
         use_hdr_src = form.cleaned_data['use_hdr_src']
+        import_all = form.cleaned_data['import_all']
 
         result = handlers.process_stix_upload(filedata, analyst, source,
-                                              reference, use_hdr_src)
-        data = {'success': True}
-        data['html'] = render_to_string("taxii_agent_preview.html",
-                                        {'poll': result})
+                                              reference, use_hdr_src,
+                                              import_all)
+        if import_all:
+            data = {'success': True, 'imported': True}
+            data['html'] = render_to_string("taxii_agent_results.html",
+                                            {'imported' : result})
+        else:
+            data = {'success': True}
+            data['html'] = render_to_string("taxii_agent_preview.html",
+                                            {'poll': result})
 
         return HttpResponse(json.dumps(data), content_type="application/json")
 
@@ -194,11 +202,11 @@ def import_taxii_data(request):
     post_data = json.loads(request.body)
     ids = post_data.get('ids')
     action = post_data.get('action')
-    result = handlers.import_content_blocks(ids, action, analyst)
+    result = handlers.import_content(ids, analyst, action)
 
     data = {'success': result['status'], 'msg': result['msg']}
     data['html'] = render_to_string("taxii_agent_results.html",
-                                    {'result' : result})
+                                    {'imported' : result})
     return HttpResponse(json.dumps(data), content_type="application/json")
 
 @user_passes_test(user_can_view_data)

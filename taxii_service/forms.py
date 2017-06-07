@@ -79,6 +79,9 @@ class TAXIIPollForm(forms.Form):
                  help_text="Feeds to poll for data",
                  widget=forms.SelectMultiple(attrs={'style':"height:200px;"}))
 
+    import_all = forms.BooleanField(required=False, initial=False,
+                            label="Skip preview and import all data into CRITs")
+
     use_last = forms.BooleanField(required=False, initial=True,
                                   label='Get all messages since last full poll')
 
@@ -365,6 +368,8 @@ class UploadStandardsForm(forms.Form):
     use_hdr_src = forms.BooleanField(required=False, initial=True,
                         label="Use STIX Header Information Source, if possible")
     reference = forms.CharField(required=False)
+    import_all = forms.BooleanField(required=False, initial=False,
+                            label="Skip preview and import all data into CRITs")
     make_event = forms.BooleanField(required=False, label="Create event", initial=True)
 
     def __init__(self, username, *args, **kwargs):

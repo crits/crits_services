@@ -108,7 +108,11 @@
 			}).done(function(data) { // run on successful request
 				if (data.success) { // at least some feeds were successfully processed
 					$("#results_container").html(data.html);
-					show_container("STIX Import Preview", result_ctr);
+					if (data.imported) {
+					    show_container("STIX Import Results", result_ctr);
+					} else {
+					    show_container("STIX Import Preview", result_ctr);
+					}
 					view_saved.prop('hidden', false);
 				} else { // some issue occurred
 					error_ctr.children(".taxii_notice").html(data.msg);
