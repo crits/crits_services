@@ -24,7 +24,7 @@ from django import forms as dforms
 from django.template.loader import render_to_string
 from django.utils.safestring import SafeText
 
-from mongoengine.base import ValidationError
+from mongoengine.errors import ValidationError
 
 from cybox.common import String, DateTime, Hash, UnsignedLong
 from cybox.common.object_properties import CustomProperties, Property
