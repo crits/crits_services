@@ -81,6 +81,7 @@ centos_install()
 {
     #printf "${HEAD}Installing Yum Packages${END}\n"
     sudo yum install yara
+    sudo pip install yara-python
     if [ $? -eq 0 ]
     then
       printf "${PASS}Yum Install Complete${END}\n"
