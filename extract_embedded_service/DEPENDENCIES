@@ -1,0 +1,3 @@
+Dependencies for extract_embedded (is/are):
+clamscan - you need clamscan binary in /usr/bin/
+

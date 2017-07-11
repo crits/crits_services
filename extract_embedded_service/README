@@ -1,0 +1,6 @@
+Version 0.0.1
+-------------
+
+This is an attempt at integrating a crits service with clamav for extract embedded file(s) (options --leave-temps --tempdir=tmp/).
+
+
