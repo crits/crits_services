@@ -1,0 +1,5 @@
+The Joe Sandbox service [1] required the Python libraries specified in
+requirements.txt (installed with bootstrap.sh) and an on-premise installation
+or a cloud account for Joe Sandbox.
+
+[1] https://www.joesecurity.org/
