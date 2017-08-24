@@ -125,7 +125,8 @@ class STIXParser():
         self.failed = [] # track STIX/CybOX items that failed import
         self.saved_artifacts = {}
 
-    def parse_stix(self, reference='', hdr_events=False, source=''):
+    def parse_stix(self, reference='', hdr_events=False, source='',
+                   use_hdr_src=False):
         """
         Parse the document.
 
@@ -135,6 +136,9 @@ class STIXParser():
         :type hdr_events: bool
         :param source: The source of this document.
         :type source: str
+        :param use_hdr_src: If True, try to use the STIX Header Information
+                             Source instead of the value in "source" parameter
+        :type use_hdr_src: boolean
         :raises: :class:`taxii_service.parsers.STIXParserException`
 
         Until we have a way to map source strings in a STIX document to
@@ -170,14 +174,17 @@ class STIXParser():
                     self.pkg_rels[pkg.id_] = (str(rel_pkg.relationship),
                                               str(rel_pkg.confidence))
                     self.imported = self.importedByPkg.setdefault(pkg.id_, {})
-                    self.parse_package(pkg, reference, hdr_events, source)
+                    self.parse_package(pkg, reference, hdr_events, source,
+                                       use_hdr_src)
 
             self.imported = self.importedByPkg.setdefault(self.package.id_, {})
-            self.parse_package(self.package, reference, hdr_events, source) # parse the top-level package
+            self.parse_package(self.package, reference, hdr_events, source,
+                               use_hdr_src) # parse the top-level package
             self.imported = {k: v for d in self.importedByPkg.itervalues() for k, v in d.items()}
 
 
-    def parse_package(self, package, reference='', hdr_events=False, source=''):
+    def parse_package(self, package, reference='', hdr_events=False, source='',
+                      use_hdr_src=False):
         """
         Parse a STIX package.
 
@@ -189,28 +196,38 @@ class STIXParser():
         :type hdr_events: bool
         :param source: The source of this document.
         :type source: str
+        :param use_hdr_src: If True, try to use the STIX Header Information
+                             Source instead of the value in "source" parameter
+        :type use_hdr_src: boolean
         """
 
         header = package.stix_header
         if not self.preview:
             self.stix_version = package.version
             try:
-                hdr_source = header.information_source.info_src.identity.name
+                hdr_source = header.information_source.identity.name
             except:
                 hdr_source = None
-            if source:
-                if does_source_exist(source):
-                    self.source.name = source
-                    if hdr_source and source != hdr_source:
-                        refs = [reference, "STIX Source: %s" % hdr_source]
-                        reference = ", ".join(x for x in refs if x)
-                else:
-                    msg = 'Source "%s" does not exist in CRITs.' % source
-                    raise STIXParserException(msg)
-            elif does_source_exist(hdr_source):
+            try:
+                hdr_ref = ", ".join(header.information_source.references)
+            except:
+                hdr_ref = None
+
+            # if STIX src is preferred and valid, use it
+            if use_hdr_src and hdr_ref:
+                reference = hdr_ref # use STIX Header references
+            if use_hdr_src and does_source_exist(hdr_source):
+                self.source.name = hdr_source # use STIX header source identity
+            elif does_source_exist(source): # else use given source if valid
+                self.source.name = source
+                if hdr_source and source != hdr_source:
+                    refs = [reference, "STIX Source: %s" % hdr_source]
+                    reference = ", ".join(x for x in refs if x)
+            elif does_source_exist(hdr_source): # else use STIX src if valid
                 self.source.name = hdr_source
-            else:
-                raise STIXParserException("No source to attribute data to.")
+            else: # else error because a valid source is required
+                msg = 'No valid source provided ("%s", "%s")'
+                raise STIXParserException(msg  % (source, hdr_source))
 
             self.source_instance.reference = reference
             self.source.instances.append(self.source_instance)

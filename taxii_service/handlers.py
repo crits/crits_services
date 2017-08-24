@@ -2,8 +2,10 @@ import cgi
 import logging
 import os
 import pytz
+import re
 import socket
 import uuid
+import zipfile
 
 from datetime import datetime
 from dateutil.parser import parse
@@ -365,12 +367,12 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         return ret
 
     for content_block in taxii_msg.content_blocks:
-        timestamp = content_block.timestamp_label
+        label = content_block.timestamp_label.strftime("%Y-%m-%d %H:%M:%S")
         data = parse_content_block(content_block, tm_, ekey, ecert)
 
         errors = ["%s: %s" % ("Content Block", data[1])] if data[1] else []
 
-        save_standards_doc(data[0], analyst, mid, hostname, feed, timestamp,
+        save_standards_doc(data[0], analyst, mid, hostname, feed, label,
                            start, end, poll_time=runtime, errors=errors)
 
     if save_datetimes:
@@ -429,36 +431,94 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
         msg = 'Unknown content binding "%s"' % binding
         return (None, msg)
 
-def process_standards_doc(data, analyst, filename, source, reference):
-    """
-    Take the given standards data and save it in the DB
 
-    :param data: Uploaded Content
-    :type data: string
+def process_stix_upload(filedata, analyst, source, reference, use_hdr_src):
+    """
+    Take the given file data and save each contained STIX document in the DB.
+    If the file is a ZIP, extract and save each STIX document.
+
+    :param filedata: The uploaded filedata
+    :type filedata: :class:`django.core.files.uploadedfile.InMemoryUploadedFile`
     :param analyst: Userid of the analyst who uploaded the data
     :type analyst: string
-    :param filename: The filename of the standards doc
-    :type filename: string
-    :param source: The source name of the data
+    :param source: The analyst provided source name of the data
     :type source: string
     :param reference: A reference to the source of the data
     :type reference: string
+    :param use_hdr_src: If True, try to use the STIX Header Information Source
+                         instead of the value in "source" parameter
+    :type use_hdr_src: boolean
     :returns: dict with key "polls"
     """
 
-    t_stamp = datetime.now()
+    t_stamp = datetime.now(tzutc())
     t_stamp = t_stamp.replace(microsecond=t_stamp.microsecond / 1000 * 1000)
-    host = "Manual STIX Upload - Source: %s" % source
+    top_name = filedata.name
 
-    save_standards_doc(data, analyst, reference, host, filename,
-                       t_stamp, poll_time=t_stamp)
+    if zipfile.is_zipfile(filedata):
+        with zipfile.ZipFile(filedata, 'r') as z:
+            for zinfo in z.infolist():
+                process_stix_doc(z.open(zinfo), zinfo.filename, t_stamp, source,
+                                 reference, use_hdr_src, analyst, top_name)
+    else:
+        process_stix_doc(filedata, top_name, t_stamp, source,
+                         reference, use_hdr_src, analyst)
 
     poll_id = (t_stamp.replace(tzinfo=None)-datetime(1970,1,1)).total_seconds()
 
-    return {'polls': [generate_import_preview(poll_id, analyst)]}
+    return generate_import_preview(poll_id, analyst)
 
-def save_standards_doc(data, analyst, message_id, hostname, feed, timestamp,
-                       begin=None, end=None, poll_time=None, errors=[]):
+
+def process_stix_doc(data, doc_name, t_stamp, source, reference, use_hdr_src,
+                     analyst, top_name=None):
+    """
+    Take the data for a STIX document, decode if necessary, and save in the DB.
+
+    :param data: The STIX document data
+    :type data: :class:`django.core.files.uploadedfile.InMemoryUploadedFile`
+                OR :class:`zipfile.ZipExtFile`
+    :param doc_name: The filename of the STIX document
+    :type doc_name: string
+    :param t_stamp: Timestamp representing when this data was uploaded
+    :type t_stamp: :class:`datetime.datetime`
+    :param source: The analyst provided source name of the data
+    :type source: string
+    :param reference: A reference to the source of the data
+    :type reference: string
+    :param use_hdr_src: If True, try to use the STIX Header Information Source
+                         instead of the value in "source" parameter
+    :type use_hdr_src: boolean
+    :param analyst: Userid of the analyst who uploaded the data
+    :type analyst: string
+    :param top_name: The filename of the STIX document or parent ZIP file
+    :type top_name: string
+    :returns: Nothing
+    """
+
+    if not top_name:
+        top_name = doc_name
+
+    decoded = u''
+    checked = False
+    encoding = 'utf-8'
+    ## search and extract encoding string
+    ptrn = r"""^<\?xml.+?encoding=["'](?P<encstr>[^"']+)["'].*?\?>"""
+
+    for line in data:
+        if not checked:
+            match = re.search(ptrn, line)
+            checked = True
+            if match:
+                encoding = match.group("encstr")
+        decoded += line.decode(encoding, 'replace')
+
+    save_standards_doc(decoded, analyst, reference, source, top_name, doc_name,
+                       poll_time=t_stamp, use_hdr_src=use_hdr_src)
+
+
+def save_standards_doc(data, analyst, message_id, hostname, feed, block_label,
+                       begin=None, end=None, poll_time=None, use_hdr_src=False,
+                       errors=[]):
     """
     Take the given standards data and save it in the DB
 
@@ -472,14 +532,17 @@ def save_standards_doc(data, analyst, message_id, hostname, feed, timestamp,
     :type hostname: string
     :param feed: Feed/collection from which this data was polled
     :type feed: string
-    :param timestamp: When the content was submitted to the TAXII server
-    :type timestamp: :class:`datetime.datetime`
+    :param block_label: STIX filename, or when block submitted to TAXII server
+    :type block_label: string
     :param begin: Exclusive begin component of the timerange that was polled
     :type begin: :class:`datetime.datetime`
     :param end: Inclusive end component of the timerange that was polled
     :type end: :class:`datetime.datetime`
     :param poll_time: Timestamp representing when this data was polled
     :type poll_time: :class:`datetime.datetime`
+    :param use_hdr_src: If True, try to use the STIX Header Information Source
+                         instead of the value in "source" parameter
+    :type use_hdr_src: boolean
     :param errors: List of errors
     :type errors: list
     :returns: Nothing
@@ -489,18 +552,16 @@ def save_standards_doc(data, analyst, message_id, hostname, feed, timestamp,
         taxii_content = taxii.TaxiiContent()
         taxii_content.taxii_msg_id = message_id
         taxii_content.hostname = hostname
+        taxii_content.use_hdr_src = use_hdr_src
         taxii_content.feed = feed
-        taxii_content.timestamp = timestamp
+        taxii_content.block_label = block_label
         taxii_content.poll_time = poll_time or datetime.now()
-        if begin:
-            begin = begin.strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            begin = 'None'
-        if end:
+        if end: # TAXII poll will always have end timestamp
             end = end.strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            end = 'None'
-        taxii_content.timerange = '%s to %s' % (begin, end)
+            begin = begin.strftime('%Y-%m-%d %H:%M:%S') if begin else 'None'
+            taxii_content.timerange = '%s to %s' % (begin, end)
+        else: # Must be a STIX file upload
+            taxii_content.timerange = 'STIX File Upload'
         taxii_content.analyst = analyst
         taxii_content.content = data or ""
         taxii_content.errors = errors
@@ -532,6 +593,7 @@ def generate_import_preview(poll_id, analyst):
     tsvc = get_config('taxii_service')
     hdr_events = tsvc['header_events']
     p_time = datetime.utcfromtimestamp(float(poll_id))
+    block_count = taxii.TaxiiContent.objects(poll_time=p_time).count()
     blocks = taxii.TaxiiContent.objects(poll_time=p_time)
     if not blocks:
         ret = {
@@ -540,13 +602,13 @@ def generate_import_preview(poll_id, analyst):
         }
         return ret
 
-    times = blocks[0].timerange.split(' to ')
     ret = {
             'successes': 0,
             'failures': [],
             'blocks': [],
-            'start': times[0],
-            'end': times[1],
+            'block_count': block_count,
+            'timerange': blocks[0].timerange,
+            'poll_id': poll_id,
             'poll_time': blocks[0].poll_time,
             'taxii_msg_id': blocks[0].taxii_msg_id,
             'source': blocks[0].hostname,
@@ -579,7 +641,7 @@ def generate_import_preview(poll_id, analyst):
                                                          tlo_meta[2]))
 
         ret['blocks'].append({'id': block.id,
-                              'timestamp': block.timestamp,
+                              'block_label': block.block_label,
                               'tlos': tlos,
                               'failures': failures})
     return ret
@@ -609,7 +671,7 @@ def get_saved_polls(action, poll_id=None):
             data.delete() # delete the given poll
             return {'success': True}
         else: # download
-            if 'Manual STIX Upload' in data[0].hostname:
+            if  data[0].timerange == 'STIX File Upload':
                 filename = data[0].feed
                 res = ''.join(block.content for block in data)
                 return {'response': res, 'filename': filename}
@@ -618,7 +680,8 @@ def get_saved_polls(action, poll_id=None):
             filename = "taxii_poll-%s.xml" % p_time.strftime('%Y%m%dT%H%M%S')
             content_blocks = []
             for block in data:
-                stamp = block.timestamp.replace(tzinfo=pytz.utc)
+                stamp = datetime.strptime(block.block_label, '%Y-%m-%d %H:%M:%S')
+                stamp = stamp.replace(tzinfo=pytz.utc)
                 c_block = tm11.ContentBlock(content_binding = t.CB_STIX_XML_111,
                                             timestamp_label = stamp,
                                             content = block.content)
@@ -675,13 +738,14 @@ def get_saved_block(block_id=None):
 
     data = taxii.TaxiiContent.objects(id=block_id).first() # get data from dB
 
-    if 'Manual STIX Upload' in data.hostname:
-        filename = data.feed
+    if data.timerange == 'STIX File Upload':
+        filename = data.block_label
         res = data.content
         return {'response': res, 'filename': filename}
 
     # rebuild XML
-    stamp = data.timestamp.replace(tzinfo=pytz.utc)
+    stamp = datetime.strptime(data.block_label, '%Y-%m-%d %H:%M:%S')
+    stamp = stamp.replace(tzinfo=pytz.utc)
     filename = "taxii_block-%s-%s.xml"
     filename = filename % (data.feed, stamp.strftime('%Y%m%dT%H%M%S'))
     c_block = tm11.ContentBlock(content_binding = t.CB_STIX_XML_111,
@@ -735,7 +799,7 @@ def import_content_blocks(block_ids, action, analyst):
     if not block_ids:
         return {'status': False, 'msg': 'No content was selected for import'}
 
-    method = "TAXII Import"
+    method = "STIX Import"
     blocks = taxii.TaxiiContent.objects(id__in=block_ids)
 
     tsvc = get_config('taxii_service')
@@ -746,8 +810,8 @@ def import_content_blocks(block_ids, action, analyst):
     for block in blocks:
         source = ""
         reference = block.taxii_msg_id
-        timestamp = block.timestamp
         data = block.content
+        use_hdr_src = block.use_hdr_src
 
         for svr in tsrvs:
             if tsrvs[svr].get('hostname') == block.hostname:
@@ -768,7 +832,7 @@ def import_content_blocks(block_ids, action, analyst):
             default_ci = ('unknown', 'unknown')
 
         objs = import_standards_doc(data, analyst, method, reference,
-                                    hdr_events, default_ci, source)
+                                    hdr_events, default_ci, source, use_hdr_src)
 
         if not objs['success']:
             ret['failures'].append((objs['reason'],
@@ -1770,7 +1834,8 @@ def update_taxii_service_config(post_data, analyst):
     return status
 
 def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
-                         def_ci=None, source=None, preview_only=False):
+                         def_ci=None, source=None, use_hdr_src=False,
+                         preview_only=False):
     """
     Import a standards document into CRITs.
 
@@ -1789,6 +1854,9 @@ def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
     :type def_ci: tuple
     :param source: The name of the source who provided this document.
     :type source: str
+    :param use_hdr_src: If True, try to use the STIX Header Information
+                         Source instead of the value in "source" parameter
+    :type use_hdr_src: boolean
     :param preview_only: If True, nothing is imported and a preview is returned
     :type preview_only: boolean
     :returns: dict with keys:
@@ -1807,7 +1875,7 @@ def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
 
     try:
         parser = STIXParser(data, analyst, method, def_ci, preview_only)
-        parser.parse_stix(reference=ref, hdr_events=hdr_events, source=source)
+        parser.parse_stix(ref, hdr_events, source, use_hdr_src)
         parser.relate_objects()
     except STIXParserException as e:
         logger.exception(str(e))

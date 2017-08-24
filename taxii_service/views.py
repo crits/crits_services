@@ -71,7 +71,8 @@ def taxii_poll(request):
 @user_passes_test(user_can_view_data)
 def stix_upload(request):
     """
-    Manually upload a STIX document. Should be a GET or an AJAX POST.
+    Manually upload a STIX document or ZIP of STIX documents.
+    Should be a GET or an AJAX POST.
 
     :param request: Django request object (Required)
     :type request: :class:`django.http.HttpRequest`
@@ -83,32 +84,17 @@ def stix_upload(request):
         form = forms.UploadStandardsForm(request.user)
 
     if form.is_valid():
+        filedata = request.FILES['filedata']
         analyst = request.user.username
-        data = u''
-        import re
-        skip = False
-        encoding = 'ascii'
-        ## search and extract encoding string
-        ptrn = r"""^<\?xml.+?encoding=["'](?P<encstr>[^"']+)["'].*?\?>"""
-        match = re.search(ptrn, request.FILES['filedata'].readline())
-        if match :
-            encoding = match.group("encstr")
-            skip = True
-        for line in request.FILES['filedata']:
-            if skip: # First line has encoding declaration, so skip
-                skip = False
-                continue
-            data += line.decode(encoding, 'replace')
         source = form.cleaned_data['source']
         reference = form.cleaned_data['reference']
-        filename = request.FILES['filedata'].name
+        use_hdr_src = form.cleaned_data['use_hdr_src']
 
-        result = handlers.process_standards_doc(data, analyst, filename,
-                                                source, reference)
-
+        result = handlers.process_stix_upload(filedata, analyst, source,
+                                              reference, use_hdr_src)
         data = {'success': True}
         data['html'] = render_to_string("taxii_agent_preview.html",
-                                        {'result' : result})
+                                        {'poll': result})
 
         return HttpResponse(json.dumps(data), content_type="application/json")
 

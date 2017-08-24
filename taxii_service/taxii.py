@@ -1,9 +1,11 @@
 from mongoengine import Document, StringField, ListField, BooleanField
 
-from crits.core.crits_mongoengine import CritsDocument
+from crits.core.crits_mongoengine import CritsDocument, CritsSchemaDocument
 from crits.core.fields import CritsDateTimeField
 
-class Taxii(CritsDocument, Document):
+from .migrate import migrate_taxii_content
+
+class Taxii(CritsSchemaDocument, CritsDocument, Document):
     """TAXII Document Object"""
     meta = {
         # mongoengine adds fields _cls and _types and uses them to filter database
@@ -40,7 +42,7 @@ class Taxii(CritsDocument, Document):
     def get_last(cls, feed):
         return cls.objects(feed=feed).order_by('-end').first()
 
-class TaxiiContent(CritsDocument, Document):
+class TaxiiContent(CritsSchemaDocument, CritsDocument, Document):
     """TAXII Content Block Document Object"""
     meta = {
         # mongoengine adds fields _cls and _types and uses them to filter database
@@ -52,13 +54,14 @@ class TaxiiContent(CritsDocument, Document):
         "allow_inheritance": False,
         "collection": 'taxii.content',
         "crits_type": 'TAXIIContent',
-        "latest_schema_version": 1,
+        "latest_schema_version": 2,
         #NOTE: minify_defaults fields should match the MongoEngine field names, NOT the database fields
         "minify_defaults": [
             'taxii_msg_id',
             'hostname',
+            'use_hdr_src',
             'feed',
-            'timestamp',
+            'block_label',
             'poll_time',
             'timerange',
             'analyst',
@@ -69,8 +72,9 @@ class TaxiiContent(CritsDocument, Document):
         "schema_doc": {
             'taxii_msg_id': 'The ID of the TAXII message from which this content came',
             'hostname': 'The hostname of the TAXII server',
+            'use_hdr_src': 'Indicates if STIX Header Info Source is preferred',
             'feed': 'The name of the TAXII feed/collection',
-            'timestamp': 'When the content was submitted to the TAXII server',
+            'block_label': 'STIX filename, or when block submitted to TAXII server',
             'poll_time': 'A timestamp representing when this data was polled',
             'timerange': 'The timerange of the TAXII poll',
             'analyst': 'The analyst who polled the data',
@@ -82,8 +86,9 @@ class TaxiiContent(CritsDocument, Document):
 
     taxii_msg_id = StringField(required=True)
     hostname = StringField(required=True)
+    use_hdr_src = BooleanField(required=True, default=False)
     feed = StringField(required=True)
-    timestamp = CritsDateTimeField(required=True)
+    block_label = StringField(required=True)
     poll_time = CritsDateTimeField(required=True)
     timerange = StringField(required=True)
     analyst = StringField(required=True)
@@ -92,4 +97,4 @@ class TaxiiContent(CritsDocument, Document):
     import_failed = BooleanField(required=True, default=False)
 
     def migrate(self):
-        pass
+        migrate_taxii_content(self)

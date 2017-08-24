@@ -360,8 +360,10 @@ class UploadStandardsForm(forms.Form):
 
     error_css_class = 'error'
     required_css_class = 'required'
-    filedata = forms.FileField()
+    filedata = forms.FileField(label="XML File or Zip of XML Files")
     source = forms.ChoiceField(required=True)
+    use_hdr_src = forms.BooleanField(required=False, initial=True,
+                        label="Use STIX Header Information Source, if possible")
     reference = forms.CharField(required=False)
     make_event = forms.BooleanField(required=False, label="Create event", initial=True)
 
