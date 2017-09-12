@@ -973,10 +973,17 @@ class STIXParser():
                     sha256 = sha256.lower()
                     if len(sha256) == 63:
                         sha256 = "0" + sha256
-
                     validate_sha256_result = validate_sha256_checksum(sha256)
                     if validate_sha256_result.get('success', False) is False:
                         sha256 = None
+                ssdeep = getattr(item, 'ssdeep', None) # Not supported yet
+                if not ssdeep: # so see if we can find it
+                    try:
+                        for h in item.hashes.hashes:
+                            if h.type_ == 'SSDEEP':
+                                ssdeep = str(h.fuzzy_hash_value)
+                    except:
+                        pass
 
                 fname = None
                 if item.file_name is not None:
@@ -991,11 +998,12 @@ class STIXParser():
                         rel_obj.properties.type_ == Artifact.TYPE_FILE):
                         data = rel_obj.properties.data
                         self.parsed.append(rel_obj.id_)
-                if not md5 and not data and (fname or sha1 or sha256): # Can't create a Sample
+                if not (md5 or data) and (fname or sha1 or sha256 or ssdeep): # Can't create a Sample
                     imp_type = "Indicator"
                     for indt, indv in ((IndicatorTypes.FILE_NAME, fname),
                                        (IndicatorTypes.SHA1, sha1),
-                                       (IndicatorTypes.SHA256, sha256)):
+                                       (IndicatorTypes.SHA256, sha256),
+                                       (IndicatorTypes.SSDEEP, ssdeep)):
                         if indv:
                             if self.preview:
                                 res = None
