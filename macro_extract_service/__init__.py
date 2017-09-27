@@ -59,9 +59,8 @@ class MacroExtractService(Service):
                 if result['success']:
                     obj.add_relationship(
                         result['object'],
-                        RelationshipTypes.CONTAINED_WITHIN, #bug in crits, display contains instead of contained within ...
-                        #RelationshipTypes.RELATED_TO,
-                        #analyst=username, #remove analyst because make error: Error running service: Cannot encode object: <SimpleLazyObject: <CRITsUser: $user>>
+                        RelationshipTypes.CONTAINED_WITHIN,
+                        analyst=username.username
                         rel_reason="Extracted from related Sample"
                     )
                     obj.save()
