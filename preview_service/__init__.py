@@ -57,6 +57,8 @@ class previewService(Service):
 
         if not 'antiword' in antiword_path.lower():
             raise ServiceConfigError("Executable does not appear to be antiword.")
+        
+        tlp_value = config.get("tlp_value", "")
 
     @staticmethod
     def get_config(existing_config):
@@ -75,7 +77,8 @@ class previewService(Service):
     @staticmethod
     def get_config_details(config):
         return {'pdftoppm_path': config['pdftoppm_path'],
-                'antiword_path': config['antiword_path']}
+                'antiword_path': config['antiword_path'],
+                'tlp_value': config['tlp_value']}
 
     @classmethod
     def generate_config_form(self, config):
@@ -117,6 +120,7 @@ class previewService(Service):
         obj.filedata.seek(0)
         data8 = obj.filedata.read(8)
         obj.filedata.seek(0)
+        tlp_value = self.config.get("tlp_value", "tlp_value")
         if not obj.is_pdf() and not data8.startswith("\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"):
             self._debug("preview image started.")
             try:
@@ -138,10 +142,11 @@ class previewService(Service):
                                                          method=self.name,
                                                          source=obj.source,
                                                          reference=None, 
-                                                         analyst=self.current_task.user, 
+                                                         analyst=self.current_task.user.username, 
                                                          screenshot=ofile, 
                                                          screenshot_ids=None,
-                                                         oid=obj.id, 
+                                                         oid=obj.id,
+                                                         tlp=tlp_value,
                                                          otype="Sample")
                 if res.get('message') and res.get('success') == True:
                     self._warning("res-message: %s id:%s" % (res.get('message'), res.get('id') ) ) 
@@ -190,10 +195,11 @@ class previewService(Service):
                                                          method=self.name,
                                                          source=obj.source,
                                                          reference=None,
-                                                         analyst=self.current_task.user,
+                                                         analyst=self.current_task.user.username,
                                                          screenshot=fileh,
                                                          screenshot_ids=None,
                                                          oid=obj.id,
+                                                         tlp=tlp_value,
                                                          otype="Sample")
                             if res.get('message') and res.get('success') == True:
                                 self._warning("res-message: %s id:%s" % (res.get('message'), res.get('id') ) )
@@ -236,10 +242,11 @@ class previewService(Service):
                                                          method=self.name,
                                                          source=obj.source,
                                                          reference=None, 
-                                                         analyst=self.current_task.user, 
+                                                         analyst=self.current_task.user.username, 
                                                          screenshot=fileh, 
                                                          screenshot_ids=None,
                                                          oid=obj.id, 
+                                                         tlp=tlp_value,
                                                          otype="Sample")
                         if res.get('message') and res.get('success') == True:
                             self._warning("res-message: %s id:%s" % (res.get('message'), res.get('id') ) )
