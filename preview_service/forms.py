@@ -15,20 +15,13 @@ class previewConfigForm(forms.Form):
                                widget=forms.TextInput(),
                                help_text="Full path to antiword binary.")
                                
-    tlp_value = forms.ChoiceField(required=True,
+    tlp_value = forms.CharField(required=True,
                                label="Tlp value",
                                initial='red',
-                               widget=forms.Select,
-                               help_text="Select TLP value.")
+                               widget=forms.TextInput(),
+                               help_text="Indicate TLP value.")
                                
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('label_suffix', ':')
-        super( previewConfigForm, self).__init__(*args, **kwargs)
-        self.fields['Tlp value'].choices = [("red", "TLP red"),
-                                            ("amber", "TLP amber"),
-                                            ("green", "TLP green"),
-                                            ("white", "TLP white")]
-
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault('label_suffix', ':')
         super(previewConfigForm, self).__init__(*args, **kwargs)
+
