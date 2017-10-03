@@ -194,6 +194,7 @@ class ExtractEmbeddedService(Service):
                 # the second element of the tuple returned by communicate().
                 output, serr = proc.communicate()
                 #print stderr without message 'empty database file'
+                self._info(output)
                 if serr:
                     self._warning(serr)
                 #run command problem
