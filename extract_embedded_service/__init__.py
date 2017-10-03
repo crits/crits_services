@@ -79,6 +79,11 @@ class ExtractEmbeddedService(Service):
         yararules_path = config.get("yararules_path", "")
         if not yararules_path:
             raise ServiceConfigError("You must specify a valid path for yara rules.")
+        coef_path = config.get("coef_path", "")
+        if not coef_path:
+            raise ServiceConfigError("You must specify a valid path for coef configuration path.")
+        if not os.path.isfile(coef_path):
+            raise ServiceConfigError("Coef Configuration path does not exist.")
         tlp_value = config.get("tlp_value", "")
 
     @staticmethod
@@ -101,6 +106,7 @@ class ExtractEmbeddedService(Service):
                 'analysis_path': config['analysis_path'],
                 'pattern_path': config['pattern_path'],
                 'yararules_path': config['yararules_path'],
+                'coef_path': config['coef_path'],
                 'tlp_value': config['tlp_value']}
 
     @classmethod
@@ -165,6 +171,7 @@ class ExtractEmbeddedService(Service):
         analysis_path = self.config.get("analysis_path", os.path.dirname(os.path.realpath(__file__))+'/static_analysis/analysis.py')
         yararules_path = self.config.get("yararules_path", os.path.dirname(os.path.realpath(__file__))+'/static_analysis/yara_rules/')
         pattern_path = self.config.get("pattern_path", os.path.dirname(os.path.realpath(__file__))+'/static_analysis/pattern.db')
+        coef_path = self.config.get("coef_path", os.path.dirname(os.path.realpath(__file__))+'/static_analysis/coef.conf')
         #write out the sample stored in the db to a tmp file
         with self._write_to_file() as tmp_file:
             (working_dir, filename) = os.path.split(tmp_file)
@@ -179,9 +186,9 @@ class ExtractEmbeddedService(Service):
                 self._warning('Error: File temp exist.')
             else:
                 #TODO add choice: verbose mode and extracted file emmbed
-                args = ['python', analysis_path, '-c', clamscan_path, '-g', '-y', yararules_path, '-p', pattern_path, '-f', tmp_file, '-s', file_png, '-j', file_json]
+                args = ['python', analysis_path, '-c', clamscan_path, '-g', '-y', yararules_path, '-p', pattern_path, '-f', tmp_file, '-m', coef_path, '-s', file_png, '-j', file_json]
                 if config['debug_log']:
-                    args = ['python', analysis_path, '-c', clamscan_path, '-g', '-y', yararules_path, '-p', pattern_path, '-f', tmp_file, '-s', file_png, '-j', file_json, '-v']
+                    args = ['python', analysis_path, '-c', clamscan_path, '-g', '-y', yararules_path, '-p', pattern_path, '-f', tmp_file, '-m', coef_path, '-s', file_png, '-j', file_json, '-v']
                 #verify user can write sample
                 acl_write = user.has_access_to(SampleACL.WRITE)
                 if not acl_write:

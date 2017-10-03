@@ -24,6 +24,11 @@ class ExtractEmbeddedConfigForm(forms.Form):
                                initial=os.path.dirname(os.path.realpath(__file__))+'/static_analysis/pattern.db',
                                widget=forms.TextInput(),
                                help_text="Pattern DB path for extract data")
+    coef_path = forms.CharField(required=True,
+                               label="Coef configuration",
+                               initial=os.path.dirname(os.path.realpath(__file__))+'/static_analysis/coef.conf',
+                               widget=forms.TextInput(),
+                               help_text="Coef configuration path for globale score")
     tlp_value = forms.CharField(required=True,
                                label="Tlp value",
                                initial='red',
