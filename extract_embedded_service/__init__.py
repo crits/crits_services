@@ -29,6 +29,16 @@ from crits.screenshots.handlers import add_screenshot
 #get info Sample object
 from crits.samples.sample import Sample
 
+from crits.indicators.indicator import Indicator
+from crits.indicators.handlers import handle_indicator_ind
+from crits.vocabulary.acls import IndicatorACL
+from crits.vocabulary.indicators import (
+    IndicatorCI,
+    IndicatorAttackTypes,
+    IndicatorThreatTypes,
+    IndicatorTypes
+)
+
 from . import forms
 
 logger = logging.getLogger(__name__)
@@ -115,6 +125,10 @@ class ExtractEmbeddedService(Service):
             del config['debug_log']
         if config['import_file']:
             del config['import_file']
+        if config['import_file_ioc']:
+            del config['import_file_ioc']
+        if config['import_file_yara']:
+            del config['import_file_yara']
 
     @staticmethod
     def bind_runtime_form(analyst, config):
@@ -122,6 +136,10 @@ class ExtractEmbeddedService(Service):
             config['debug_log'] = False
         if 'import_file' not in config:
             config['import_file'] = False
+        if 'import_file_ioc' not in config:
+            config['import_file_ioc'] = False
+        if 'import_file_yara' not in config:
+            config['import_file_yara'] = False
         form = forms.ExtractEmbeddedRunForm(data=config)
         return form
 
@@ -230,6 +248,8 @@ def parse_result(self, result_extract, acl_write, md5_parent):
         #make reccursion extract each file embbed
         if 'FileMD5' in result_extract and result_extract['FileMD5']:
             tmp_dict={}
+            b_yara=False
+            b_ioc=False
             #extract info
             no_info=['ExtractInfo','ContainedObjects', 'Yara', 'PathFile', 'FileMD5', 'RootFileType', 'TempDirExtract']
             for key, value in result_extract.iteritems():
@@ -240,11 +260,13 @@ def parse_result(self, result_extract, acl_write, md5_parent):
                 for item_v in result_extract['Yara']:
                     for key, value in item_v.iteritems():
                         self._add_result('File: '+result_extract['FileMD5'] + ' - Signatures yara matched', key, value)
+                        b_yara = True
             #extract IOC
             if result_extract['ExtractInfo']:
                 for item_v in result_extract['ExtractInfo']:
                     for key, value in item_v.iteritems():
                         self._add_result('File: '+result_extract['FileMD5'] + ' - Extract potential IOC', key, {'value': str(value)})
+                        b_ioc = True
             #add_sample
             if 'PathFile' in result_extract and type(result_extract['PathFile']) is list and len(result_extract['PathFile']) > 0:
                 if os.path.isfile(str(result_extract['PathFile'][0])):
@@ -254,14 +276,14 @@ def parse_result(self, result_extract, acl_write, md5_parent):
                         name = str(stream_md5).decode('ascii', errors='ignore')
                         id_ = Sample.objects(md5=stream_md5).only('id').first()
                         if id_:
-                            self._add_result('Samples added', name, {'samples': stream_md5, 'exists': 'Yes id:'+str(id_.id)})
+                            self._info('Add relationship with sample existed:'+str(stream_md5))
                             #make relationship
                             id_.add_relationship(rel_item=self.obj,
                                      rel_type=RelationshipTypes.CONTAINED_WITHIN,
                                      rel_date=datetime.now(),
                                      analyst=self.current_task.user.username)
                         else:
-                            if acl_write and self.config['import_file']:
+                            if acl_write and (self.config['import_file'] or (self.config['import_file_yara'] and b_yara) or (self.config['import_file_ioc'] and b_ioc)):
                                 obj_parent = None
                                 if md5_parent:
                                     obj_parent = Sample.objects(md5=md5_parent).only('id').first()
@@ -281,11 +303,35 @@ def parse_result(self, result_extract, acl_write, md5_parent):
                                             source_method=self.name,
                                             relationship=RelationshipTypes.CONTAINED_WITHIN,
                                             user=self.current_task.user)
-                                self._add_result('Samples added', name, {'samples': stream_md5, 'exists': 'No'})
-
+                                self._info('Add sample '+str(stream_md5))
+                            else:
+                                #add IOC if not add sample
+                                if self.current_task.user.has_access_to(IndicatorACL.WRITE) and b_yara:
+                                    res = handle_indicator_ind(stream_md5,
+                                                    self.obj.source,
+                                                    IndicatorTypes.MD5,
+                                                    IndicatorThreatTypes.UNKNOWN,
+                                                    IndicatorAttackTypes.UNKNOWN,
+                                                    self.current_task.user,
+                                                    add_relationship=True,
+                                                    source_method=self.name,
+                                                    campaign=self.obj.campaign,
+                                                    description='Extracted by service '+self.name)
+                                    self._info('Add indicator md5:'+str(stream_md5)+' -- id: '+str(res))
             #contains file
             if 'ContainedObjects' in result_extract and type(result_extract['ContainedObjects']) is list and result_extract['ContainedObjects']:
                 for item_v in result_extract['ContainedObjects']:
                     if item_v['FileMD5'] and item_v['FileType'] and item_v['FileSize']:
-                        self._add_result('File: '+result_extract['FileMD5'] + ' - Contains md5 files', item_v['FileMD5'], {'type': str(item_v['FileType']), 'size': str(item_v['FileSize'])})
+                        #search if file exist
+                        id_ = Sample.objects(md5=str(item_v['FileMD5'])).only('id').first()
+                        sample_exist = False
+                        ioc_exist = False
+                        if id_:
+                            sample_exist = True
+                        id_ =  Indicator.objects(value=str(item_v['FileMD5'])).only('id').first()
+                        if id_:
+                            ioc_exist = True
+                        self._add_result('File: '+result_extract['FileMD5'] + ' - Contains md5 files', item_v['FileMD5'], {'type': str(item_v['FileType']), 'size': str(item_v['FileSize']), 'Exists Sample': str(sample_exist), 'Exists IOC md5': str(ioc_exist)})
+                for item_v in result_extract['ContainedObjects']:
+                    #re do loop for best display result
                     parse_result(self, item_v, acl_write, stream_md5)

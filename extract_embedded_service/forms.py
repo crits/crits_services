@@ -36,15 +36,22 @@ class ExtractEmbeddedConfigForm(forms.Form):
 class ExtractEmbeddedRunForm(forms.Form):
     error_css_class = 'error'
     required_css_class = 'required'
+    import_file_ioc = forms.BooleanField(required=False,
+                                    initial=False,
+                                    label="Import",
+                                    help_text="Import extracted file contains IOC informations in CRITS as sample.")
+    import_file_yara = forms.BooleanField(required=False,
+                                    initial=True,
+                                    label="Import",
+                                    help_text="Import extracted file matched by yara rules in CRITS as sample.")
+    import_file = forms.BooleanField(required=False,
+                                    initial=False,
+                                    label="Import",
+                                    help_text="Import ALL extracted file in CRITS as sample.")
     debug_log = forms.BooleanField(required=False,
                                     initial=False,
                                     label="Debug",
                                     help_text="Insert debug info in log.")
-    import_file = forms.BooleanField(required=False,
-                                    initial=True,
-                                    label="Import",
-                                    help_text="Import extracted file in CRITS as sample.")
-
     def __init__(self, *args, **kwargs):
         kwargs.setdefault('label_suffix', ':')
         super(ExtractEmbeddedRunForm, self).__init__(*args, **kwargs)
