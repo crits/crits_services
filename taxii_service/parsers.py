@@ -3,7 +3,7 @@ import pytz
 
 from contextlib import closing
 from copy import copy
-from io import StringIO
+from io import BytesIO
 from lxml.etree import XMLSyntaxError
 
 from .object_mapper import (
@@ -146,10 +146,15 @@ class STIXParser():
         as the true source.
         """
 
-        with closing(StringIO(self.data)) as f:
+        if isinstance(self.data, unicode): # BytesIO requires str
+            self.data = self.data.encode('utf-8')
+            encoding = 'utf-8'
+        else: # String has unknown encoding
+            encoding = None
+        with closing(BytesIO(self.data)) as f:
             try:
                 try:
-                    self.package = STIXPackage.from_xml(f)
+                    self.package = STIXPackage.from_xml(f, encoding)
                     if not self.package:
                         raise STIXParserException("STIX package failure")
                 except UnsupportedVersionError:
@@ -654,8 +659,13 @@ class STIXParser():
                     refQ = 'id="' + ob.idref
                     xmlblock = txC.objects(content__contains=refQ).first()
                     if xmlblock:
-                        with closing(StringIO(xmlblock.content)) as f:
-                            ref_pkg = STIXPackage.from_xml(f)
+                        if isinstance(xmlblock.content, unicode): # BytesIO requires str
+                            xmlblock.content = xmlblock.content.encode('utf-8')
+                            encoding = 'utf-8'
+                        else: # String has unknown encoding
+                            encoding = None
+                        with closing(BytesIO(xmlblock.content)) as f:
+                            ref_pkg = STIXPackage.from_xml(f, encoding)
                         if 'Observable' in ob.idref:
                             self.parse_observables(ref_pkg.observables.observables,
                                                    description, is_ind, p_id, ind_ci)

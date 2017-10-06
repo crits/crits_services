@@ -1991,8 +1991,6 @@ def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
           }
 
     try:
-        if isinstance(data, str): # StringIO requires Unicode or None
-            data = data.decode('utf-8')
         parser = STIXParser(data, analyst, method, def_ci, preview_only)
         parser.parse_stix(ref, hdr_events, source, use_hdr_src)
         parser.relate_objects()
