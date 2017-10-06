@@ -34,7 +34,11 @@
     {% for poll in polls %}
         <tr>
             <td>{{ poll.hostname }}</td><td>{{ poll.feed }}</td>
-            <td><a class="pollid" href="#" id="{{ poll.poll_id }}">{{ poll.mid }}</a></td>
+            {% if poll.blk_count < 1 %}
+                <td title="Nothing to preview! This poll returned no data blocks.">{{ poll.mid }}</td>
+            {% else %}
+                <td><a class="pollid" href="#" id="{{ poll.poll_id }}">{{ poll.mid }}</a></td>
+            {% endif %}
             <td>{{ poll.blk_count }}</td>
             <td>{{ poll.start }}</td><td>{{ poll.end }}</td>
             {% if poll.success %}
@@ -213,9 +217,13 @@
 
 <script>
     $('a.pollid').click(function() {
+        var pid = $(this).attr('id');
+        if (pid == "None") {
+            alert("Nothing to preview! This poll returned no data blocks.");
+            return
+        }
         $("#current_state").text("Processing...");
         $("#taxii-loader").show();
-        var pid = $(this).attr('id');
         $.ajax({
             type: "GET",
             url: "{% url 'taxii_service.views.get_import_preview' '1234' '1' '10' %}".replace("1234", pid),
