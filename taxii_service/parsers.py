@@ -101,6 +101,7 @@ class STIXParser():
 
         self.data = data
         self.def_ci = def_ci or (None, None)
+        self.obs_as_ind = False
         self.preview = preview_only
 
         self.package = None
@@ -126,7 +127,7 @@ class STIXParser():
         self.saved_artifacts = {}
 
     def parse_stix(self, reference='', hdr_events=False, source='',
-                   use_hdr_src=False):
+                   use_hdr_src=False, obs_as_ind=False):
         """
         Parse the document.
 
@@ -139,6 +140,9 @@ class STIXParser():
         :param use_hdr_src: If True, try to use the STIX Header Information
                              Source instead of the value in "source" parameter
         :type use_hdr_src: boolean
+        :param obs_as_ind: If True, create indicators for all qualifying
+                           observables instead of Domain and IP TLOs
+        :type obs_as_ind: boolean
         :raises: :class:`taxii_service.parsers.STIXParserException`
 
         Until we have a way to map source strings in a STIX document to
@@ -146,6 +150,7 @@ class STIXParser():
         as the true source.
         """
 
+        self.obs_as_ind = obs_as_ind
         if isinstance(self.data, unicode): # BytesIO requires str
             self.data = self.data.encode('utf-8')
             encoding = 'utf-8'
@@ -296,7 +301,8 @@ class STIXParser():
             self.parse_indicators(package.indicators)
 
         if package.observables and package.observables.observables:
-            self.parse_observables(package.observables.observables)
+            self.parse_observables(package.observables.observables,
+                                   is_ind=self.obs_as_ind)
 
         if package.threat_actors:
             self.parse_threat_actors(package.threat_actors)
@@ -343,7 +349,7 @@ class STIXParser():
                     self.parse_indicators([rel.item])
             for rel in incident.related_observables or ():
                 if rel.item.id_:
-                    self.parse_observables([rel.item])
+                    self.parse_observables([rel.item], is_ind=self.obs_as_ind)
         else:
             res = add_new_event(title,
                                 description,
@@ -375,7 +381,8 @@ class STIXParser():
                     r = rel.relationship or RelationshipTypes.RELATED_TO
                     c = getattr(rel.confidence, 'value', None) or 'Unknown'
                     if rel.item.id_:
-                        self.parse_observables([rel.item])
+                        self.parse_observables([rel.item],
+                                               is_ind=self.obs_as_ind)
                         obs_idref = rel.item.id_
                     else:
                         obs_idref = rel.item.idref

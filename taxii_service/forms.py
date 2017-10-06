@@ -165,6 +165,11 @@ class TAXIIServiceConfigForm(forms.Form):
                   initial=False,
                   help_text="Create an Event from each STIX package header & relate all items to it.")
 
+    obs_as_ind = forms.BooleanField(required=False,
+                  label="Observable as Indicator",
+                  initial=False,
+                  help_text="Create indicators for all qualifying observables instead of Domain and IP TLOs")
+
     max_rels = forms.IntegerField(required=True,
                                   label="Maximum Related",
                                   initial=200,

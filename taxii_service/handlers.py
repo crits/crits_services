@@ -686,6 +686,7 @@ def generate_import_preview(poll_id, analyst, page=1, mult=10):
     """
     tsvc = get_config('taxii_service')
     hdr_events = tsvc['header_events']
+    obs_as_ind = tsvc['obs_as_ind']
     mult = int(mult)
     page = int(page)
     skip = mult * (page - 1)
@@ -731,7 +732,8 @@ def generate_import_preview(poll_id, analyst, page=1, mult=10):
 
         if block.content:
             objs = import_standards_doc(block.content, analyst, None, None,
-                                        hdr_events, preview_only=True)
+                                        hdr_events, obs_as_ind,
+                                        preview_only=True)
 
             if not objs['success']:
                 failures.append((objs['reason'], 'STIX Package'))
@@ -921,6 +923,7 @@ def import_content(content_objs, analyst, action=None):
 
     tsvc = get_config('taxii_service')
     hdr_events = tsvc['header_events']
+    obs_as_ind = tsvc['obs_as_ind']
     tsrvs = tsvc.taxii_servers
     pids = {}
 
@@ -946,7 +949,8 @@ def import_content(content_objs, analyst, action=None):
             default_ci = ('unknown', 'unknown')
 
         objs = import_standards_doc(data, analyst, method, reference,
-                                    hdr_events, default_ci, source, use_hdr_src)
+                                    hdr_events, default_ci, source,
+                                    use_hdr_src, obs_as_ind)
 
         if not objs['success']:
             ret['failures'].append((objs['reason'],
@@ -1952,7 +1956,7 @@ def update_taxii_service_config(post_data, analyst):
 
 def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
                          def_ci=None, source=None, use_hdr_src=False,
-                         preview_only=False):
+                         obs_as_ind=False, preview_only=False):
     """
     Import a standards document into CRITs.
 
@@ -1974,6 +1978,9 @@ def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
     :param use_hdr_src: If True, try to use the STIX Header Information
                          Source instead of the value in "source" parameter
     :type use_hdr_src: boolean
+    :param obs_as_ind: If True, create indicators for all qualifying
+	                   observables instead of Domain and IP TLOs
+    :type obs_as_ind: boolean
     :param preview_only: If True, nothing is imported and a preview is returned
     :type preview_only: boolean
     :returns: dict with keys:
@@ -1992,7 +1999,7 @@ def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
 
     try:
         parser = STIXParser(data, analyst, method, def_ci, preview_only)
-        parser.parse_stix(ref, hdr_events, source, use_hdr_src)
+        parser.parse_stix(ref, hdr_events, source, use_hdr_src, obs_as_ind)
         parser.relate_objects()
     except STIXParserException as e:
         logger.exception(str(e))
