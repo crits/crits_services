@@ -60,7 +60,7 @@ class MacroExtractService(Service):
                     obj.add_relationship(
                         result['object'],
                         RelationshipTypes.CONTAINED_WITHIN,
-                        analyst=username.username
+                        analyst=username.username,
                         rel_reason="Extracted from related Sample"
                     )
                     obj.save()

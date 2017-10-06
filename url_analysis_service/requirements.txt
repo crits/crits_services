@@ -1,0 +1,4 @@
+selenium
+M2Crypto
+pysocks
+python-hashes
