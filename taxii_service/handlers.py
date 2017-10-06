@@ -454,7 +454,7 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
                      t.CB_STIX_XML_101,
                      t.CB_STIX_XML_11,
                      t.CB_STIX_XML_111,
-                     "urn:stix.mitre.org:xml:1.2")
+                     t.CB_STIX_XML_12)
 
     binding = str(content_block.content_binding)
     if binding == 'application/x-pkcs7-mime':
