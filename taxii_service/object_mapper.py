@@ -396,6 +396,16 @@ def make_crits_object(cybox_obj):
                 o.object_type = IPTypes.IPV4_SUBNET
             elif name == 'ipv6-net':
                 o.object_type = IPTypes.IPV6_SUBNET
+            elif name == 'asn':
+                o.object_type = IndicatorTypes.AS_NUMBER
+            elif name == 'cidr':
+                o.object_type = IndicatorTypes.IPV4_SUBNET
+            elif name == 'e-mail':
+                o.object_type = IndicatorTypes.EMAIL_ADDRESS
+            elif name == 'mac':
+                o.object_type = IndicatorTypes.MAC_ADDRESS
+            else:
+                raise UnsupportedCRITsObjectTypeError(cybox_obj)
             o.value = get_object_values(cybox_obj.address_value)
             return o
         elif isinstance(cybox_obj, API):
