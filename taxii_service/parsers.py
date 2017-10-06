@@ -154,7 +154,10 @@ class STIXParser():
                         raise STIXParserException("STIX package failure")
                 except UnsupportedVersionError:
                     v = stix.__version__
-                    v = v[0:-2] if len(v.split('.')) > 3 else v
+                    if len(v.split('.')) > 3:
+                        v = v[0:-2]
+                        if v[-1] == '0':
+                            v = v[0:-2]
                     updated = ramrod.update(f, to_=v)
                     doc = updated.document.as_stringio()
                     self.package = STIXPackage.from_xml(doc)
