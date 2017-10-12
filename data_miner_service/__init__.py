@@ -81,35 +81,38 @@ class DataMinerService(Service):
                 tdict['exists'] = str(id_.id)
             self._add_result('Potential Emails', email, tdict)
         hashes = extract_hashes(data)
+        hash_tracker = []
         for hash_ in hashes:
             type_ = hash_[0]
             val = hash_[1]
-            tdict = {'Type': type_}
-            if type_ == IndicatorTypes.MD5:
-                id_ = Sample.objects(md5=val).only('id').first()
-            elif type_ == IndicatorTypes.SHA1:
-                id_ = Sample.objects(sha1=val).only('id').first()
-            elif type_ == IndicatorTypes.SHA256:
-                id_ = Sample.objects(sha256=val).only('id').first()
-            elif type_ == IndicatorTypes.SSDEEP:
-                id_ = Sample.objects(ssdeep=val).only('id').first()
-            else:
-                id_ = None
-            if id_:
-                tdict['exists'] = str(id_.id)
-            self._add_result('Potential Samples', val, tdict)
+            if val not in hash_tracker:
+                tdict = {'Type': type_}
+                if type_ == IndicatorTypes.MD5:
+                    id_ = Sample.objects(md5=val).only('id').first()
+                elif type_ == IndicatorTypes.SHA1:
+                    id_ = Sample.objects(sha1=val).only('id').first()
+                elif type_ == IndicatorTypes.SHA256:
+                    id_ = Sample.objects(sha256=val).only('id').first()
+                elif type_ == IndicatorTypes.SSDEEP:
+                    id_ = Sample.objects(ssdeep=val).only('id').first()
+                else:
+                    id_ = None
+                if id_:
+                    tdict['exists'] = str(id_.id)
+                self._add_result('Potential Samples', val, tdict)
+                hash_tracker.append(val)
 
 # hack of a parser to extract potential ip addresses from data
 def extract_ips(data):
     pattern = r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)([ (\[]?(\.|dot)[ )\]]?(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})"
+    final_ips = []
     ips = [each[0] for each in re.findall(pattern, data)]
     for item in ips:
-        location = ips.index(item)
         ip = re.sub("[ ()\[\]]", "", item)
         ip = re.sub("dot", ".", ip)
-        ips.remove(item)
-        ips.insert(location, ip)
-    return ips
+        if ip not in final_ips:
+            final_ips.append(ip)
+    return final_ips
 
 # hack of a parser to extract potential domains from data
 def extract_domains(data):
@@ -121,7 +124,7 @@ def extract_domains(data):
             try:
                 tld = item.split(".")[-1]
                 check = TLD.objects(tld=tld).first()
-                if check:
+                if check and item not in final_domains:
                     final_domains.append(item)
             except:
                 pass
@@ -135,7 +138,8 @@ def extract_urls(data):
     final_urls = []
     for item in urls:
         url = item[0]+"://"+item[1]+item[2]
-        final_urls.append(url)
+        if url not in final_urls:
+            final_urls.append(url)
     return final_urls
 
 
@@ -149,7 +153,7 @@ def extract_emails(data):
             try:
                 tld = item.split(".")[-1]
                 check = TLD.objects(tld=tld).first()
-                if check:
+                if check and item not in final_emails:
                     final_emails.append(item)
             except:
                 pass
