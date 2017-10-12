@@ -59,8 +59,8 @@ class MacroExtractService(Service):
                 if result['success']:
                     obj.add_relationship(
                         result['object'],
-                        RelationshipTypes.RELATED_TO,
-                        analyst=username,
+                        RelationshipTypes.CONTAINED_WITHIN,
+                        analyst=username.username,
                         rel_reason="Extracted from related Sample"
                     )
                     obj.save()

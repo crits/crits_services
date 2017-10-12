@@ -167,11 +167,12 @@ class pdf2txtService(Service):
             self._warning("obj.id: %s, raw_id:%s, suc: %s" % (str(obj.id), str(raw_obj.id), repr(res['success']) ) )
             # update relationship if a related top-level object is supplied
             rel_type = RelationshipTypes.RELATED_TO
+            rel_type = RelationshipTypes.CONTAINED_WITHIN #bug in crits, display contains instead of contained within ...
             if obj.id != raw_obj.id: #don't form relationship to itself
                 resy = obj.add_relationship(rel_item=raw_obj,
                                         rel_type=rel_type,
-                                        rel_date=datetime.now(),
-                                        analyst=self.current_task.user)
+                                        rel_date=datetime.now()) #,
+                                        #analyst=self.current_task.user) #remove analyste because make error: Error running service: Cannot encode object: <SimpleLazyObject: <CRITsUser: $user>>
                 obj.save(username=self.current_task.user.username)
                 raw_obj.save(username=self.current_task.user.username)
                 self._warning("resy: %s" % (str(resy)) )
