@@ -90,6 +90,9 @@ class urlanalysisService(Service):
         user = self.current_task.user
         tlp_value = self.config.get("tlp_value", "tlp_value")
         url = obj['value']
+        if not (obj._meta['crits_type'] == 'Indicator' and obj['ind_type'] == 'URI'):
+            self._error('This object type cannot use service Url analysis.')
+            return False
         #verify url http or https
         if url.startswith('https://') or url.startswith('http://'):
             #put url in file

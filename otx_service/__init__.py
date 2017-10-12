@@ -71,7 +71,7 @@ class OTXService(Service):
         # or on IP object == IP lookup
         # or on domain object == Domain lookup
         # or sample object == HASH lookup
-        if obj._meta['crits_type'] == 'Indicator' and (obj['ind_type'] == 'URI' or obj['ind_type'] == 'DOMAIN' or obj['ind_type'].startswith('IP') or obj['ind_type'] == 'MD5' or obj['ind_type'] == 'SHA1' or obj['ind_type'] == 'SHA256'):
+        if obj._meta['crits_type'] == 'Indicator' and (obj['ind_type'] == 'URI' or obj['ind_type'] == 'Domain' or obj['ind_type'].startswith('IP') or obj['ind_type'] == 'MD5' or obj['ind_type'] == 'SHA1' or obj['ind_type'] == 'SHA256'):
             return True
         elif obj._meta['crits_type'] == 'Domain' or obj._meta['crits_type'] == 'IP' or obj._meta['crits_type'] == 'Sample':
             return True
@@ -95,7 +95,7 @@ class OTXService(Service):
         self._info('Check obj type')
         IndType = None
         value_obj = None
-        if (obj._meta['crits_type'] == 'Indicator' and obj['ind_type'] == 'DOMAIN') or obj._meta['crits_type'] == 'Domain':
+        if (obj._meta['crits_type'] == 'Indicator' and obj['ind_type'] == 'Domain') or obj._meta['crits_type'] == 'Domain':
             if obj._meta['crits_type'] == 'Domain':
                 value_obj = obj.domain
             else:
@@ -130,6 +130,9 @@ class OTXService(Service):
             IndType = IndicatorTypes.URL
             value_obj = obj['value']
             #TODO extract HOST and make second request
+        else:
+            self._error('This object type cannot use service OTX lookup.')
+            return False
         #query OTX
         self._info('Send request to OTX')
         try:
