@@ -539,6 +539,7 @@ def process_stix_upload(filedata, analyst, source, reference, use_hdr_src,
                         else:
                             ret[k].extend(result[k])
     else:
+        filedata.seek(0)
         ret = process_stix_doc(filedata, top_name, t_stamp, source,
                                reference, use_hdr_src, analyst, import_now)
 
