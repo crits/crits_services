@@ -18,10 +18,10 @@ class TAXIIClient(Service):
     """
 
     name = "taxii_service"
-    version = "2.1.0"
+    version = "2.2.0"
     supported_types = []
     required_fields = ['_id']
-    description = "Send TAXII messages to a TAXII server."
+    description = "Communicate with TAXII servers and process STIX data."
     template = "taxii_service_results.html"
 
     @staticmethod
