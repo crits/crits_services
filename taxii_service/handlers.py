@@ -426,8 +426,8 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         else:
             content.save()
         ret['blk_count'] += 1
-        time_offset = runtime.replace(tzinfo=None)-datetime(1970,1,1)
-        ret['poll_id'] = '%.3f' % time_offset.total_seconds()
+        t_offset = runtime.replace(tzinfo=None)-datetime(1970,1,1)
+        ret['poll_id'] = '%.3f' % (int(t_offset.total_seconds() * 1000)/1000.0)
     if save_datetimes:
         crits_taxii.save()
     if import_now:
