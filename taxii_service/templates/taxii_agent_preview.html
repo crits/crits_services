@@ -57,18 +57,10 @@
 
 {% if poll.blocks %}
 <script>
-	    $('#sel_all').click(function() {
-            $('.cbx').prop('checked', true);
-	    });
-
-	    $('#sel_none').click(function() {
-            $('.cbx').prop('checked', false);
-	    });
-
-	    var pid = "{{ poll.poll_id }}";
-	    var cur_page = {{ poll.page }};
-	    var max_page = {{ poll.pages }};
-	    var cur_mult = {{ poll.mult }};
+    var pid = "{{ poll.poll_id }}";
+    var cur_page = {{ poll.page }};
+    var max_page = {{ poll.pages }};
+    var cur_mult = {{ poll.mult }};
 </script>
 <style>
 .dropdown-content {
@@ -102,8 +94,10 @@
 </style>
 <br>
 <div style="position:absolute; text-align:left; z-index:1;">
-<a href="#" id="sel_all">Select All</a> |
-<a href="#" id="sel_none">Select None</a>
+Select:
+<a href="#" id="sel_all">All</a> |
+<a href="#" id="sel_none">None</a> |
+<a href="#" id="sel_page">Page</a>
 </div>
 <div class="dropdown" style="position:absolute;width:95%;text-align:center;">
     <span id="page_first" class="page_btn" style="padding-right: 10px; font-size: 120%;">&laquo;</span>
@@ -133,7 +127,7 @@
     {% for block in poll.blocks %}
     <div class="content_box" style="margin-top:2px;">
         <h3 class="titleheader">
-            <input id="{{ block.id }}" class="cbx" type="checkbox" value="{{ block.id }}" checked />
+            <input id="{{ block.id }}" class="cbx" type="checkbox" value="{{ block.id }}" {% if block.selected %}checked {% endif %}/>
             <span>Block {{ block.num }}: {{ block.block_label }}</span>
             <span style="float:right; margin-right:5px; margin-top:4px; font-size:75%;"><a href="{% url 'taxii_service.views.download_taxii_content' block.id %}">Download</a></span>
         </h3>
@@ -187,98 +181,175 @@
 
 <script>
     $(".import_btn").click(function() {
-        var idSelector = function() { return this.id; };
-        var checked = $(":checkbox:checked.cbx").map(idSelector).get();
-        if (checked.length === 0) {
-            alert("You must select at least one block to import");
+        $("#taxii-loader").show();
+        if ($("#results_container").is(":visible")) {
+            $("#results_container").slideToggle();
         }
-        else {
-		    $("#taxii-loader").show();
-		    if ($("#results_container").is(":visible")) {
-                $("#results_container").slideToggle();
-		    }
 
-            import_blocks(checked, this.id);
+        import_blocks(pid, this.id);
+    });
+
+    $('#sel_all').click(function() {
+        select_deselect_all(1);
+        $('.cbx').prop('checked', true);
+    });
+
+    $('#sel_none').click(function() {
+        select_deselect_all(0);
+        $('.cbx').prop('checked', false);
+    });
+
+    $('#sel_page').click(function() {
+        if ($("input:checkbox.cbx:first").is(':checked')) {
+            get_checked_reget_results(cur_page, cur_mult, 0);
+        } else {
+            get_checked_reget_results(cur_page, cur_mult, 1);
         }
-	});
+    });
+
+    $(".cbx").click(function() {
+        if ( $(this).is(':checked') ) {
+            var check = 1;
+        } else {
+            var check = 0;
+        }
+        $.ajax({
+            type: "GET",
+            url: "{% url 'taxii_service.views.select_deselect_block' 'xxx' 'yyy' %}".replace('xxx', this.id).replace("yyy", check),
+        }).done(function(data) { // run on successful request
+            if (!data.success) { // field was updated
+                $("#error_container").children(".taxii_notice").html(data.msg);
+                $("#current_state").text("Problems");
+            }
+        }).fail(function(data) { // server error
+            $("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+            $("#current_state").text("Problems");
+        });
+    });
 
     $(".page_btn").click(function() {
-		$("#current_state").text("Processing...");
-		$("#taxii-loader").show();
+        $("#current_state").text("Processing...");
+        $("#taxii-loader").show();
 
-		if (this.id == "page_prev" && cur_page > 1) {
+        if (this.id == "page_prev" && cur_page > 1) {
             var page = cur_page - 1;
             var mult = cur_mult;
-		} else if (this.id == "page_next" && cur_page < max_page) {
-		    var page = cur_page + 1;
-		    var mult = cur_mult;
-		} else if (this.id == "page_first") {
-		    var page = 1;
-		    var mult = cur_mult;
-		} else if (this.id == "page_last") {
-		    var page = max_page;
-		    var mult = cur_mult;
-		} else if (!isNaN(this.id)) {
-		    if (this.classList.contains('mult')) {
-		        var mult = this.id;
-		        var page = cur_page;
-		    } else if (this.classList.contains('num')) {
-		        var page = this.id;
-		        var mult = cur_mult;
-		    } else {
-		        var page = cur_page;
-		        var mult = cur_mult;
-		    }
-		} else {
-	        var page = cur_page;
-	        var mult = cur_mult;
-	    }
+        } else if (this.id == "page_next" && cur_page < max_page) {
+            var page = cur_page + 1;
+            var mult = cur_mult;
+        } else if (this.id == "page_first") {
+            var page = 1;
+            var mult = cur_mult;
+        } else if (this.id == "page_last") {
+            var page = max_page;
+            var mult = cur_mult;
+        } else if (!isNaN(this.id)) {
+            if (this.classList.contains('mult')) {
+                var mult = this.id;
+                var page = cur_page;
+            } else if (this.classList.contains('num')) {
+                var page = this.id;
+                var mult = cur_mult;
+            } else {
+                var page = cur_page;
+                var mult = cur_mult;
+            }
+        } else {
+            var page = cur_page;
+            var mult = cur_mult;
+        }
+        get_checked_reget_results(page, mult);
+    });
 
-		$.ajax({
-			type: "GET",
-			url: "{% url 'taxii_service.views.get_import_preview' 'xxx' 'yyy' 'zzz' %}".replace('xxx', pid).replace("yyy", page).replace("zzz", mult),
-		}).done(function(data) { // run on successful request
-			if (data.success) { // at least some feeds were successfully processed
-				$("#results_container").html(data.html);
-				$("#current_state").text("STIX Import Preview");
+    function get_checked_reget_results(page, mult, all = -1) {
+        if (all == 1) {
+            chkd = get_checkboxes();
+            uchkd = [];
+        } else if (all == 0) {
+            uchkd = get_checkboxes();
+            chkd = [];
+        } else {
+            chkd = get_checked();
+            uchkd = get_unchecked();
+        }
+        var data = JSON.stringify({"checked": chkd, "unchecked": uchkd });
+        $.ajax({
+            type: "POST",
+            url: "{% url 'taxii_service.views.get_import_preview' 'xxx' 'yyy' 'zzz' %}".replace('xxx', pid).replace("yyy", page).replace("zzz", mult),
+                        data: data,
+                        dataType: "json",
+        }).done(function(data) { // run on successful request
+            if (data.success) { // at least some feeds were successfully processed
+                $("#results_container").html(data.html);
+                $("#current_state").text("STIX Import Preview");
                 $("#view_saved").prop('hidden', false);
-			} else { // some issue occurred
-				$("#error_container").children(".taxii_notice").html(data.msg);
-				$("#current_state").text("Problems");
-			}
-		}).fail(function(data) { // server error
-			$("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
-			$("#current_state").text("Problems");
-		}).always(function() {
-			$("#taxii-loader").hide();
-		});
-	});
+            } else { // some issue occurred
+                $("#error_container").children(".taxii_notice").html(data.msg);
+                $("#current_state").text("Problems");
+            }
+        }).fail(function(data) { // server error
+            $("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+            $("#current_state").text("Problems");
+        }).always(function() {
+            $("#taxii-loader").hide();
+        });
+    }
 
-    function import_blocks(ids, action) {
-		$("#current_state").text("Processing...");
-		$("#taxii-loader").show();
-        var data = JSON.stringify({"ids": ids, "action": action});
-		$.ajax({
-			type: "POST",
-			url: "{% url 'taxii_service.views.import_taxii_data' %}",
-			data: data,
-			dataType: "json"
-		}).done(function(data) { // run on successful request
-			if (data.success) { // at least some feeds were successfully processed
-				$("#results_container").html(data.html);
-				$("#current_state").text("STIX Import Results");
+    function select_deselect_all(check) {
+        $.ajax({
+            type: "GET",
+            url: "{% url 'taxii_service.views.select_deselect_all' '1.1' 'xxx' %}".replace('1.1', pid).replace('xxx', check),
+        }).done(function(data) { // run on successful request
+            if (!data.success) { // field was updated
+                $("#error_container").children(".taxii_notice").html(data.msg);
+                $("#current_state").text("Problems");
+            }
+        }).fail(function(data) { // server error
+            $("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+            $("#current_state").text("Problems");
+        });
+    }
+
+    function get_checkboxes() {
+        var idSelector = function() { return this.id; };
+        return $("input:checkbox.cbx").map(idSelector).get();
+    }
+
+    function get_checked() {
+        var idSelector = function() { return this.id; };
+        return $("input:checkbox:checked.cbx").map(idSelector).get();
+    }
+
+    function get_unchecked() {
+        var idSelector = function() { return this.id; };
+        return $("input:checkbox:not(:checked).cbx").map(idSelector).get();
+    }
+
+    function import_blocks(poll_id, action) {
+        $("#current_state").text("Processing...");
+        $("#taxii-loader").show();
+        var data = JSON.stringify({"poll_id": poll_id, "action": action});
+        $.ajax({
+            type: "POST",
+            url: "{% url 'taxii_service.views.import_taxii_data' %}",
+            data: data,
+            dataType: "json"
+        }).done(function(data) { // run on successful request
+            if (data.success) { // at least some feeds were successfully processed
+                $("#results_container").html(data.html);
+                $("#current_state").text("STIX Import Results");
                 $("#view_saved").prop('hidden', false);
-				$("#results_container").slideToggle();
-			} else { // some issue occurred
-				$("#error_container").children(".taxii_notice").html(data.msg);
-				$("#current_state").text("Problems");
-			}
-		}).fail(function(data) { // server error
-			$("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
-			$("#current_state").text("Problems");
-		}).always(function() {
-			$("#taxii-loader").hide();
-		});
+                $("#results_container").slideToggle();
+            } else { // some issue occurred
+                $("#error_container").children(".taxii_notice").html(data.msg);
+                $("#current_state").text("Problems");
+            }
+        }).fail(function(data) { // server error
+            $("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+            $("#current_state").text("Problems");
+        }).always(function() {
+            $("#taxii-loader").hide();
+        });
     }
 
 

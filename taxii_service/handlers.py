@@ -658,6 +658,40 @@ def save_standards_doc(data, analyst, message_id, hostname, feed, block_label,
         taxii_content.import_failed = False
         taxii_content.save()
 
+def select_blocks(select=None, deselect=None):
+    """
+    Change the "selected" field of blocks in the DB based on poll_ids,
+    or lists of block ObjectIDs.
+
+    :param select: A Poll ID or list of block IDs for which "selected"
+                   should be set to True.
+    :type select: list or str
+    :param deselect: A Poll ID or list of block IDs for which "selected"
+                     should be set to False.
+    :type deselect: list or str
+    :returns: dict with keys:
+              "success" (bool) - DB Update Pass/Fail
+              "msg" (str) - Failure message
+    """
+    ret = {'success': True, 'msg': ''}
+    tc = taxii.TaxiiContent
+    try:
+        if isinstance(select, list) and select:
+            tc.objects(id__in=select).update(set__selected=True)
+        elif isinstance(select, basestring) and select:
+            p_time = datetime.utcfromtimestamp(float(select))
+            tc.objects(poll_time=p_time).update(set__selected=True)
+        if isinstance(deselect, list) and deselect:
+            tc.objects(id__in=deselect).update(set__selected=False)
+        elif isinstance(deselect, basestring) and deselect:
+            p_time = datetime.utcfromtimestamp(float(deselect))
+            tc.objects(poll_time=p_time).update(set__selected=False)
+    except Exception as e:
+        ret['success'] = False
+        ret['msg'] = str(e)
+    return ret
+
+
 def generate_import_preview(poll_id, analyst, page=1, mult=10):
     """
     Given a Poll ID (unix timestamp), parse all associated content blocks and
@@ -751,7 +785,8 @@ def generate_import_preview(poll_id, analyst, page=1, mult=10):
                               'num': num + skip + 1,
                               'block_label': block.block_label,
                               'tlos': tlos,
-                              'failures': failures})
+                              'failures': failures,
+                              'selected': block.selected})
     return ret
 
 def get_saved_polls(action, poll_id=None):
@@ -867,6 +902,121 @@ def get_saved_block(block_id=None):
                                 content = data.content)
 
     return {'response': c_block.to_xml(), 'filename': filename}
+
+def import_poll(poll_id, analyst, action=None):
+    """
+    Given a poll_id (timestamp), parse and import those content blocks where
+    "selected" is True. User can select whether to delete or keep
+    unimported blocks from the same poll via the 'action' key. An action
+    of "import_delete" directs the parser to delete unimported content
+    from the same poll, while any other value for 'action' keeps the
+    unimported content.
+
+    :param poll_id: Timestamp as the ID of the poll to import
+    :type poll_id: str
+    :param analyst: Userid of the analyst requesting the import
+    :type analyst: string
+    :param action: If 'import_delete', delete unimported content
+    :type action: string
+    :returns: dict with keys:
+              "successes" (int) - Count of successfully imported objects
+              "failures" (list) - Individual failure messages
+              "status" (bool) - True if import was generally successful
+              "msg" (string) - General error messages
+              "Certificate" (list) - IDs and values of imported Certificates
+              "Domain" (list) - IDs and values of imported Domains
+                ...and so on for each TLO type
+    """
+
+    ret = {
+            'successes': 0,
+            'failures': [],
+            'status': False,
+            'msg': ''
+          }
+    tlos = {
+            'Certificate': [],
+            'Domain': [],
+            'Email': [],
+            'Event': [],
+            'Indicator': [],
+            'IP': [],
+            'PCAP': [],
+            'RawData': [],
+            'Sample': [],
+           }
+
+    method = "STIX Import"
+
+    p_time = datetime.utcfromtimestamp(float(poll_id))
+    blocks = taxii.TaxiiContent.objects(poll_time=p_time, selected=True)
+
+    tsvc = get_config('taxii_service')
+    hdr_events = tsvc['header_events']
+    obs_as_ind = tsvc['obs_as_ind']
+    tsrvs = tsvc.taxii_servers
+    pids = {}
+
+    for block in blocks:
+        source = ""
+        reference = block.taxii_msg_id
+        data = block.content
+        use_hdr_src = block.use_hdr_src
+
+        for svr in tsrvs:
+            if tsrvs[svr].get('hostname') == block.hostname:
+                for feed in tsrvs[svr]['feeds']:
+                    if tsrvs[svr]['feeds'][feed]['feedname'] == block.feed:
+                        feed_cfg = tsrvs[svr]['feeds'][feed]
+                        source = feed_cfg['source']
+                        default_ci = (feed_cfg.get('def_conf', 'unknown'),
+                                      feed_cfg.get('def_impact', 'unknown'))
+                        break
+                if source:
+                    break
+        else:
+            source = block.hostname
+            default_ci = ('unknown', 'unknown')
+
+        objs = import_standards_doc(data, analyst, method, reference,
+                                    hdr_events, default_ci, source,
+                                    use_hdr_src, obs_as_ind)
+
+        if not objs['success']:
+            ret['failures'].append((objs['reason'],
+                                   'STIX Package'))
+            block.import_failed = True
+            block.errors.append('STIX Package: %s' % objs['reason'])
+
+        for sid in objs['imported']:
+            ret['successes'] += 1
+            tlo_meta = objs['imported'][sid]
+            tlos.setdefault(tlo_meta[0], []).append((tlo_meta[1],
+                                                     tlo_meta[2]))
+
+        for k in objs['failed']:
+            ret['failures'].append(k)
+            block.import_failed = True
+            block.errors.append('%s: %s' % (k[1], k[0]))
+
+        if block.import_failed:
+            block.save()
+        else:
+            try:
+                block.delete() # delete it if it exists in the DB
+            except:
+                pass
+
+        pids[block.poll_time] = 1 # save unique poll timestamps
+
+    if action == "import_delete":
+        taxii.TaxiiContent.objects(poll_time__in=pids.keys(), errors=[]).delete()
+
+    ret.update(tlos) # add the TLO lists to the return dict
+
+    ret['status'] = True
+
+    return ret
 
 
 def import_content(content_objs, analyst, action=None):

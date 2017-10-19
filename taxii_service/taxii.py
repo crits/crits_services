@@ -67,7 +67,8 @@ class TaxiiContent(CritsSchemaDocument, CritsDocument, Document):
             'analyst',
             'content',
             'errors',
-            'import_failed'
+            'import_failed',
+            'selected'
         ],
         "schema_doc": {
             'taxii_msg_id': 'A reference to the data (ID of the TAXII message)',
@@ -80,7 +81,8 @@ class TaxiiContent(CritsSchemaDocument, CritsDocument, Document):
             'analyst': 'The analyst who retrieved or provided the data',
             'content': 'The content being stored (STIX)',
             'errors': 'Errors that occurred while parsing or importing content',
-            'import_failed': 'Boolean indicating that an attempt to import failed'
+            'import_failed': 'Boolean indicating that an attempt to import failed',
+            'selected': 'Boolean indicating that the block is selected for import'
         },
     }
 
@@ -95,10 +97,11 @@ class TaxiiContent(CritsSchemaDocument, CritsDocument, Document):
     content = StringField(required=True)
     errors = ListField(StringField(required=True))
     import_failed = BooleanField(required=True, default=False)
+    selected = BooleanField(required=True, default=True)
 
     def populate(self, data, analyst, message_id, hostname, feed, block_label,
                  begin=None, end=None, poll_time=None, use_hdr_src=False,
-                 errors=[]):
+                 errors=[], selected=True):
         """
         Populate the class attributes
 
@@ -124,6 +127,8 @@ class TaxiiContent(CritsSchemaDocument, CritsDocument, Document):
         :type use_hdr_src: boolean
         :param errors: Errors that occurred while parsing or importing content
         :type errors: list
+        :param selected: Boolean indicating that the block is selected for import
+        :type selected: boolean
         """
 
         if data or errors:
@@ -143,6 +148,7 @@ class TaxiiContent(CritsSchemaDocument, CritsDocument, Document):
             self.content = data or ""
             self.errors = errors
             self.import_failed = False
+            self.selected = True
 
     def migrate(self):
         migrate_taxii_content(self)

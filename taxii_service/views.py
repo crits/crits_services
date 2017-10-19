@@ -162,6 +162,45 @@ def download_taxii_content(request, tid):
     return resp
 
 @user_passes_test(user_can_view_data)
+def select_deselect_block(request, block_id, select):
+    """
+    Given a particular block ID poll, update the "selected" field in the DB
+    based on the value of the select parameter. Should be an AJAX GET.
+
+    :param block_id: The ObjectID of the block
+    :type block_id: str
+    :param select: True or 1 to select, False or 0 to deselect
+    :param select: int or bool
+    :returns: :class:`django.http.HttpResponse`
+    """
+    if select in (True, 1, '1'):
+        data = handlers.select_blocks([block_id])
+    else:
+        data = handlers.select_blocks([], [block_id])
+    data = {'success': True}
+    return HttpResponse(json.dumps(data), content_type="application/json")
+
+@user_passes_test(user_can_view_data)
+def select_deselect_all(request, poll_id, select):
+    """
+    Given a particular poll ID, update the "selected" field of the associated
+    blocks in the DB based on the value of the select parameter.
+    Should be an AJAX GET.
+
+    :param poll_id: The Poll ID of blocks to be modified
+    :type poll_id: str
+    :param select: True or 1 to select, False or 0 to deselect
+    :param select: int or bool
+    :returns: :class:`django.http.HttpResponse`
+    """
+    if select in (True, 1, '1'):
+        data = handlers.select_blocks(poll_id, [])
+    else:
+        data = handlers.select_blocks([], poll_id)
+    data = {'success': True}
+    return HttpResponse(json.dumps(data), content_type="application/json")
+
+@user_passes_test(user_can_view_data)
 def get_import_preview(request, poll_id, page=1, mult=10):
     """
     Given a particular TAXII poll, get a preview of the content that is
@@ -178,6 +217,10 @@ def get_import_preview(request, poll_id, page=1, mult=10):
     :returns: :class:`django.http.HttpResponse`
     """
     user = request.user.username
+    if request.body:
+        post = json.loads(request.body)
+        handlers.select_blocks(post.get('checked', []),
+                               post.get('unchecked', []))
     content = handlers.generate_import_preview(poll_id, user, page, mult)
     data = {'success': True}
     data['html'] = render_to_string("taxii_agent_preview.html",
@@ -200,9 +243,9 @@ def import_taxii_data(request):
     """
     analyst = request.user.username
     post_data = json.loads(request.body)
-    ids = post_data.get('ids')
+    poll_id = post_data.get('poll_id')
     action = post_data.get('action')
-    result = handlers.import_content(ids, analyst, action)
+    result = handlers.import_poll(poll_id, analyst, action)
 
     data = {'success': result['status'], 'msg': result['msg']}
     data['html'] = render_to_string("taxii_agent_results.html",
