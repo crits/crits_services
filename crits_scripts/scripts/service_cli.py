@@ -1,17 +1,15 @@
 import ast
 from optparse import OptionParser
 
-import settings
-
-import crits.services
 from crits.services.handlers import run_service
 from crits.services.core import ServiceAnalysisError
 from crits.core.basescript import CRITsBaseScript
 from crits.core.class_mapper import class_from_value, class_from_type
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username=None):
-        self.username = username
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def run_services(self, service_list, obj_list, verbose=False, config={}):
         if verbose:
@@ -24,7 +22,7 @@ class CRITsScript(CRITsBaseScript):
                     result = run_service(service,
                                          obj._meta['crits_type'],
                                          obj.id,
-                                         self.username,
+                                         self.user,
                                          obj=obj,
                                          custom_config=config,
                                          execute='process')

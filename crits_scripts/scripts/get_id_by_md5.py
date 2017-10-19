@@ -11,8 +11,9 @@ from crits.core.basescript import CRITsBaseScript
 settings.MONGO_READ_PREFERENCE = 'secondary'
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username=None):
-        self.username = username
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def run(self, argv):
         parser = OptionParser()

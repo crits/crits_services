@@ -284,7 +284,7 @@ class VirusTotalService(Service):
             save = True
 
         if save:
-            self.obj.save(username=self.current_task.username)
+            self.obj.save(username=self.current_task.user.username)
         return
 
     def _process_public_sample(self, report):
@@ -790,7 +790,7 @@ class VirusTotalService(Service):
         result = handle_pcap_file("%s.pcap" % h,
                                   pcap,
                                   self.obj.source,
-                                  user=self.current_task.username,
+                                  user=self.current_task.user,
                                   description='Created %s' % (scandate),
                                   related_id=str(self.obj.id),
                                   related_type="Sample",
@@ -817,7 +817,7 @@ class VirusTotalService(Service):
 
         result = upsert_domain(domain,
                                self.obj.source,
-                               username=self.current_task.username,
+                               username=self.current_task.user.username,
                                campaign=None,
                                confidence=None,
                                bucket_list=None,
@@ -833,7 +833,7 @@ class VirusTotalService(Service):
             msg = dmain.add_relationship(rel_item=self.obj,
                                          rel_type=RelationshipTypes.RELATED_TO,
                                          rel_date=scandate,
-                                         analyst=self.current_task.username,
+                                         analyst=self.current_task.user,
                                          rel_confidence='unknown',
                                          rel_reason='Provided by VirusTotal. Date is from when vt analysis was performed',
                                          get_rels=False)
@@ -841,5 +841,5 @@ class VirusTotalService(Service):
             if not msg['success']:
                 self._info("Cannot add relationship because %s" % (str(msg['message'])))
 
-            dmain.save(username=self.current_task.username)
-            self.obj.save(username=self.current_task.username)
+            dmain.save(username=self.current_task.user.username)
+            self.obj.save(username=self.current_task.user.username)

@@ -10,6 +10,7 @@ from crits.services.core import Service, ServiceConfigError
 # for logging, right ;-)
 logger = logging.getLogger(__name__)
 
+from crits.core.user_tools import get_user_info
 # for adding the extracted files
 from crits.samples.handlers import handle_file
 
@@ -23,6 +24,7 @@ import io
 from hashlib import md5
 
 from crits.vocabulary.relationships import RelationshipTypes
+from crits.vocabulary.acls import SampleACL
 
 class SEPLQService(Service):
     """
@@ -30,7 +32,7 @@ class SEPLQService(Service):
     """
 
     name = "SEPLQ"
-    version = '1.0.0'
+    version = '1.0.1'
     supported_types = ['Sample']
     description = "Extractor for Symantec Local Quarantine files"
 
@@ -57,6 +59,7 @@ class SEPLQService(Service):
         name = h
         metaout = metaoutcsv.split(",")
         name = ntpath.basename(str(metaout[0]))
+        user = self.current_task.user
         fields = (
         "Filename",
 	"Num Failed Remediations",
@@ -89,6 +92,11 @@ class SEPLQService(Service):
 
         self._info("name: %s" % name )
         n = 0
+        if not user.has_access_to(SampleACL.WRITE):
+            self._info("User does not have permission to add Samples to CRITs")
+            self._add_result("Extrat Canceled", "User does not have permission to add Samples to CRITs")
+            return
+
         for i in metaout:
             if i and i != 0 and i != "0" and i != "":
                 self._info("meta: %s" % str(i))
@@ -101,5 +109,5 @@ class SEPLQService(Service):
                 campaign=obj.campaign,
                 method=self.name,
                 relationship=RelationshipTypes.RELATED_TO,
-                user=self.current_task.username)
+                user=self.current_task.user)
         self._add_result("file_added", name, {'md5': h})
