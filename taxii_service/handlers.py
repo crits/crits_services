@@ -551,7 +551,7 @@ def process_stix_upload(filedata, analyst, source, reference, use_hdr_src,
         return ret
     else:
         poll_id = t_stamp.replace(tzinfo=None)-datetime(1970,1,1)
-        poll_id = poll_id.total_seconds()
+        poll_id = '%.3f' % poll_id.total_seconds()
         return generate_import_preview(poll_id, analyst)
 
 
