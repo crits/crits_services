@@ -8,7 +8,7 @@ from django.utils.safestring import SafeText
 from crits.core.handlers import does_source_exist
 from crits.services.core import Service, ServiceConfigError
 
-from . import forms
+from . import forms, handlers
 
 logger = logging.getLogger("crits." + __name__)
 
@@ -18,10 +18,10 @@ class TAXIIClient(Service):
     """
 
     name = "taxii_service"
-    version = "2.1.1"
+    version = "2.2.0"
     supported_types = []
     required_fields = ['_id']
-    description = "Send TAXII messages to a TAXII server."
+    description = "Communicate with TAXII servers and process STIX data."
     template = "taxii_service_results.html"
 
     @staticmethod
@@ -184,6 +184,50 @@ class TAXIIClient(Service):
         html = html + "\n<script>$('#add').click(function() {location.href = '/services/taxii_service/configure/';});$('#edit').click(function() {var data = $('#id_taxii_servers').val(); if (data) {location.href = '/services/taxii_service/configure/' + data + '/';}}); $('#remove').click(function() {var data = {'remove_server': $('#id_taxii_servers').val()}; var url = '/services/taxii_service/configure/'; $.ajax({async: false, type: 'POST', url: url, data: data, datatype: 'json', success: function(data) {if (data.success) {$('#id_taxii_servers').html(data.html);} else {$('#service_edit_results').text('Failed to remove server configuration.');}}});});</script>"
 
         return forms.TAXIIServiceConfigForm, SafeText(html)
+
+
+    @staticmethod
+    def import_stix(data, analyst, source, reference, method="STIX Import",
+                    hdr_events=True, use_hdr_src=True, obs_as_ind=False):
+        """
+            If given the path to a file (SITX file or .zip of STIX files), open
+            the file. Take file-like object, parse the STIX data, and import
+            into CRITs.
+
+            :param data: The full path to the file or a file-like object.
+            :type : str or
+            :param analyst: The analyst's username.
+            :type analyst: str
+            :param source: The name of the CRITs Source assocaited with this data.
+            :type source: str
+            :param reference: A reference to the data's source.
+            :type reference: str
+            :param method: The method of acquiring or importing this document.
+            :type method: str
+            :param hdr_events: Whether or not we should make an Event for this document.
+            :type hdr_events: bool
+            :param use_hdr_src: If True, try to use STIX Header Information Source
+                                instead of the "source" & "reference" parameters.
+            :type use_hdr_src: boolean
+            :returns: dict
+        """
+
+        if isinstance(data, basestring):
+            ret = handlers.import_standards_doc(data, analyst, method,
+                                                reference, hdr_events,
+                                                source=source,
+                                                use_hdr_src=use_hdr_src,
+                                                obs_as_ind=obs_as_ind)
+            return ret
+        try:
+            with open(data, 'r') as f:
+                ret = handlers.process_stix_upload(f, analyst, source, reference,
+                                                   use_hdr_src, import_now=True)
+        except IOError as e:
+            ret = {'status': False,
+                   'msg': 'Error reading STIX file - %s' % e}
+        return ret
+
 
     def run(self, obj, config):
         pass # Not available via old-style services.

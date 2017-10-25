@@ -2,8 +2,10 @@ import cgi
 import logging
 import os
 import pytz
+import re
 import socket
 import uuid
+import zipfile
 
 from datetime import datetime
 from dateutil.parser import parse
@@ -15,13 +17,8 @@ import libtaxii as t
 import libtaxii.clients as tc
 import libtaxii.messages as tm
 import libtaxii.messages_11 as tm11
+from mixbox.idgen import set_id_namespace
 
-# set_id_namespace moved to mixbox with more recent stix packages
-try:
-    from stix.utils import set_id_namespace
-except ImportError:
-    from mixbox.idgen import set_id_namespace
-    
 from django.conf import settings
 from django import forms as dforms
 from django.template.loader import render_to_string
@@ -64,7 +61,7 @@ from crits.vocabulary.relationships import RelationshipTypes
 
 logger = logging.getLogger("crits." + __name__)
 
-def poll_taxii_feeds(feeds, analyst, begin=None, end=None):
+def poll_taxii_feeds(feeds, analyst, begin=None, end=None, import_now=False):
     """
     Given a list of feeds, individually poll each, save the data to
     the DB, and return a preview for each and status.
@@ -77,15 +74,33 @@ def poll_taxii_feeds(feeds, analyst, begin=None, end=None):
     :type begin: :class:`datetime.datetime`
     :param end: Inclusive end component of the timerange to be polled
     :type end: :class:`datetime.datetime`
+    :param import_now: If True, import all STIX data into CRITs
+    :type import_now: boolean
     :returns: dict with keys:
-              "polls" (list) - The preview and metadata for each poll
+              "polls" (list) - The metadata for each poll
               "status" (bool) - False if any poll failed
-              "msg" (str) - Status message
-              "all_fail" (bool) - True if no feeds were successful
+              "poll_msg" (str) - Status message
     """
-    results = {'polls': []}
-    success_feeds = []
+    results = {'polls': [], 'status': True}
+    success_polls = failed_polls = 0
+    poll_details = []
     sc = get_config('taxii_service').taxii_servers
+
+    if import_now:
+        ret = {
+                'successes': 0,
+                'failures': [],
+                'Certificate': [],
+                'Domain': [],
+                'Email': [],
+                'Event': [],
+                'Indicator': [],
+                'IP': [],
+                'PCAP': [],
+                'RawData': [],
+                'Sample': [],
+               }
+
     for feed in feeds:
         svrc = sc[feed[0]]
         hostname = svrc['hostname']
@@ -105,43 +120,56 @@ def poll_taxii_feeds(feeds, analyst, begin=None, end=None):
 
         result = execute_taxii_agent(hostname, https, port, path, version,
                                      feed_name, akey, acert, subID, analyst,
-                                     user, pword, ecert, ekey, begin, end)
+                                     user, pword, ecert, ekey, begin, end,
+                                     import_now)
 
         fails = result['failures']
-        results['polls'].append(result)
         fails = "<br>".join(cgi.escape(x) for x in fails)
 
-        if not fails:
-            success_feeds.append("%s - %s" % (feed[0], feedc['feedname']))
-        else:
+        if fails:
             results['status'] = False
-            msg = " Feed '%s' failed <br><br>%s<br><br>"
-            if len(success_feeds) == 0:
-                msg += "%s feeds were processed successfully%s"
-            elif len(success_feeds) == 1:
-                msg += "%s feed was processed successfully: %s"
-            else:
-                msg += "%s feeds were processed successfully: %s"
+            failed_polls += 1
+            success = False
+        else:
+            success = True
+            success_polls += 1
 
-            msg = msg % (("%s - %s" % (feed[0], feedc['feedname'])), fails,
-                         len(success_feeds), ", ".join(success_feeds))
-            results['msg'] = result['msg'] + msg
-            results['all_fail'] = len(success_feeds) == False
-            return results
+        if 'import' in result:
+            for k in ret:
+                if k == 'successes':
+                    ret[k] += result['import'][k]
+                else:
+                    ret[k].extend(result['import'][k])
 
-    results['status'] = True
-    msg = "All %s feed(s) processed successfully: %s"
-    results['msg'] = msg % (len(success_feeds), ', '.join(success_feeds))
+        poll_details = {'hostname': hostname,
+                        'feed': feed_name,
+                        'mid': result['taxii_msg_id'],
+                        'poll_id': result['poll_id'],
+                        'blk_count': result['blk_count'],
+                        'start': result['start'],
+                        'end': result['end'],
+                        'success': success,
+                        'msg': fails}
+        results['polls'].append(poll_details)
+
+    total_polls = success_polls + failed_polls
+    msg = "%s of %s polls were processed successfully" % (success_polls,
+                                                          total_polls)
+    if import_now:
+        results['imported'] = ret
+    results['poll_msg'] = msg
     return results
 
 
 def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
                         version="0", feed=None, akey=None, acert=None,
                         subID=None, analyst=None, user=None, pword=None,
-                        ecert=None, ekey=None, start=None, end=None):
+                       ecert=None, ekey=None, start=None, end=None,
+                       import_now=False):
     """
-    Poll a single feed using the provided parameters, save the data,
-    and generate the preview.
+    Poll a single feed using the provided parameters, if import_now is False,
+    write the data to the database, if import_now is True, return the
+    results of the import.
 
     :param hostname: Hostname of the TAXII server
     :type hostname: string
@@ -175,31 +203,24 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     :type start: :class:`datetime.datetime`
     :param end: Inclusive end component of the timerange to be polled
     :type end: :class:`datetime.datetime`
+    :param import_now: If True, import the data directly into CRITs
+    :type import_now: boolean
     :returns: dict with keys:
-              "successes" (int) - Count of successful preview objects
               "failures" (list) - Failure messages
-              "blocks" (list) - Content blocks, their metadata, and preview objects
+              "blk_count" (int) - The count of content blocks retrieved
               "start" (string) - Exclusive begin component of the timerange that was polled
               "end" (string) - Inclusive end component of the timerange that was polled
-              "poll_time" (:class:`datetime.datetime`) - Datetime the feed was polled
               "taxii_msg_id" (string) - TAXII Message ID of the poll
-              "source" (string) - Hostname of the TAXII server that was polled
-              "feed" (string) - Name of the TAXII feed/collection that was polled
-                                or name of the file that was uploaded
-              "analyst" (string) - Userid of the anaylst that initiated the poll
-              "msg" (string) - OPTIONAL - Error message
+              "import" (dict) - The results of the import, if any
     """
 
     ret = {
-            'successes': 0,
             'failures': [],
-            'blocks': [],
+            'blk_count': 0,
+            'poll_id': None,
             'start': start,
             'end': end,
-            'source': hostname,
-            'feed': feed,
-            'analyst': analyst,
-            'msg': ''
+            'taxii_msg_id': None,
           }
 
     save_datetimes = False
@@ -237,13 +258,15 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
     else:
         ret['start'] = 'None'
     ret['end'] = end.strftime('%Y-%m-%d %H:%M:%S')
-    ret['poll_time'] = runtime
 
     # compare start and end to make sure:
     # 1) start time is before end time
     # 2) end time is not in the future
-    if (start != None and start >= end) and end > runtime:
-        ret['failures'].append("Bad timestamp(s)")
+    if (start != None and start >= end):
+        ret['failures'].append("Start time must be before end time")
+        return ret
+    if end > runtime:
+        ret['failures'].append("End time cannot be in the future")
         return ret
 
     # subID & port must be none if not provided
@@ -367,25 +390,52 @@ def execute_taxii_agent(hostname=None, https=None, port=None, path=None,
         return ret
 
     mid = taxii_msg.message_id
+    ret['taxii_msg_id'] = mid
     if not taxii_msg.content_blocks:
-        ret['taxii_msg_id'] = mid
         if save_datetimes:
             crits_taxii.save()
         return ret
 
-    for content_block in taxii_msg.content_blocks:
-        timestamp = content_block.timestamp_label
-        data = parse_content_block(content_block, tm_, ekey, ecert)
+    if import_now:
+        import_result = {
+                'successes': 0,
+                'failures': [],
+                'Certificate': [],
+                'Domain': [],
+                'Email': [],
+                'Event': [],
+                'Indicator': [],
+                'IP': [],
+                'PCAP': [],
+                'RawData': [],
+                'Sample': [],
+               }
 
+    for content_block in taxii_msg.content_blocks:
+        label = content_block.timestamp_label.strftime("%Y-%m-%d %H:%M:%S")
+        data = parse_content_block(content_block, tm_, ekey, ecert)
         errors = ["%s: %s" % ("Content Block", data[1])] if data[1] else []
 
-        save_standards_doc(data[0], analyst, mid, hostname, feed, timestamp,
-                           start, end, poll_time=runtime, errors=errors)
-
+        content = taxii.TaxiiContent()
+        content.populate(data[0], analyst, mid, hostname, feed, label, start,
+                         end, poll_time=runtime, errors=errors)
+        if import_now:
+            ic_ret = import_content([content], analyst)
+            if ic_ret and ic_ret['status']:
+                for k in import_result:
+                    if k == 'successes':
+                        import_result[k] += ic_ret[k]
+                    else:
+                        import_result[k].extend(ic_ret[k])
+        else:
+            content.save()
+        ret['blk_count'] += 1
+        t_offset = runtime.replace(tzinfo=None)-datetime(1970,1,1)
+        ret['poll_id'] = '%.3f' % (int(t_offset.total_seconds() * 1000)/1000.0)
     if save_datetimes:
         crits_taxii.save()
-    poll_id = (runtime.replace(tzinfo=None)-datetime(1970,1,1)).total_seconds()
-    ret = generate_import_preview(poll_id, analyst)
+    if import_now:
+        ret['import'] = import_result
 
     return ret
 
@@ -408,7 +458,7 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
                      t.CB_STIX_XML_101,
                      t.CB_STIX_XML_11,
                      t.CB_STIX_XML_111,
-                     "urn:stix.mitre.org:xml:1.2")
+                     t.CB_STIX_XML_12)
 
     binding = str(content_block.content_binding)
     if binding == 'application/x-pkcs7-mime':
@@ -438,36 +488,132 @@ def parse_content_block(content_block, tm_, privkey=None, pubkey=None):
         msg = 'Unknown content binding "%s"' % binding
         return (None, msg)
 
-def process_standards_doc(data, analyst, filename, source, reference):
-    """
-    Take the given standards data and save it in the DB
 
-    :param data: Uploaded Content
-    :type data: string
+def process_stix_upload(filedata, analyst, source, reference, use_hdr_src,
+                        import_now=False):
+    """
+    Take the given file data and save each contained STIX document in the DB.
+    If the file is a ZIP, extract and save each STIX document.
+
+    :param filedata: The uploaded filedata
+    :type filedata: :class:`django.core.files.uploadedfile.InMemoryUploadedFile`
     :param analyst: Userid of the analyst who uploaded the data
     :type analyst: string
-    :param filename: The filename of the standards doc
-    :type filename: string
-    :param source: The source name of the data
+    :param source: The analyst provided source name of the data
     :type source: string
     :param reference: A reference to the source of the data
     :type reference: string
-    :returns: dict with key "polls"
+    :param use_hdr_src: If True, try to use the STIX Header Information Source
+                         instead of the value in "source" parameter
+    :type use_hdr_src: boolean
+    :param import_now: If True, import all STIX data into CRITs
+    :type import_now: boolean
+    :returns: dictionary
     """
 
-    t_stamp = datetime.now()
+    t_stamp = datetime.now(tzutc())
     t_stamp = t_stamp.replace(microsecond=t_stamp.microsecond / 1000 * 1000)
-    host = "Manual STIX Upload - Source: %s" % source
+    top_name = filedata.name
 
-    save_standards_doc(data, analyst, reference, host, filename,
-                       t_stamp, poll_time=t_stamp)
+    if import_now:
+        ret = {
+                'successes': 0,
+                'failures': [],
+                'Certificate': [],
+                'Domain': [],
+                'Email': [],
+                'Event': [],
+                'Indicator': [],
+                'IP': [],
+                'PCAP': [],
+                'RawData': [],
+                'Sample': [],
+               }
 
-    poll_id = (t_stamp.replace(tzinfo=None)-datetime(1970,1,1)).total_seconds()
+    if zipfile.is_zipfile(filedata):
+        with zipfile.ZipFile(filedata, 'r') as z:
+            for zinfo in z.infolist():
+                result = process_stix_doc(z.open(zinfo), zinfo.filename,
+                                       t_stamp, source, reference, use_hdr_src,
+                                       analyst, import_now, top_name)
+                if result and result['status']:
+                    for k in ret:
+                        if k == 'successes':
+                            ret[k] += result[k]
+                        else:
+                            ret[k].extend(result[k])
+    else:
+        filedata.seek(0)
+        ret = process_stix_doc(filedata, top_name, t_stamp, source,
+                               reference, use_hdr_src, analyst, import_now)
 
-    return {'polls': [generate_import_preview(poll_id, analyst)]}
+    if import_now:
+        return ret
+    else:
+        poll_id = t_stamp.replace(tzinfo=None)-datetime(1970,1,1)
+        poll_id = '%.3f' % poll_id.total_seconds()
+        return generate_import_preview(poll_id, analyst)
 
-def save_standards_doc(data, analyst, message_id, hostname, feed, timestamp,
-                       begin=None, end=None, poll_time=None, errors=[]):
+
+def process_stix_doc(data, doc_name, t_stamp, source, reference, use_hdr_src,
+                     analyst, import_now=False, top_name=None):
+    """
+    Take the data for a STIX document, decode if necessary, and save in the DB.
+
+    :param data: The STIX document data
+    :type data: :class:`django.core.files.uploadedfile.InMemoryUploadedFile`
+                OR :class:`zipfile.ZipExtFile`
+    :param doc_name: The filename of the STIX document
+    :type doc_name: string
+    :param t_stamp: Timestamp representing when this data was uploaded
+    :type t_stamp: :class:`datetime.datetime`
+    :param source: The analyst provided source name of the data
+    :type source: string
+    :param reference: A reference to the source of the data
+    :type reference: string
+    :param use_hdr_src: If True, try to use the STIX Header Information Source
+                         instead of the value in "source" parameter
+    :type use_hdr_src: boolean
+    :param analyst: Userid of the analyst who uploaded the data
+    :type analyst: string
+    :param import_now: If True, import all STIX data into CRITs
+    :type import_now: boolean
+    :param top_name: The filename of the STIX document or parent ZIP file
+    :type top_name: string
+    :returns: if import_now is True, returns result of import_content function
+    """
+
+    if not top_name:
+        top_name = doc_name
+
+    decoded = u''
+    checked = False
+    encoding = 'utf-8'
+    ## search and extract encoding string
+    ptrn = r"""^<\?xml.+?encoding=["'](?P<encstr>[^"']+)["'].*?\?>"""
+
+    for line in data:
+        if not checked:
+            match = re.search(ptrn, line)
+            checked = True
+            if match:
+                encoding = match.group("encstr")
+        decoded += line.decode(encoding, 'replace')
+
+    content = taxii.TaxiiContent()
+    content.populate(decoded, analyst, reference, source, top_name, doc_name,
+                     poll_time=t_stamp, use_hdr_src=use_hdr_src)
+
+    if import_now: # Do not save if we're importing right now
+        result = import_content([content], analyst)
+        return result
+    else: # save for later
+        content.save()
+
+
+def save_standards_doc(data, analyst, message_id, hostname, feed, block_label,
+                       begin=None, end=None, poll_time=None, use_hdr_src=False,
+                       errors=[]):
     """
     Take the given standards data and save it in the DB
 
@@ -481,14 +627,17 @@ def save_standards_doc(data, analyst, message_id, hostname, feed, timestamp,
     :type hostname: string
     :param feed: Feed/collection from which this data was polled
     :type feed: string
-    :param timestamp: When the content was submitted to the TAXII server
-    :type timestamp: :class:`datetime.datetime`
+    :param block_label: STIX filename, or when block submitted to TAXII server
+    :type block_label: string
     :param begin: Exclusive begin component of the timerange that was polled
     :type begin: :class:`datetime.datetime`
     :param end: Inclusive end component of the timerange that was polled
     :type end: :class:`datetime.datetime`
     :param poll_time: Timestamp representing when this data was polled
     :type poll_time: :class:`datetime.datetime`
+    :param use_hdr_src: If True, try to use the STIX Header Information Source
+                         instead of the value in "source" parameter
+    :type use_hdr_src: boolean
     :param errors: List of errors
     :type errors: list
     :returns: Nothing
@@ -498,25 +647,57 @@ def save_standards_doc(data, analyst, message_id, hostname, feed, timestamp,
         taxii_content = taxii.TaxiiContent()
         taxii_content.taxii_msg_id = message_id
         taxii_content.hostname = hostname
+        taxii_content.use_hdr_src = use_hdr_src
         taxii_content.feed = feed
-        taxii_content.timestamp = timestamp
+        taxii_content.block_label = block_label
         taxii_content.poll_time = poll_time or datetime.now()
-        if begin:
-            begin = begin.strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            begin = 'None'
-        if end:
+        if end: # TAXII poll will always have end timestamp
             end = end.strftime('%Y-%m-%d %H:%M:%S')
-        else:
-            end = 'None'
-        taxii_content.timerange = '%s to %s' % (begin, end)
+            begin = begin.strftime('%Y-%m-%d %H:%M:%S') if begin else 'None'
+            taxii_content.timerange = '%s to %s' % (begin, end)
+        else: # Must be a STIX file upload
+            taxii_content.timerange = 'STIX File Upload'
         taxii_content.analyst = analyst
         taxii_content.content = data or ""
         taxii_content.errors = errors
         taxii_content.import_failed = False
         taxii_content.save()
 
-def generate_import_preview(poll_id, analyst):
+def select_blocks(select=None, deselect=None):
+    """
+    Change the "selected" field of blocks in the DB based on poll_ids,
+    or lists of block ObjectIDs.
+
+    :param select: A Poll ID or list of block IDs for which "selected"
+                   should be set to True.
+    :type select: list or str
+    :param deselect: A Poll ID or list of block IDs for which "selected"
+                     should be set to False.
+    :type deselect: list or str
+    :returns: dict with keys:
+              "success" (bool) - DB Update Pass/Fail
+              "msg" (str) - Failure message
+    """
+    ret = {'success': True, 'msg': ''}
+    tc = taxii.TaxiiContent
+    try:
+        if isinstance(select, list) and select:
+            tc.objects(id__in=select).update(set__selected=True)
+        elif isinstance(select, basestring) and select:
+            p_time = datetime.utcfromtimestamp(float(select))
+            tc.objects(poll_time=p_time).update(set__selected=True)
+        if isinstance(deselect, list) and deselect:
+            tc.objects(id__in=deselect).update(set__selected=False)
+        elif isinstance(deselect, basestring) and deselect:
+            p_time = datetime.utcfromtimestamp(float(deselect))
+            tc.objects(poll_time=p_time).update(set__selected=False)
+    except Exception as e:
+        ret['success'] = False
+        ret['msg'] = str(e)
+    return ret
+
+
+def generate_import_preview(poll_id, analyst, page=1, mult=10):
     """
     Given a Poll ID (unix timestamp), parse all associated content blocks and
     generate preview data for the CRITs TLOs that can be imported into CRITs
@@ -525,6 +706,10 @@ def generate_import_preview(poll_id, analyst):
     :type poll_id: string
     :param analyst: Userid of the analyst requesting the preview
     :type analyst: string
+    :param page: The desired page number
+    :type page: int
+    :param mult: The desired number of blocks/page
+    :type mult: int
     :returns: dict with keys:
               "successes" (int) - Count of successful preview objects
               "failures" (list) - Failure messages
@@ -540,8 +725,17 @@ def generate_import_preview(poll_id, analyst):
     """
     tsvc = get_config('taxii_service')
     hdr_events = tsvc['header_events']
+    obs_as_ind = tsvc['obs_as_ind']
+    mult = int(mult)
+    page = int(page)
+    skip = mult * (page - 1)
     p_time = datetime.utcfromtimestamp(float(poll_id))
-    blocks = taxii.TaxiiContent.objects(poll_time=p_time)
+    block_count = taxii.TaxiiContent.objects(poll_time=p_time).count()
+    pages = (block_count / mult) + (1 if block_count % mult else 0)
+    while skip > block_count: # prevent invalid skip value
+        page -= 1
+        skip = mult * (page - 1)
+    blocks = taxii.TaxiiContent.objects(poll_time=p_time).limit(mult).skip(skip)
     if not blocks:
         ret = {
           'failures': ['No data exists for Timestamp %s' % p_time],
@@ -549,21 +743,25 @@ def generate_import_preview(poll_id, analyst):
         }
         return ret
 
-    times = blocks[0].timerange.split(' to ')
     ret = {
             'successes': 0,
             'failures': [],
             'blocks': [],
-            'start': times[0],
-            'end': times[1],
+            'block_count': block_count,
+            'timerange': blocks[0].timerange,
+            'poll_id': poll_id,
             'poll_time': blocks[0].poll_time,
             'taxii_msg_id': blocks[0].taxii_msg_id,
             'source': blocks[0].hostname,
             'feed': blocks[0].feed,
-            'analyst': blocks[0].analyst
+            'analyst': blocks[0].analyst,
+            'page': page,
+            'pages': pages,
+            'page_range': range(1, pages + 1),
+            'mult': mult,
           }
 
-    for block in blocks:
+    for num, block in enumerate(blocks):
         tlos = {}
         failures = []
 
@@ -573,7 +771,8 @@ def generate_import_preview(poll_id, analyst):
 
         if block.content:
             objs = import_standards_doc(block.content, analyst, None, None,
-                                        hdr_events, preview_only=True)
+                                        hdr_events, obs_as_ind,
+                                        preview_only=True)
 
             if not objs['success']:
                 failures.append((objs['reason'], 'STIX Package'))
@@ -588,9 +787,11 @@ def generate_import_preview(poll_id, analyst):
                                                          tlo_meta[2]))
 
         ret['blocks'].append({'id': block.id,
-                              'timestamp': block.timestamp,
+                              'num': num + skip + 1,
+                              'block_label': block.block_label,
                               'tlos': tlos,
-                              'failures': failures})
+                              'failures': failures,
+                              'selected': block.selected})
     return ret
 
 def get_saved_polls(action, poll_id=None):
@@ -618,7 +819,7 @@ def get_saved_polls(action, poll_id=None):
             data.delete() # delete the given poll
             return {'success': True}
         else: # download
-            if 'Manual STIX Upload' in data[0].hostname:
+            if  data[0].timerange == 'STIX File Upload':
                 filename = data[0].feed
                 res = ''.join(block.content for block in data)
                 return {'response': res, 'filename': filename}
@@ -627,7 +828,8 @@ def get_saved_polls(action, poll_id=None):
             filename = "taxii_poll-%s.xml" % p_time.strftime('%Y%m%dT%H%M%S')
             content_blocks = []
             for block in data:
-                stamp = block.timestamp.replace(tzinfo=pytz.utc)
+                stamp = datetime.strptime(block.block_label, '%Y-%m-%d %H:%M:%S')
+                stamp = stamp.replace(tzinfo=pytz.utc)
                 c_block = tm11.ContentBlock(content_binding = t.CB_STIX_XML_111,
                                             timestamp_label = stamp,
                                             content = block.content)
@@ -643,12 +845,13 @@ def get_saved_polls(action, poll_id=None):
 
     content = taxii.TaxiiContent.objects()
     polls = {}
-    ret = {'unimported': {}, 'errored': {}}
+    ret = {'unimported': [], 'errored': []}
     for block in content:
         time = str(block.poll_time)
         poll_id = '%.3f' % (block.poll_time-datetime(1970,1,1)).total_seconds()
         if time not in polls:
-            polls[time] = {'poll_id': poll_id,
+            polls[time] = {'time': time,
+                           'poll_id': poll_id,
                            'msg_id': block.taxii_msg_id,
                            'source': block.hostname,
                            'feed': block.feed,
@@ -665,9 +868,14 @@ def get_saved_polls(action, poll_id=None):
 
     for poll in polls:
         if polls[poll]['import_failed']:
-            ret['errored'][poll] = polls[poll]
+            ret['errored'].append(polls[poll])
         else:
-            ret['unimported'][poll] = polls[poll]
+            ret['unimported'].append(polls[poll])
+
+    # sort the lists chronologically
+    ret['unimported'].sort(key=lambda k: k['time'])
+    ret['errored'].sort(key=lambda k: k['time'])
+
     ret['success'] = True
     return ret
 
@@ -684,13 +892,14 @@ def get_saved_block(block_id=None):
 
     data = taxii.TaxiiContent.objects(id=block_id).first() # get data from dB
 
-    if 'Manual STIX Upload' in data.hostname:
-        filename = data.feed
+    if data.timerange == 'STIX File Upload':
+        filename = data.block_label
         res = data.content
         return {'response': res, 'filename': filename}
 
     # rebuild XML
-    stamp = data.timestamp.replace(tzinfo=pytz.utc)
+    stamp = datetime.strptime(data.block_label, '%Y-%m-%d %H:%M:%S')
+    stamp = stamp.replace(tzinfo=pytz.utc)
     filename = "taxii_block-%s-%s.xml"
     filename = filename % (data.feed, stamp.strftime('%Y%m%dT%H%M%S'))
     c_block = tm11.ContentBlock(content_binding = t.CB_STIX_XML_111,
@@ -699,21 +908,21 @@ def get_saved_block(block_id=None):
 
     return {'response': c_block.to_xml(), 'filename': filename}
 
-def import_content_blocks(block_ids, action, analyst):
+def import_poll(poll_id, analyst, action=None):
     """
-    Given a list of Mongo ObjectIDs, parse and import the associated
-    content blocks. User can select whether to delete or keep
+    Given a poll_id (timestamp), parse and import those content blocks where
+    "selected" is True. User can select whether to delete or keep
     unimported blocks from the same poll via the 'action' key. An action
     of "import_delete" directs the parser to delete unimported content
     from the same poll, while any other value for 'action' keeps the
     unimported content.
 
-    :param block_ids: Mongo ObjectIDs of the blocks to import
-    :type block_ids: list
-    :param action: If 'import_delete', delete unimported content
-    :type action: string
+    :param poll_id: Timestamp as the ID of the poll to import
+    :type poll_id: str
     :param analyst: Userid of the analyst requesting the import
     :type analyst: string
+    :param action: If 'import_delete', delete unimported content
+    :type action: string
     :returns: dict with keys:
               "successes" (int) - Count of successfully imported objects
               "failures" (list) - Individual failure messages
@@ -723,6 +932,7 @@ def import_content_blocks(block_ids, action, analyst):
               "Domain" (list) - IDs and values of imported Domains
                 ...and so on for each TLO type
     """
+
     ret = {
             'successes': 0,
             'failures': [],
@@ -741,22 +951,22 @@ def import_content_blocks(block_ids, action, analyst):
             'Sample': [],
            }
 
-    if not block_ids:
-        return {'status': False, 'msg': 'No content was selected for import'}
+    method = "STIX Import"
 
-    method = "TAXII Import"
-    blocks = taxii.TaxiiContent.objects(id__in=block_ids)
+    p_time = datetime.utcfromtimestamp(float(poll_id))
+    blocks = taxii.TaxiiContent.objects(poll_time=p_time, selected=True)
 
     tsvc = get_config('taxii_service')
     hdr_events = tsvc['header_events']
+    obs_as_ind = tsvc['obs_as_ind']
     tsrvs = tsvc.taxii_servers
     pids = {}
 
     for block in blocks:
         source = ""
         reference = block.taxii_msg_id
-        timestamp = block.timestamp
         data = block.content
+        use_hdr_src = block.use_hdr_src
 
         for svr in tsrvs:
             if tsrvs[svr].get('hostname') == block.hostname:
@@ -770,14 +980,12 @@ def import_content_blocks(block_ids, action, analyst):
                 if source:
                     break
         else:
-            try:
-                source = block.hostname.split(' - Source: ')[1]
-            except:
-                source = block.hostname
+            source = block.hostname
             default_ci = ('unknown', 'unknown')
 
         objs = import_standards_doc(data, analyst, method, reference,
-                                    hdr_events, default_ci, source)
+                                    hdr_events, default_ci, source,
+                                    use_hdr_src, obs_as_ind)
 
         if not objs['success']:
             ret['failures'].append((objs['reason'],
@@ -799,7 +1007,130 @@ def import_content_blocks(block_ids, action, analyst):
         if block.import_failed:
             block.save()
         else:
-            block.delete()
+            try:
+                block.delete() # delete it if it exists in the DB
+            except:
+                pass
+
+        pids[block.poll_time] = 1 # save unique poll timestamps
+
+    if action == "import_delete":
+        taxii.TaxiiContent.objects(poll_time__in=pids.keys(), errors=[]).delete()
+
+    ret.update(tlos) # add the TLO lists to the return dict
+
+    ret['status'] = True
+
+    return ret
+
+
+def import_content(content_objs, analyst, action=None):
+    """
+    Given a list of TaxiiContent objects, or Mongo ObjectIDs, parse and import
+    the content. User can select whether to delete or keep
+    unimported blocks from the same poll via the 'action' key. An action
+    of "import_delete" directs the parser to delete unimported content
+    from the same poll, while any other value for 'action' keeps the
+    unimported content.
+
+    :param block_ids: Mongo ObjectIDs of the blocks to import
+    :type block_ids: list of strs or list of :class:`taxii.TaxiiContent`
+    :param analyst: Userid of the analyst requesting the import
+    :type analyst: string
+    :param action: If 'import_delete', delete unimported content
+    :type action: string
+    :returns: dict with keys:
+              "successes" (int) - Count of successfully imported objects
+              "failures" (list) - Individual failure messages
+              "status" (bool) - True if import was generally successful
+              "msg" (string) - General error messages
+              "Certificate" (list) - IDs and values of imported Certificates
+              "Domain" (list) - IDs and values of imported Domains
+                ...and so on for each TLO type
+    """
+
+    ret = {
+            'successes': 0,
+            'failures': [],
+            'status': False,
+            'msg': ''
+          }
+    tlos = {
+            'Certificate': [],
+            'Domain': [],
+            'Email': [],
+            'Event': [],
+            'Indicator': [],
+            'IP': [],
+            'PCAP': [],
+            'RawData': [],
+            'Sample': [],
+           }
+
+    if not content_objs:
+        return {'status': False, 'msg': 'No content was selected for import'}
+
+    method = "STIX Import"
+    if isinstance(content_objs[0], basestring):
+        blocks = taxii.TaxiiContent.objects(id__in=content_objs)
+    else:
+        blocks = content_objs
+
+    tsvc = get_config('taxii_service')
+    hdr_events = tsvc['header_events']
+    obs_as_ind = tsvc['obs_as_ind']
+    tsrvs = tsvc.taxii_servers
+    pids = {}
+
+    for block in blocks:
+        source = ""
+        reference = block.taxii_msg_id
+        data = block.content
+        use_hdr_src = block.use_hdr_src
+
+        for svr in tsrvs:
+            if tsrvs[svr].get('hostname') == block.hostname:
+                for feed in tsrvs[svr]['feeds']:
+                    if tsrvs[svr]['feeds'][feed]['feedname'] == block.feed:
+                        feed_cfg = tsrvs[svr]['feeds'][feed]
+                        source = feed_cfg['source']
+                        default_ci = (feed_cfg.get('def_conf', 'unknown'),
+                                      feed_cfg.get('def_impact', 'unknown'))
+                        break
+                if source:
+                    break
+        else:
+            source = block.hostname
+            default_ci = ('unknown', 'unknown')
+
+        objs = import_standards_doc(data, analyst, method, reference,
+                                    hdr_events, default_ci, source,
+                                    use_hdr_src, obs_as_ind)
+
+        if not objs['success']:
+            ret['failures'].append((objs['reason'],
+                                   'STIX Package'))
+            block.import_failed = True
+            block.errors.append('STIX Package: %s' % objs['reason'])
+
+        for sid in objs['imported']:
+            ret['successes'] += 1
+            tlo_meta = objs['imported'][sid]
+            tlos.setdefault(tlo_meta[0], []).append((tlo_meta[1],
+                                                     tlo_meta[2]))
+
+        for k in objs['failed']:
+            ret['failures'].append(k)
+            block.import_failed = True
+            block.errors.append('%s: %s' % (k[1], k[0]))
+
+        if block.import_failed:
+            block.save()
+        else:
+            try:
+                block.delete() # delete it if it exists in the DB
+            except:
+                pass
 
         pids[block.poll_time] = 1 # save unique poll timestamps
 
@@ -1779,7 +2110,8 @@ def update_taxii_service_config(post_data, analyst):
     return status
 
 def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
-                         def_ci=None, source=None, preview_only=False):
+                         def_ci=None, source=None, use_hdr_src=False,
+                         obs_as_ind=False, preview_only=False):
     """
     Import a standards document into CRITs.
 
@@ -1798,6 +2130,12 @@ def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
     :type def_ci: tuple
     :param source: The name of the source who provided this document.
     :type source: str
+    :param use_hdr_src: If True, try to use the STIX Header Information
+                         Source instead of the value in "source" parameter
+    :type use_hdr_src: boolean
+    :param obs_as_ind: If True, create indicators for all qualifying
+	                   observables instead of Domain and IP TLOs
+    :type obs_as_ind: boolean
     :param preview_only: If True, nothing is imported and a preview is returned
     :type preview_only: boolean
     :returns: dict with keys:
@@ -1816,7 +2154,7 @@ def import_standards_doc(data, analyst, method, ref=None, hdr_events=False,
 
     try:
         parser = STIXParser(data, analyst, method, def_ci, preview_only)
-        parser.parse_stix(reference=ref, hdr_events=hdr_events, source=source)
+        parser.parse_stix(ref, hdr_events, source, use_hdr_src, obs_as_ind)
         parser.relate_objects()
     except STIXParserException as e:
         logger.exception(str(e))

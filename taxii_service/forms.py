@@ -79,6 +79,9 @@ class TAXIIPollForm(forms.Form):
                  help_text="Feeds to poll for data",
                  widget=forms.SelectMultiple(attrs={'style':"height:200px;"}))
 
+    import_all = forms.BooleanField(required=False, initial=False,
+                            label="Skip preview and import all data into CRITs")
+
     use_last = forms.BooleanField(required=False, initial=True,
                                   label='Get all messages since last full poll')
 
@@ -161,6 +164,11 @@ class TAXIIServiceConfigForm(forms.Form):
                   label="Pkg Header Events",
                   initial=False,
                   help_text="Create an Event from each STIX package header & relate all items to it.")
+
+    obs_as_ind = forms.BooleanField(required=False,
+                  label="Observable as Indicator",
+                  initial=False,
+                  help_text="Create indicators for all qualifying observables instead of Domain and IP TLOs")
 
     max_rels = forms.IntegerField(required=True,
                                   label="Maximum Related",
@@ -360,9 +368,13 @@ class UploadStandardsForm(forms.Form):
 
     error_css_class = 'error'
     required_css_class = 'required'
-    filedata = forms.FileField()
+    filedata = forms.FileField(label="XML File or Zip of XML Files")
     source = forms.ChoiceField(required=True)
+    use_hdr_src = forms.BooleanField(required=False, initial=True,
+                        label="Use STIX Header Information Source, if possible")
     reference = forms.CharField(required=False)
+    import_all = forms.BooleanField(required=False, initial=False,
+                            label="Skip preview and import all data into CRITs")
     make_event = forms.BooleanField(required=False, label="Create event", initial=True)
 
     def __init__(self, username, *args, **kwargs):

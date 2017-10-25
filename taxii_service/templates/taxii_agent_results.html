@@ -1,7 +1,59 @@
 
 
 {% block content %}
+{% if poll_msg %}
+<div class="content_box">
+    <h3 class="titleheader">
+        Status: <b>{% if status %}Success{% else %}Failure{% endif %}</b>
+    </h3>
+    <div class="content_body">
+        {% if status %}Message:{% else %}Reason:{% endif %} {{ poll_msg }}
+    </div>
+</div>
+<br>
+<table class="chart" id="poll_data" width="100%" style="margin-bottom: 15px;">
+    <colgroup>
+        <col>
+        <col>
+        <col>
+        <col>
+        <col>
+        <col>
+        <col>
+    </colgroup>
+    <thead>
+        <th>Hostname</th>
+        <th>Feed Name</th>
+        <th>Message ID</th>
+        <th>Block Count</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Status</th>
+    </thead>
+    <tbody>
+    {% for poll in polls %}
+        <tr>
+            <td>{{ poll.hostname }}</td><td>{{ poll.feed }}</td>
+            {% if poll.blk_count < 1 %}
+                <td title="Nothing to preview! This poll returned no data blocks.">{{ poll.mid }}</td>
+            {% else %}
+                <td><a class="pollid" href="#" id="{{ poll.poll_id }}">{{ poll.mid }}</a></td>
+            {% endif %}
+            <td>{{ poll.blk_count }}</td>
+            <td>{{ poll.start }}</td><td>{{ poll.end }}</td>
+            {% if poll.success %}
+                <td><font color="green">Poll Successful</font></td>
+            {% else %}
+                <td><font color="red">{{ poll.msg }}</font></td>
+            {% endif %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
 
+{% if imported %}
+{% with result=imported %}
 <style>
     #ta_results tbody td:nth-child(2) {
         text-align: center;
@@ -159,5 +211,36 @@
         </tbody>
     </table>
 </div>
-
+{% endwith %}
+{% endif %}
 {% endblock %}
+
+<script>
+    $('a.pollid').click(function() {
+        var pid = $(this).attr('id');
+        if (pid == "None") {
+            alert("Nothing to preview! This poll returned no data blocks.");
+            return
+        }
+        $("#current_state").text("Processing...");
+        $("#taxii-loader").show();
+        $.ajax({
+            type: "GET",
+            url: "{% url 'taxii_service.views.get_import_preview' '1234' '1' '10' %}".replace("1234", pid),
+        }).done(function(data) { // run on successful request
+            if (data.success) { // at least some feeds were successfully processed
+                $("#results_container").html(data.html);
+                $("#current_state").text("STIX Import Preview");
+                $("#view_saved").prop('hidden', false);
+            } else { // some issue occurred
+                $("#error_container").children(".taxii_notice").html(data.msg);
+                $("#current_state").text("Problems");
+            }
+        }).fail(function(data) { // server error
+            $("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+            $("#current_state").text("Problems");
+        }).always(function() {
+            $("#taxii-loader").hide();
+        });
+    });
+</script>
