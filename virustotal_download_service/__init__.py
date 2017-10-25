@@ -28,7 +28,7 @@ class VirusTotalDownloadService(Service):
     """
 
     name = "VirusTotal_Download"
-    version = '1.1.1'
+    version = '1.1.2'
     description = "Check VT for a given MD5. If a match is found, download the sample to CRITs."
     supported_types = ['Sample']
     required_fields = ['md5']
@@ -140,6 +140,7 @@ class VirusTotalDownloadService(Service):
             proxy = urllib2.ProxyHandler({'http': settings.HTTP_PROXY, 'https': settings.HTTP_PROXY})
             opener = urllib2.build_opener(proxy)
             urllib2.install_opener(opener)
+
         try:
             req = url + "?" + parameters
             self._info("Requesting binary with md5 '{0}' from VirusTotal.".format(obj.md5))
@@ -148,31 +149,13 @@ class VirusTotalDownloadService(Service):
             size = response.info().getheaders("Content-Length")[0]
             self._info("Binary size: {0} bytes".format(size))
 
-            if int(size) <= sizeLimit:
-                data = response.read()
-                if data:
-                    if replace == True:
-                        self._info("Replace = True. Deleting any previous binary with md5 {0}".format(obj.md5))
-                        sample.filedata.delete()
-                    self._info("Adding new binary to CRITs.")
-
-                    handle_file(filename = obj.md5,
-                                data = data,
-                                source = "VirusTotal",
-                                reference = "Binary downloaded from VT based on MD5",
-                                user = "VT Download Service",
-                                method = "VirusTotal Download Service",
-                                md5_digest = obj.md5 )
-                    if do_triage:
-                        self._info("Running sample triage for data-reliant services.")
-                        run_triage(sample, user = "VT Download Service")
-                    self._add_result("Download Successful", "Binary was successfully downloaded from VirusTotal")
-                else:
-                    self._error("No data returned by VirusTotal.")
-            else:
+            if int(size) > sizeLimit: # Check if within size limit
                 self._error("Binary size is {0} bytes, which is greater than maximum of {1} bytes. This limit can be changed in options.".format(size, sizeLimit))
                 self._add_result("Download Aborted", "Match found, but binary is larger than maximum size limit.")
-        except urllib2.HTTPError, e:
+                return
+
+            data = response.read()
+        except urllib2.HTTPError as e:
             if e.code == 404:
                 self._info("No results were returned. Either VirusTotal does not have the requested binary, or the request URL is incorrect.")
                 self._add_result("Not Found", "Binary was not found in the VirusTotal database")
@@ -181,7 +164,36 @@ class VirusTotalDownloadService(Service):
                 self._add_result("Download Canceled", "CRITs was forbidden from downloading the binary.")
             else:
                 self._error("An HTTP Error occurred: {0}".format(e))
-        except:
-            logger.error("VirusTotal: network connection error")
-            self._error("Network connection error checking VirusTotal")
+        except Exception as e:
+            logger.error("VirusTotal: Failed connection ({0})".format(e))
+            self._error("Failed to get data from VirusTotal: {0}".format(e))
             return
+
+        if data: # Retrieved some data from VT
+            if replace == True:
+                try:
+                    self._info("Replace = True. Deleting any previous binary with md5 {0}".format(obj.md5))
+                    sample.filedata.delete()
+                except Exception as e:
+                    logger.error("VirusTotal: Error deleting existing binary ({0})".format(e))
+                    self._error("Failed to delete existing binary")
+            self._info("Adding new binary to CRITs.")
+
+            try:
+                handle_file(filename = obj.md5,
+                            data = data,
+                            source = "VirusTotal",
+                            reference = "Binary downloaded from VT based on MD5",
+                            user = "VT Download Service",
+                            method = "VirusTotal Download Service",
+                            md5_digest = obj.md5 )
+            except Exception as e:
+                logger.error("VirusTotal: Sample creation failed ({0})".format(e))
+                self._error("Failed to create new Sample: {0}".format(e))
+                return
+            if do_triage:
+                self._info("Running sample triage for data-reliant services.")
+                run_triage(sample, user = "VT Download Service")
+            self._add_result("Download Successful", "Binary was successfully downloaded from VirusTotal")
+        else:
+            self._error("No data returned by VirusTotal.")
