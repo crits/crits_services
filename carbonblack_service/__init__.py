@@ -1,5 +1,5 @@
 from crits.services.core import Service, ServiceConfigError
-from crits.samples.handlers import handle_file, get_sample_details
+#from crits.samples.handlers import handle_file, get_sample_details
 from django.template.loader import render_to_string
 from . import forms
 

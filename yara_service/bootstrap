@@ -45,6 +45,7 @@ darwin_install()
     exit
     }
     brew install yara
+    pip install -U 'git+https://github.com/VirusTotal/yara-python.git'
     if [ $? -eq 0 ]
     then
       printf "${PASS}Homebrew Install Complete${END}\n"

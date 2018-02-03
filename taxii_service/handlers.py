@@ -21,7 +21,7 @@ from mixbox.idgen import set_id_namespace
 
 from django.conf import settings
 from django import forms as dforms
-from django.template.loader import render_to_string
+#from django.template.loader import render_to_string
 from django.utils.safestring import SafeText
 
 # ValidationError moved to errors starting with mongoengine 0.12. or 0.13
