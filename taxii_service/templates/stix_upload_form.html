@@ -29,12 +29,15 @@
                 </td>
             </tr>
             <tr>
-                <td colspan="2">
+                <td id="stix_src_fields" colspan="2">
 	                <strong class="taxii_ctype_label required">
 		                {{ form.source.label }}
 	                </strong>
 	                <br/>
 	                {{ form.source }}
+	                <br/>
+	                <span title='If this box is checked, the STIX Information Source "Identity" and "References" attributes will attempt to override the "Source" and "Reference" fields of this form.'>
+	                    {{form.use_hdr_src}}{{ form.use_hdr_src.label }}</span>
                 </td>
             </tr>
             <tr>
@@ -44,6 +47,16 @@
 	                </strong>
 	                <br/>
 	                {{ form.reference }}
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+	                <strong class="taxii_ctype_label required">
+		                Import Option
+	                </strong>
+	                <br/>
+                    <span title='If this box is checked, the uploaded data will be immediately imported into CRITs and then deleted.  You will not be given the opportunity to preview the data.'>
+	                    {{form.import_all}}{{ form.import_all.label }}</span>
                 </td>
             </tr>
 		</table>

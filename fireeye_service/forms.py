@@ -50,6 +50,12 @@ class FireeyeRunForm(forms.Form):
                                 initial=[],
                                 help_text="Name of the machine to use for the analysis.")
 
+    force = forms.BooleanField(required=False,
+                             label="Force",
+                             initial=False,
+                             help_text="Force to rerun sample")
+
+
     def __init__(self, machines=[], *args, **kwargs):
         kwargs.setdefault('label_suffix', ':')
         super(FireeyeRunForm, self).__init__(*args, **kwargs)

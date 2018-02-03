@@ -1,4 +1,4 @@
-# (c) 2015, Adam Polkosnik <adam.polkosnik@ny.frb.org>
+# (c) 2016, Adam Polkosnik <adam.polkosnik@ny.frb.org>
 #
 import logging
 import io
@@ -8,11 +8,13 @@ import pylzma
 # for computing the MD5
 from hashlib import md5
 
+from crits.core.user_tools import get_user_info
 # for adding the extracted files
 from crits.samples.handlers import handle_file
 
 from crits.services.core import Service, ServiceConfigError
 
+from crits.vocabulary.acls import SampleACL
 from crits.vocabulary.relationships import RelationshipTypes
 #from . import forms
 
@@ -45,6 +47,7 @@ class unswfService(Service):
     def run(self, obj, config):
         self.config = config
         self.obj = obj
+        user = self.current_task.user
         data = io.BytesIO(obj.filedata.read())
         swf = bytearray()
         try:
@@ -62,6 +65,11 @@ class unswfService(Service):
         if swf:
             h = md5(str(swf)).hexdigest()
             name = h
+            if not user.has_access_to(SampleACL.WRITE):
+                self._info("User does not have permission to add Samples to CRITs")
+                self._add_result("Extract Canceled", "User does not have permission to add Samples to CRITs")
+                return
+                
             self._info("New file: %s (%d bytes, %s)" % (name, len(swf), h))
             handle_file(name, swf, self.obj.source,
                 related_id=str(self.obj.id),
@@ -69,5 +77,5 @@ class unswfService(Service):
                 campaign=self.obj.campaign,
                 method=self.name,
                 relationship=RelationshipTypes.RELATED_TO,
-                user=self.current_task.username)
+                user=self.current_task.user)
             self._add_result("file_added", name, {'md5': h})

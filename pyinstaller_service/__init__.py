@@ -116,7 +116,7 @@ class pyinstallerService(Service):
                             result = handle_raw_data_file(
                                 block,
                                 obj.source,
-                                user=self.current_task.username,
+                                user=self.current_task.user,
                                 description=description,
                                 title=title,
                                 data_type=data_type,
@@ -128,12 +128,12 @@ class pyinstallerService(Service):
                                     rel_item=result['object'],
                                     rel_type=RelationshipTypes.CONTAINED_WITHIN,
                                     rel_confidence="high",
-                                    analyst=self.current_task.username
+                                    analyst=self.current_task.user
                                 )
                                 if res['success']:
-                                    obj.save(username=self.current_task.username)
-                                    result['object'].save(username=self.current_task.username)
-                                    url = reverse('crits-core-views-details',
+                                    obj.save(username=self.current_task.user.username)
+                                    result['object'].save(username=self.current_task.user.username)
+                                    url = reverse('crits-core-views.details',
                                                 args=('RawData',
                                                         result['_id']))
                                     url = '<a href="%s">View Raw Data</a>' % url

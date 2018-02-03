@@ -3,14 +3,16 @@ import time
 import tarfile
 from io import BytesIO
 from optparse import OptionParser
+
 import bson
 from crits.core.mongo_tools import *
 from crits.core.basescript import CRITsBaseScript
 import settings
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username=None):
-        self.username = username
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def run(self, argv):
         parser = OptionParser()
@@ -19,7 +21,6 @@ class CRITsScript(CRITsBaseScript):
         parser.add_option("-o", "--output-file", action="store", dest="outfile",
                 type="string", help="output archive file (no extension)")
         (opts, args) = parser.parse_args(argv)
-        data = None
         if opts.yarahit and opts.outfile:
             filename = "%s.tar.bz2" % opts.outfile
             try:

@@ -2,6 +2,7 @@ import re
 import logging
 
 from crits.services.core import Service, ServiceConfigError
+from crits.emails.email import Email
 from crits.events.event import Event
 from crits.raw_data.raw_data import RawData
 from crits.samples.sample import Sample
@@ -25,7 +26,7 @@ class DataMinerService(Service):
     name = "DataMiner"
     version = '1.0.0'
     template = "data_miner_service_template.html"
-    supported_types = ['Event', 'RawData', 'Sample']
+    supported_types = ['Event', 'RawData', 'Sample', 'Email']
     description = "Mine a chunk of data for useful information."
 
     @staticmethod
@@ -39,6 +40,8 @@ class DataMinerService(Service):
             data = obj.description
         elif isinstance(obj, RawData):
             data = obj.data
+        elif isinstance(obj, Email):
+            data = obj.raw_body
         elif isinstance(obj, Sample):
             samp_data = obj.filedata.read()
             data = make_ascii_strings(data=samp_data)
@@ -63,6 +66,13 @@ class DataMinerService(Service):
             if id_:
                 tdict['exists'] = str(id_.id)
             self._add_result('Potential Domains', domain, tdict)
+        urls = extract_urls(data)
+        for url in urls:
+            tdict = {'Type': IndicatorTypes.URI}
+            id_ = Indicator.objects(value=url).only('id').first()
+            if id_:
+                tdict['exists'] = str(id_.id)
+            self._add_result('Potential URLs', url, tdict)
         emails = extract_emails(data)
         for email in emails:
             tdict = {'Type': IndicatorTypes.EMAIL_ADDRESS}
@@ -71,35 +81,38 @@ class DataMinerService(Service):
                 tdict['exists'] = str(id_.id)
             self._add_result('Potential Emails', email, tdict)
         hashes = extract_hashes(data)
+        hash_tracker = []
         for hash_ in hashes:
             type_ = hash_[0]
             val = hash_[1]
-            tdict = {'Type': type_}
-            if type_ == IndicatorTypes.MD5:
-                id_ = Sample.objects(md5=val).only('id').first()
-            elif type_ == IndicatorTypes.SHA1:
-                id_ = Sample.objects(sha1=val).only('id').first()
-            elif type_ == IndicatorTypes.SHA256:
-                id_ = Sample.objects(sha256=val).only('id').first()
-            elif type_ == IndicatorTypes.SSDEEP:
-                id_ = Sample.objects(ssdeep=val).only('id').first()
-            else:
-                id_ = None
-            if id_:
-                tdict['exists'] = str(id_.id)
-            self._add_result('Potential Samples', val, tdict)
+            if val not in hash_tracker:
+                tdict = {'Type': type_}
+                if type_ == IndicatorTypes.MD5:
+                    id_ = Sample.objects(md5=val).only('id').first()
+                elif type_ == IndicatorTypes.SHA1:
+                    id_ = Sample.objects(sha1=val).only('id').first()
+                elif type_ == IndicatorTypes.SHA256:
+                    id_ = Sample.objects(sha256=val).only('id').first()
+                elif type_ == IndicatorTypes.SSDEEP:
+                    id_ = Sample.objects(ssdeep=val).only('id').first()
+                else:
+                    id_ = None
+                if id_:
+                    tdict['exists'] = str(id_.id)
+                self._add_result('Potential Samples', val, tdict)
+                hash_tracker.append(val)
 
 # hack of a parser to extract potential ip addresses from data
 def extract_ips(data):
     pattern = r"((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)([ (\[]?(\.|dot)[ )\]]?(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3})"
+    final_ips = []
     ips = [each[0] for each in re.findall(pattern, data)]
     for item in ips:
-        location = ips.index(item)
         ip = re.sub("[ ()\[\]]", "", item)
         ip = re.sub("dot", ".", ip)
-        ips.remove(item)
-        ips.insert(location, ip)
-    return ips
+        if ip not in final_ips:
+            final_ips.append(ip)
+    return final_ips
 
 # hack of a parser to extract potential domains from data
 def extract_domains(data):
@@ -111,11 +124,24 @@ def extract_domains(data):
             try:
                 tld = item.split(".")[-1]
                 check = TLD.objects(tld=tld).first()
-                if check:
+                if check and item not in final_domains:
                     final_domains.append(item)
             except:
                 pass
     return final_domains
+
+# hack of a parser to extract potential URLs (Links) from data
+def extract_urls(data):
+    pattern = r'(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?'
+    results = re.findall(pattern,data)
+    urls = [each for each in results if len(each) >0]
+    final_urls = []
+    for item in urls:
+        url = item[0]+"://"+item[1]+item[2]
+        if url not in final_urls:
+            final_urls.append(url)
+    return final_urls
+
 
 # hack of a parser to extract potential emails from data
 def extract_emails(data):
@@ -127,7 +153,7 @@ def extract_emails(data):
             try:
                 tld = item.split(".")[-1]
                 check = TLD.objects(tld=tld).first()
-                if check:
+                if check and item not in final_emails:
                     final_emails.append(item)
             except:
                 pass
@@ -159,4 +185,3 @@ def extract_hashes(data):
         [(ssdeep,each) for each in re.findall(re_ssdeep, data) if len(each) > 0]
     )
     return final_hashes
-

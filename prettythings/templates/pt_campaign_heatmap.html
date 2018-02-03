@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Pretty Things: Campaign Heatmap{% endblock %}
+
+{% block content %}
+
+<style>
+    pre {outline: 1px solid #ccc; padding: 5px; margin: 5px; }
+    .string { color: green; }
+    .number { color: darkorange; }
+    .boolean { color: blue; }
+    .null { color: magenta; }
+    .key { color: red; }
+
+    #heattable {
+        border-collapse: collapse;
+    }
+
+    #heattable tr:first {
+        position: fixed;
+    }
+
+    #heattable tr td:first {
+        position: fixed;
+    }
+
+    #countries td {
+        color: #000;
+        text-shadow: 1px 0 0 #fff, 0 -1px 0 #fff, 0 1px 0 #fff, -1px 0 0 #fff;
+    }
+    #campaigns td {
+        color: #000;
+        text-shadow: 1px 0 0 #fff, 0 -1px 0 #fff, 0 1px 0 #fff, -1px 0 0 #fff;
+    }
+
+    td {
+         border: 1px solid #000;
+    }
+
+    tr#campaigns > td {
+        height: 200px;
+        width: auto;
+        padding: 0px;
+    }
+
+    .rotate {
+             filter:  progid:DXImageTransform.Microsoft.BasicImage(rotation=0.083);  /* IE6,IE7 */
+         -ms-filter: "progid:DXImageTransform.Microsoft.BasicImage(rotation=0.083)"; /* IE8 */
+     -moz-transform: rotate(-90.0deg);  /* FF3.5+ */
+      -ms-transform: rotate(-90.0deg);  /* IE9+ */
+       -o-transform: rotate(-90.0deg);  /* Opera 10.5 */
+  -webkit-transform: rotate(-90.0deg);  /* Safari 3.1+, Chrome */
+          transform: rotate(-90.0deg);  /* Standard */
+              float: left;
+    }
+
+    .enone {
+         background-color: #ffffcc;
+    }
+    .elow {
+         background-color: #ffcc99;
+    }
+    .emed {
+         background-color: #ff9966;
+    }
+    .ehigh {
+         background-color: #ff6600;
+    }
+    .ealert {
+         background-color: #ff0000;
+    }
+</style>
+
+<div class="content_box">
+    <h3 class="titleheader">
+        <span id="qb" class="collapsible">Campaign Heatmap:</span>
+        <span style="float: right;" class="ui-icon ui-icon-triangle-1-s collapsible"></span>
+    </h3>
+    <div class="content_body">
+        <table id="heattable" cellspacing="0">
+            <tbody>
+                <tr id="countries">
+                </tr>
+                <tr id="campaigns">
+                </tr>
+                <tr id="grand_totals">
+                    <td>Grand Total</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="content_box">
+    <h3 class="titleheader">
+        <span id="qb" class="collapsible">Campaign Heatmap Raw:</span>
+        <span style="float: right;" class="ui-icon ui-icon-triangle-1-s collapsible"></span>
+    </h3>
+    <div class="content_body">
+        <pre id="data"></pre>
+    </div>
+</div>
+
+<script>
+
+function getRandomColor() {
+    var letters = '0123456789ABCDEF'.split('');
+    var color = '#';
+    for (var i = 0; i < 6; i++ ) {
+        color += letters[Math.round(Math.random() * 15)];
+    }
+    return color;
+}
+
+function syntaxHighlight(json) {
+    if (typeof json != 'string') {
+         json = JSON.stringify(json, undefined, 2);
+    }
+    json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        var cls = 'number';
+        if (/^"/.test(match)) {
+            if (/:$/.test(match)) {
+                cls = 'key';
+            } else {
+                cls = 'string';
+            }
+        } else if (/true|false/.test(match)) {
+            cls = 'boolean';
+        } else if (/null/.test(match)) {
+            cls = 'null';
+        }
+        return '<span class="' + cls + '">' + match + '</span>';
+    });
+}
+
+function make_heattable(data) {
+    var countries = data.country_list;
+    var campaigns = data.campaign_list;
+    var months = data.month_list;
+
+    $('#countries').append('<td></td>');
+    $('#campaigns').append('<td><div class="rotate"><span>Month</span></div></td>');
+    $.each(countries, function(idx, value) {
+        var country = value[0];
+        var llen = value[1];
+        var markup = '<td colspan="' + llen + '">' + country + '</td>';
+        $('#countries').append(markup);
+    });
+    $.each(campaigns, function(idx, value) {
+        var markup = '<td><div class="rotate"><span>' + value + '</span></div></td>';
+        $('#campaigns').append(markup);
+    });
+
+    $.each(months, function(idx, value) {
+        var mcount = 0;
+        var active = 0;
+        var month = value[0];
+        var events = value[1];
+        var rmkp = '<tr class="mrow"><td>' + month + '</td>';
+        $.each(events, function(idx, event) {
+            mcount = mcount + event;
+            if (event > 0) {
+                 active = active + 1;
+            }
+            rmkp = rmkp + '<td class="ecount">' + event + '</td>';
+        });
+        rmkp = rmkp + '<td>' + mcount + '</td><td>' + active + '</td></tr>';
+        $('#heattable > tbody').append(rmkp);
+    });
+
+    var $mrows = $('#heattable tr.mrow');
+    var totals = Array.apply(null, Array(campaigns.length)).map(Number.prototype.valueOf,0);
+    $mrows.each(function() {
+        $(this).find('.ecount').each(function(i) {
+            totals[i]+=parseInt( $(this).html());
+        });
+    });
+    $.each(totals, function(idx, value) {
+        $('#grand_totals').append('<td>' + value + '</td>');
+    });
+    $('#grand_totals').append('<td></td><td></td>');
+    var markup = '<td><div class="rotate"><span>Total</span></div></td>';
+    $('#campaigns').append(markup);
+    var markup = '<td><div class="rotate"><span># of Active</span></div></td>';
+    $('#campaigns').append(markup);
+
+    $('#heattable td.ecount').each(function(){
+        var num = parseFloat($(this).text());
+        if (num > 15) {
+            $(this).addClass('ealert');
+        } else if (num > 10) {
+            $(this).addClass('ehigh');
+        } else if (num > 5) {
+            $(this).addClass('emed');
+        } else if (num > 2) {
+            $(this).addClass('elow');
+        } else if (num > 0) {
+            $(this).addClass('enone');
+        }
+    });
+
+    color_cols = 1;
+    $('#countries td').each(function() {
+        var cols = $(this).prop('colSpan');
+        color = getRandomColor();
+        $(this).css('background-color', color);
+        for (i=color_cols; i<cols+color_cols; i++) {
+         $('#heattable tr:nth-child(2) td:nth-child(' + i + ')')
+             .css('background-color', color);
+         $('#heattable tr:nth-child(3) td:nth-child(' + i + ')')
+             .css('background-color', color);
+        }
+        color_cols = color_cols + cols;
+    });
+
+}
+
+$(document).ready(function() {
+    $.ajax({
+        type: "POST",
+        url: "{% url 'prettythings-views-campaign_heatmap' %}",
+        data: {},
+        success: function(data) {
+            if (data) {
+                $('#data').html(syntaxHighlight(data));
+                make_heattable(data);
+            }
+        }
+    });
+});
+</script>
+
+{% endblock %}

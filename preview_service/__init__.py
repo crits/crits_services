@@ -1,4 +1,4 @@
-# (c) 2015, Adam Polkosnik <adam.polkosnik@ny.frb.org> <apolkosnik@gmail.com>
+# (c) 2016, Adam Polkosnik <adam.polkosnik@ny.frb.org> <apolkosnik@gmail.com>
 #
 # All rights reserved.
 import logging
@@ -138,7 +138,7 @@ class previewService(Service):
                                                          method=self.name,
                                                          source=obj.source,
                                                          reference=None, 
-                                                         analyst=self.current_task.username, 
+                                                         analyst=self.current_task.user, 
                                                          screenshot=ofile, 
                                                          screenshot_ids=None,
                                                          oid=obj.id, 
@@ -190,7 +190,7 @@ class previewService(Service):
                                                          method=self.name,
                                                          source=obj.source,
                                                          reference=None,
-                                                         analyst=self.current_task.username,
+                                                         analyst=self.current_task.user,
                                                          screenshot=fileh,
                                                          screenshot_ids=None,
                                                          oid=obj.id,
@@ -236,7 +236,7 @@ class previewService(Service):
                                                          method=self.name,
                                                          source=obj.source,
                                                          reference=None, 
-                                                         analyst=self.current_task.username, 
+                                                         analyst=self.current_task.user, 
                                                          screenshot=fileh, 
                                                          screenshot_ids=None,
                                                          oid=obj.id, 

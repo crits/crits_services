@@ -2,15 +2,17 @@ import hashlib
 
 from django.template.loader import render_to_string
 
+from crits.core.user_tools import get_user_info
 from crits.samples.handlers import handle_file
 from crits.services.core import Service, ServiceConfigError
 from crits.vocabulary.relationships import RelationshipTypes
+from crits.vocabulary.acls import SampleACL
 
 from . import forms
 
 class CarverService(Service):
     name = "carver"
-    version = '0.0.1'
+    version = '0.0.2'
     supported_types = ['Sample']
     description = "Carve a chunk out of a sample."
 
@@ -48,11 +50,19 @@ class CarverService(Service):
     def run(self, obj, config):
         start_offset = config['start']
         end_offset = config['end']
+        user = self.current_task.user
+
+        if not user.has_access_to(SampleACL.WRITE):
+            self._info("User does not have permission to add Samples to CRITs")
+            self._add_result("Service Canceled", "User does not have permission to add Samples to CRITs")
+            return
+
         # Start must be 0 or higher. If end is greater than zero it must
         # also be greater than start_offset.
         if start_offset < 0 or (end_offset > 0 and start_offset > end_offset):
             self._error("Invalid offsets.")
             return
+
 
         data = obj.filedata.read()[start_offset:end_offset]
         if not data:
@@ -63,9 +73,9 @@ class CarverService(Service):
                         related_id=str(obj.id),
                         related_type=str(obj._meta['crits_type']),
                         campaign=obj.campaign,
-                        method=self.name,
+                        source_method=self.name,
                         relationship=RelationshipTypes.CONTAINS,
-                        user=self.current_task.username)
+                        user=self.current_task.user)
             # Filename is just the md5 of the data...
             self._add_result("file_added", filename, {'md5': filename})
         return

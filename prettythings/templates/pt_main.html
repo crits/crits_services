@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Pretty Things{% endblock %}
+
+{% block content %}
+
+<style>
+</style>
+
+<div class="content_box">
+    <h3 class="titleheader">
+        <span id="qb" class="collapsible">Available Graphs:</span>
+        <span style="float: right;" class="ui-icon ui-icon-triangle-1-s collapsible"></span>
+    </h3>
+    <div class="content_body">
+        <a href="{% url 'prettythings-views-campaign_heatmap' %}">Campaign
+            Heatmap</a>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+});
+</script>
+
+{% endblock %}

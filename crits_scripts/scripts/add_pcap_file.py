@@ -4,10 +4,12 @@ from optparse import OptionParser
 
 from crits.pcaps.handlers import handle_pcap_file
 from crits.core.basescript import CRITsBaseScript
+from crits.vocabulary.acls import PCAPACL
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username=None):
-        self.username = username
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def run(self, argv):
         parser = OptionParser()
@@ -25,8 +27,8 @@ class CRITsScript(CRITsBaseScript):
                 type="string", default="", help="parent md5")
         parser.add_option("-P", "--parent-type", action="store", dest="parent_type",
                 type="string", default="PCAP", help="parent type (Sample, PCAP...)")
-        parser.add_option("-u", "--user", action="store", dest="user",
-                type="string", default="", help="user")
+        parser.add_option("-t", "--tlp", action="store", dest="tlp",
+                type="string", default="red", help="TLP of data")
 
         (opts, args) = parser.parse_args(argv)
 
@@ -38,21 +40,29 @@ class CRITsScript(CRITsBaseScript):
             parser.error("Source not provided")
         source = opts.source
 
+        if not self.user.has_access_to(PCAPACL.WRITE):
+            print "[-] User does not have permission to add PCAP"
+            return
+
         description = opts.description
         parent = opts.parent
         parent_type = opts.parent_type
-        user = opts.user
+        user = self.user
         method = opts.method or "Command line add_pcap_file.py"
         reference = opts.reference
+        tlp = opts.tlp
 
         f = open(filename, 'rb')
         data = f.read()
         f.close()
         (dirname, fname) = os.path.split(filename)
+        print parent
+        print parent_type
 
         status = handle_pcap_file(fname, data, source, user, description,
-                                  parent_md5=parent, parent_type=parent_type,
-                                  method=method, reference=reference)
+                                  related_md5=parent, related_type=parent_type,
+                                  method=method, reference=reference,
+                                  tlp=tlp)
 
         if status['success']:
             md5 = hashlib.md5(data).hexdigest()

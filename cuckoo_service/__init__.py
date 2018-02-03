@@ -16,6 +16,7 @@ from crits.services.core import Service, ServiceConfigError
 from crits.vocabulary.relationships import RelationshipTypes
 from crits.indicators.indicator import Indicator
 from crits.samples.sample import Sample
+from crits.vocabulary.acls import SampleACL, PCAPACL
 
 from . import forms
 
@@ -26,7 +27,7 @@ class CuckooService(Service):
     """
 
     name = 'cuckoo'
-    version = '1.0.4'
+    version = '1.0.5'
     supported_types = ['Sample', 'IP', 'Domain', 'Indicator']
     description = ("Analyze a Sample, IP, Domain, and Indicator" +
                    " using Cuckoo Sandbox.")
@@ -553,6 +554,12 @@ class CuckooService(Service):
         # Dropped is a byte string of the .tar.bz2 file
         self._debug("Processing dropped files.")
         self._notify()
+        user = get_user_info(str(self.current_task.user))
+        if not user.has_access_to(SampleACL.WRITE):
+            self._info("User does not have permission to add samples to CRITs")
+            self._add_result("Processing Dropped Files Cancelled", "User does not have permission to add Samples to CRITs")
+            return
+
 
         # TODO: Error handling
         t = tarfile.open(mode='r:bz2', fileobj=BytesIO(dropped))
@@ -570,13 +577,14 @@ class CuckooService(Service):
 
             h = md5(data).hexdigest()
             self._info("New file: %s (%d bytes, %s)" % (name, len(data), h))
+
             handle_file(name, data, self.obj.source,
                         related_id=str(self.obj.id),
                         related_type=str(self.obj._meta['crits_type']),
                         campaign=self.obj.campaign,
-                        method=self.name,
+                        source_method=self.name,
                         relationship=RelationshipTypes.RELATED_TO,
-                        user=self.current_task.username)
+                        user=self.current_task.user)
             self._add_result("file_added", name, {'md5': h})
 
         t.close()
@@ -584,12 +592,18 @@ class CuckooService(Service):
     def _process_pcap(self, pcap):
         self._debug("Processing PCAP.")
         self._notify()
-        org = get_user_organization(self.current_task.username)
+        org = get_user_organization(self.current_task.user)
+        user = self.current_task.user
+        if not user.has_access_to(PCAPACL.WRITE):
+            self._info("User does not have permission to add PCAP to CRITs")
+            self._add_result("PCAP Processing Canceled", "User does not have permission to add PCAP to CRITs")
+            return
+
         h = md5(pcap).hexdigest()
         result = handle_pcap_file("%s.pcap" % h,
                                   pcap,
                                   org,
-                                  user=self.current_task.username,
+                                  user=self.current_task.user,
                                   related_id=str(self.obj.id),
                                   related_type=self.obj._meta['crits_type'],
                                   method=self.name)

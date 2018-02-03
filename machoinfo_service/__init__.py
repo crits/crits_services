@@ -105,7 +105,7 @@ class MachOInfoService(Service):
                                              related_type=str(obj._meta['crits_type']),
                                              method=self.name,
                                              relationship=RelationshipTypes.CONTAINED_WITHIN,
-                                             user=self.current_task.username)
+                                             user=self.current_task.user)
                             self._add_result("cert_added", filename, {'md5': filename})
 
             e = 'Entity %i - Version Info' % i

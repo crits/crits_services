@@ -91,8 +91,9 @@ class TestFile(object):
         return result
 
 class CRITsScript(CRITsBaseScript):
-    def __init__(self, username):
-        self.username = username
+
+    def __init__(self, user=None):
+        super(CRITsScript, self).__init__(user=user)
 
     def run(self, argv):
         print "\r\n*** init, basic check ***"

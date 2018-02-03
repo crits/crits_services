@@ -33,19 +33,19 @@
                 <col width="120px">
             </colgroup>
             <thead>
-                <th>Timestamp</th>
+                <th>Poll/Upload Time (UTC)</th>
                 <th>Msg ID or Reference</th>
                 <th>Block Count</th>
                 <th>Source</th>
                 <th>Feed or File Name</th>
-                <th>Time Range</th>
+                <th>Time Range (UTC)</th>
                 <th>Analyst</th>
                 <th>Actions</th>
             </thead>
             <tbody>
-                {% for time, meta in upolls.items %}
+                {% for meta in upolls %}
                 <tr>
-                    <td><a class="pollid" href="#" id="{{ meta.poll_id }}">{{ time }}</a></td>
+                    <td><a class="pollid" href="#" id="{{ meta.poll_id }}">{{ meta.time }}</a></td>
                     <td>{{ meta.msg_id }}</td>
                     <td>{{ meta.count }}</td><td>{{ meta.source }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
@@ -78,19 +78,19 @@
                 <col width="120px">
             </colgroup>
             <thead>
-                <th>Timestamp</th>
+                <th>Poll/Upload Time (UTC)</th>
                 <th>Msg ID or Reference</th>
                 <th>Block Count</th>
                 <th>Source</th>
                 <th>Feed or File Name</th>
-                <th>Time Range</th>
+                <th>Time Range (UTC)</th>
                 <th>Analyst</th>
                 <th>Actions</th>
             </thead>
             <tbody>
-                {% for time, meta in epolls.items %}
+                {% for meta in epolls %}
                 <tr>
-                    <td><a class="pollid" href="#" id="{{ meta.poll_id }}">{{ time }}</a></td>
+                    <td><a class="pollid" href="#" id="{{ meta.poll_id }}">{{ meta.time }}</a></td>
                     <td>{{ meta.msg_id }}</td>
                     <td>{{ meta.count }}</td><td>{{ meta.source }}</td>
                     <td>{{ meta.feed }}</td><td>{{ meta.timerange }}</td>
@@ -108,27 +108,27 @@
 
 <script>
     $('a.pollid').click(function() {
-		$("#current_state").text("Processing...");
-		$("#taxii-loader").show();
+        $("#current_state").text("Processing...");
+        $("#taxii-loader").show();
         var pid = $(this).attr('id');
-		$.ajax({
-			type: "GET",
-			url: "{% url 'taxii_service-views-get_import_preview' '1234' %}".replace(/1234/, pid),
-		}).done(function(data) { // run on successful request
-			if (data.success) { // at least some feeds were successfully processed
-				$("#results_container").html(data.html);
-				$("#current_state").text("STIX Import Preview");
+        $.ajax({
+            type: "GET",
+            url: "{% url 'taxii_service-views-get_import_preview' '1234' '1' '10' %}".replace("1234", pid),
+        }).done(function(data) { // run on successful request
+            if (data.success) { // at least some feeds were successfully processed
+                $("#results_container").html(data.html);
+                $("#current_state").text("STIX Import Preview");
                 $("#view_saved").prop('hidden', false);
-			} else { // some issue occurred
-				$("#error_container").children(".taxii_notice").html(data.msg);
-				$("#current_state").text("Problems");
-			}
-		}).fail(function(data) { // server error
-			$("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
-			$("#current_state").text("Problems");
-		}).always(function() {
-			$("#taxii-loader").hide();
-		});
+            } else { // some issue occurred
+                $("#error_container").children(".taxii_notice").html(data.msg);
+                $("#current_state").text("Problems");
+            }
+        }).fail(function(data) { // server error
+            $("#error_container").children(".taxii_notice").text("An unexpected server error occurred - notify an administrator.");
+            $("#current_state").text("Problems");
+        }).always(function() {
+            $("#taxii-loader").hide();
+        });
     });
 
     $('a.delete_poll').click(function() {

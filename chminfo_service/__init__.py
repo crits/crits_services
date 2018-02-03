@@ -8,9 +8,11 @@ from chm import chm
 
 from django.template.loader import render_to_string
 
+from crits.core.user_tools import get_user_info
 from crits.services.core import Service, ServiceConfigError
 from crits.samples.handlers import handle_file
 from crits.vocabulary.relationships import RelationshipTypes
+from crits.vocabulary.acls import SampleACL
 
 from . import forms
 
@@ -232,15 +234,20 @@ class CHMInfoService(Service):
 
         if config['chm_items']:
             #Data and details of each object/page in the CHM
-            for f in self.added_files:
-                handle_file(f[0], f[3], obj.source,
-                            related_id=str(obj.id),
-                            related_type=str(obj._meta['crits_type']),
-                            campaign=obj.campaign,
-                            method=self.name,
-                            relationship=RelationshipTypes.CONTAINED_WITHIN,
-                            user=self.current_task.username)
-                self._add_result("chm_items_added", f[0], {'size': f[1],'md5': f[2]})
+            user = self.current_task.user
+            if user.has_access_to(SampleACL.WRITE):
+                for f in self.added_files:
+                    handle_file(f[0], f[3], obj.source,
+                                related_id=str(obj.id),
+                                related_type=str(obj._meta['crits_type']),
+                                campaign=obj.campaign,
+                                source_method=self.name,
+                                relationship=RelationshipTypes.CONTAINED_WITHIN,
+                                user=self.current_task.user)
+                    self._add_result("chm_items_added", f[0], {'size': f[1],'md5': f[2]})
+            else:
+                self._info("User does not have permission to add samples to CRITs.")
+                self._add_result("chm_items_added","Items found but user does not have permission to add Samples to CRITs.")
         else:
             #Details of each object/page in the CHM
             for object_item in obj_items_summary:
