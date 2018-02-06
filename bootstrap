@@ -99,7 +99,7 @@ traversing_install()
                 then
                     printf "${INFO}Installing python dependencies for ${fbname}${END}\n"
                     cd ${serv};
-                    depend_crits()
+                    depend_crits
                     if [ $? -ne 0 ];
                     then
                         printf "${FAIL}bootstrap failed for ${fbname}!${END}\n"
