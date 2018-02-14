@@ -44,7 +44,7 @@ darwin_install()
     printf "${HEAD}Installation for OSX requires Homebrew. Please visit http://brew.sh/.${END}\n"
     exit
     }
-    brew install yara upx
+    brew install upx
     if [ $? -eq 0 ]
     then
       printf "${PASS}Homebrew Install Complete${END}\n"
