@@ -44,7 +44,25 @@ darwin_install()
     printf "${HEAD}Installation for OSX requires Homebrew. Please visit http://brew.sh/.${END}\n"
     exit
     }
+    git clone https://github.com/VirusTotal/yara.git
+    cd yara/libyara/modules/
+    #curl -O https://raw.githubusercontent.com/Koodous/androguard-yara/master/androguard.c
+    #sed -i -e 's/MODULE(cuckoo)/MODULE(cuckoo)'$'\\\nMODULE(androguard)/g' module_list
+    cd ..
+    #sed -i -e 's~MODULES += modules\/cuckoo.c~MODULES += modules\/cuckoo.c'$'\\\nMODULES += modules/androguard.c~g' Makefile.am
+    cd ..
+    ./bootstrap.sh
+    ./configure --enable-cuckoo --enable-dotnet --enable-magic
+    make
+    sudo make install
+    printf "${PASS}Done installing yara"
+    cd ..
+    git clone https://github.com/VirusTotal/yara-python.git
+    cd yara-python
+    python setup.py build --dynamic-linking
+    sudo python setup.py install
     brew install yara
+    pip install -U 'git+https://github.com/VirusTotal/yara-python.git'
     if [ $? -eq 0 ]
     then
       printf "${PASS}Homebrew Install Complete${END}\n"
