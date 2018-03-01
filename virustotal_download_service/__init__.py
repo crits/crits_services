@@ -6,6 +6,7 @@ from django.conf import settings
 from django.template.defaultfilters import filesizeformat
 from django.template.loader import render_to_string
 
+from crits.services.analysis_result import AnalysisResult
 from crits.core.user_tools import get_user_info
 from crits.samples.handlers import handle_file
 from crits.samples.sample import Sample
@@ -28,7 +29,7 @@ class VirusTotalDownloadService(Service):
     """
 
     name = "VirusTotal_Download"
-    version = '1.1.2'
+    version = '1.1.3'
     description = "Check VT for a given MD5. If a match is found, download the sample to CRITs."
     supported_types = ['Sample']
     required_fields = ['md5']
@@ -46,6 +47,15 @@ class VirusTotalDownloadService(Service):
             for key, value in existing_config.iteritems():
                 config[key] = value
         return config
+
+    @staticmethod
+    def valid_for(obj):
+        # Check if already running in case of triage re-run
+        rezs = AnalysisResult.objects(object_id=str(obj.id),
+                                      status='started',
+                                      service_name='VirusTotal_Download')
+        if rezs:
+            raise ServiceConfigError("Service is already running")
 
     @staticmethod
     def parse_config(config):
@@ -84,16 +94,22 @@ class VirusTotalDownloadService(Service):
 
     @staticmethod
     def bind_runtime_form(analyst, config):
-        # The values are submitted as a list for some reason.
+        # The values have varied over time, so cover the bases
         replace = config.get('replace_sample', False)
         if isinstance(replace, list):
             replace = replace[0]
-        config['replace_sample'] = True if replace == 'on' else False
+        if isinstance(replace, bool):
+            config['replace_sample'] = replace
+        else:
+            config['replace_sample'] = True if replace == 'on' else False
 
         triage = config.get('run_triage', False)
         if isinstance(triage, list):
             triage = triage[0]
-        config['run_triage'] = True if triage == 'on' else False
+        if isinstance(triage, bool):
+            config['run_triage'] = triage
+        else:
+            config['run_triage'] = True if triage == 'on' else False
 
         size = config['size_limit']
         if isinstance(size, list):
@@ -193,6 +209,7 @@ class VirusTotalDownloadService(Service):
                 return
             if do_triage:
                 self._info("Running sample triage for data-reliant services.")
+                sample.reload()
                 run_triage(sample, user = "VT Download Service")
             self._add_result("Download Successful", "Binary was successfully downloaded from VirusTotal")
         else:
