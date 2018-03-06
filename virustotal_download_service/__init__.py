@@ -6,6 +6,8 @@ from django.conf import settings
 from django.template.defaultfilters import filesizeformat
 from django.template.loader import render_to_string
 
+from crits.services.analysis_result import AnalysisResult
+from crits.core.user_tools import get_user_info
 from crits.samples.handlers import handle_file
 from crits.samples.sample import Sample
 from crits.services.core import Service, ServiceConfigError
@@ -19,14 +21,12 @@ logger = logging.getLogger(__name__)
 class VirusTotalDownloadService(Service):
     """
     Check the VirusTotal database to see if it contains a sample matching the given md5.
-
     If VirusTotal has the sample, the sample is downloaded to CRITs.
-
     Requires an API key available from virustotal.com
     """
 
     name = "VirusTotal_Download"
-    version = '1.1.0'
+    version = '1.1.3'
     description = "Check VT for a given MD5. If a match is found, download the sample to CRITs."
     supported_types = ['Sample']
     required_fields = ['md5']
@@ -44,6 +44,15 @@ class VirusTotalDownloadService(Service):
             for key, value in existing_config.iteritems():
                 config[key] = value
         return config
+
+    @staticmethod
+    def valid_for(obj):
+        # Check if already running in case of triage re-run
+        rezs = AnalysisResult.objects(object_id=str(obj.id),
+                                      status='started',
+                                      service_name='VirusTotal_Download')
+        if rezs:
+            raise ServiceConfigError("Service is already running")
 
     @staticmethod
     def parse_config(config):
@@ -82,16 +91,22 @@ class VirusTotalDownloadService(Service):
 
     @staticmethod
     def bind_runtime_form(analyst, config):
-        # The values are submitted as a list for some reason.
+        # The values have varied over time, so cover the bases
         replace = config.get('replace_sample', False)
         if isinstance(replace, list):
             replace = replace[0]
-        config['replace_sample'] = True if replace == 'on' else False
+        if isinstance(replace, bool):
+            config['replace_sample'] = replace
+        else:
+            config['replace_sample'] = True if replace == 'on' else False
 
         triage = config.get('run_triage', False)
         if isinstance(triage, list):
             triage = triage[0]
-        config['run_triage'] = True if triage == 'on' else False
+        if isinstance(triage, bool):
+            config['run_triage'] = triage
+        else:
+            config['run_triage'] = True if triage == 'on' else False
 
         size = config['size_limit']
         if isinstance(size, list):
@@ -115,6 +130,7 @@ class VirusTotalDownloadService(Service):
         replace = config.get('replace_sample', False)
         do_triage = config.get('run_triage', False)
 
+        user = self.current_task.user
         sample = Sample.objects(md5=obj.md5).first()
         if not sample:
             sample = Sample()
@@ -132,6 +148,7 @@ class VirusTotalDownloadService(Service):
             proxy = urllib2.ProxyHandler({'http': settings.HTTP_PROXY, 'https': settings.HTTP_PROXY})
             opener = urllib2.build_opener(proxy)
             urllib2.install_opener(opener)
+
         try:
             req = url + "?" + parameters
             self._info("Requesting binary with md5 '{0}' from VirusTotal.".format(obj.md5))
@@ -140,30 +157,13 @@ class VirusTotalDownloadService(Service):
             size = response.info().getheaders("Content-Length")[0]
             self._info("Binary size: {0} bytes".format(size))
 
-            if int(size) <= sizeLimit:
-                data = response.read()
-                if data:
-                    if replace == True:
-                        self._info("Replace = True. Deleting any previous binary with md5 {0}".format(obj.md5))
-                        sample.filedata.delete()
-                    self._info("Adding new binary to CRITs.")
-                    handle_file(filename = obj.md5,
-                                data = data,
-                                source = "VirusTotal",
-                                reference = "Binary downloaded from VT based on MD5",
-                                user = "VT Download Service",
-                                method = "VirusTotal Download Service",
-                                md5_digest = obj.md5 )
-                    if do_triage:
-                        self._info("Running sample triage for data-reliant services.")
-                        run_triage(sample, user = "VT Download Service")
-                    self._add_result("Download Successful", "Binary was successfully downloaded from VirusTotal")
-                else:
-                    self._error("No data returned by VirusTotal.")
-            else:
+            if int(size) > sizeLimit: # Check if within size limit
                 self._error("Binary size is {0} bytes, which is greater than maximum of {1} bytes. This limit can be changed in options.".format(size, sizeLimit))
                 self._add_result("Download Aborted", "Match found, but binary is larger than maximum size limit.")
-        except urllib2.HTTPError, e:
+                return
+
+            data = response.read()
+        except urllib2.HTTPError as e:
             if e.code == 404:
                 self._info("No results were returned. Either VirusTotal does not have the requested binary, or the request URL is incorrect.")
                 self._add_result("Not Found", "Binary was not found in the VirusTotal database")
@@ -172,8 +172,37 @@ class VirusTotalDownloadService(Service):
                 self._add_result("Download Canceled", "CRITs was forbidden from downloading the binary.")
             else:
                 self._error("An HTTP Error occurred: {0}".format(e))
-        except:
-            logger.error("VirusTotal: network connection error")
-            self._error("Network connection error checking VirusTotal")
+        except Exception as e:
+            logger.error("VirusTotal: Failed connection ({0})".format(e))
+            self._error("Failed to get data from VirusTotal: {0}".format(e))
             return
 
+        if data: # Retrieved some data from VT
+            if replace == True:
+                try:
+                    self._info("Replace = True. Deleting any previous binary with md5 {0}".format(obj.md5))
+                    sample.filedata.delete()
+                except Exception as e:
+                    logger.error("VirusTotal: Error deleting existing binary ({0})".format(e))
+                    self._error("Failed to delete existing binary")
+            self._info("Adding new binary to CRITs.")
+
+            try:
+                handle_file(filename = obj.md5,
+                            data = data,
+                            source = "VirusTotal",
+                            reference = "Binary downloaded from VT based on MD5",
+                            user = "VT Download Service",
+                            method = "VirusTotal Download Service",
+                            md5_digest = obj.md5 )
+            except Exception as e:
+                logger.error("VirusTotal: Sample creation failed ({0})".format(e))
+                self._error("Failed to create new Sample: {0}".format(e))
+                return
+            if do_triage:
+                self._info("Running sample triage for data-reliant services.")
+                sample.reload()
+                run_triage(sample, user = "VT Download Service")
+            self._add_result("Download Successful", "Binary was successfully downloaded from VirusTotal")
+        else:
+            self._error("No data returned by VirusTotal.")
