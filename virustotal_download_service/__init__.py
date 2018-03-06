@@ -130,7 +130,7 @@ class VirusTotalDownloadService(Service):
         replace = config.get('replace_sample', False)
         do_triage = config.get('run_triage', False)
 
-        user = self.current_task.user
+        user = self.current_task.username
         sample = Sample.objects(md5=obj.md5).first()
         if not sample:
             sample = Sample()
