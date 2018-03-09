@@ -417,7 +417,7 @@ function toggle_loader() {
 function get_results(data) {
     $.ajax({
          type: "POST",
-         url: "{% url 'threatexchange.views.submit_query' %}",
+         url: "{% url 'threatexchange-views-submit_query' %}",
          data: data,
          success: function(data) {
              if (data.html) {
@@ -437,7 +437,7 @@ function get_related_results(data) {
     var rtype = data.related_type;
     $.ajax({
          type: "POST",
-         url: "{% url 'threatexchange.views.submit_related_query' %}",
+         url: "{% url 'threatexchange-views-submit_related_query' %}",
          data: data,
          success: function(data) {
              if ('html' in data) {
@@ -471,7 +471,7 @@ $(document).ready(function() {
 
     $.ajax({
         type: "POST",
-        url: "{% url 'threatexchange.views.get_dropdowns' %}",
+        url: "{% url 'threatexchange-views-get_dropdowns' %}",
         success: function(data) {
             var review_status = data.review_status;
             var sample_type = data.sample_type;
@@ -574,15 +574,15 @@ $(document).ready(function() {
         }
         $.ajax({
              type: "POST",
-             url: "{% url 'threatexchange.views.import_object' %}",
+             url: "{% url 'threatexchange-views-import_object' %}",
              data: data,
              success: function(data) {
                  if (data.success) {
                      res.addClass("ui-icon").addClass("ui-icon-check");
                      if (type_ == "Threat Descriptors") {
-                         var url_mask = "{% url 'crits.indicators.views.indicator' '12345' %}".replace(/12345/, data.objectid);
+                         var url_mask = "{% url 'crits-indicators-views-indicator' '12345' %}".replace(/12345/, data.objectid);
                      } else {
-                         var url_mask = "{% url 'crits.samples.views.detail' '12345' %}".replace(/12345/, data.md5);
+                         var url_mask = "{% url 'crits-samples-views-detail' '12345' %}".replace(/12345/, data.md5);
                      }
                      $(res).parent().attr("href", url_mask);
                  } else {

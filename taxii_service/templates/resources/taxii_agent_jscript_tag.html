@@ -71,7 +71,7 @@
 			var form_data = $('#taxii_config_form').serialize();
 			$.ajax({
 				type: "POST",
-				url: "{% url 'taxii_service.views.taxii_poll' %}",
+				url: "{% url 'taxii_service-views-taxii_poll' %}",
 				data: form_data,
 				dataType: "json"
 			}).done(function(data) { // run on successful request
@@ -100,7 +100,7 @@
 			$.ajax({
 				type: "POST",
 				contentType: 'multipart/form-data',
-				url: "{% url 'taxii_service.views.stix_upload' %}",
+				url: "{% url 'taxii_service-views-stix_upload' %}",
 				data: form_data,
 				dataType: "json",
 				processData: false,
@@ -133,7 +133,7 @@
 			$("#taxii-loader").show();
 			$.ajax({
 				type: "GET",
-				url: "{% url 'taxii_service.views.list_saved_polls' %}",
+				url: "{% url 'taxii_service-views-list_saved_polls' %}",
 			}).done(function(data) { // run on successful request
 				if (data.success) { // at least some feeds were successfully processed
 					$("#results_container").html(data.html);

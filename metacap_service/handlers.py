@@ -4,7 +4,10 @@ import hashlib
 from lxml import etree
 
 from django.conf import settings
-from django.core.urlresolvers import reverse
+try:
+    from django.urls import reverse
+except ImportError:
+    from django.core.urlresolvers import reverse
 from subprocess import Popen, STDOUT, PIPE
 
 from crits.pcaps.pcap import PCAP
@@ -103,7 +106,7 @@ def pcap_tcpdump(pcap_md5, form, analyst):
                                       parent_type="PCAP",
                                       method="MetaCap Tcpdumper")
             if result['success']:
-                tcpdump_output = "<a href=\"%s\">View new pcap.</a>" % reverse('crits.pcaps.views.pcap_details', args=[result['md5']])
+                tcpdump_output = "<a href=\"%s\">View new pcap.</a>" % reverse('crits-pcaps-views-pcap_details', args=[result['md5']])
             else:
                 tcpdump_output = result['message']
         else:

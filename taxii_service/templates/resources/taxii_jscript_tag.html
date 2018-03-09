@@ -11,7 +11,7 @@
 		var continue_btn = $("#confirm_releasability");
 	    $.ajax({ // request the TAXII configuration form
 			type: "GET",
-			url: "{% url 'taxii_service.views.get_taxii_config_form' type item.id %}",
+			url: "{% url 'taxii_service-views-get_taxii_config_form' type item.id %}",
 			dataType: "json",
 			success: function(data) {
 				if (data) {
@@ -46,7 +46,7 @@
 		*/
 		function open_preview() {
                         var form = $('#taxii_config_form')[0];
-                        form.action = "{% url 'taxii_service.views.preview_taxii_service' type item.id %}";
+                        form.action = "{% url 'taxii_service-views-preview_taxii_service' type item.id %}";
                         form.method = "post";
                         form.target = "_blank";
                         form.submit();
@@ -77,7 +77,7 @@
 			}
 			$.ajax({
 				type: "POST",
-				url: "{% url 'taxii_service.views.execute_taxii_service' type item.id %}",
+				url: "{% url 'taxii_service-views-execute_taxii_service' type item.id %}",
 				data: form_data,
 				dataType: "json"
 			}).done(function(data) { // run on successful request

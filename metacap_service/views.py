@@ -2,8 +2,7 @@ import json
 
 from django.conf import settings
 from django.contrib.auth.decorators import user_passes_test
-from django.shortcuts import HttpResponse, render_to_response
-from django.template import RequestContext
+from django.shortcuts import HttpResponse, render
 from django.template.loader import render_to_string
 
 from crits.core.user_tools import user_can_view_data
@@ -26,9 +25,7 @@ def get_pcap_pdml(request, pcap_md5):
             data = {'html': result['html']}
         return HttpResponse(json.dumps(data), content_type="application/json")
     else:
-        return render_to_response('error.html',
-                                  {'error': "Must be AJAX."},
-                                  RequestContext(request))
+        return render(request, 'error.html', {'error': "Must be AJAX."})
 
 @user_passes_test(user_can_view_data)
 def get_pcap_tcpdump(request, pcap_md5):
@@ -42,9 +39,7 @@ def get_pcap_tcpdump(request, pcap_md5):
             data = {'html': "Invalid form data"}
         return HttpResponse(json.dumps(data), content_type="application/json")
     else:
-        return render_to_response('error.html',
-                                  {'error': "Must be AJAX."},
-                                  RequestContext(request))
+        return render(request, 'error.html', {'error': "Must be AJAX."})
 
 @user_passes_test(user_can_view_data)
 def get_tcpdump_config_form(request):
@@ -52,6 +47,4 @@ def get_tcpdump_config_form(request):
         tcp_form = {'form': forms.TCPDumpForm().as_table()}
         return HttpResponse(json.dumps(tcp_form), content_type="application/json")
     else:
-        return render_to_response('error.html',
-                                  {'error': "Must be AJAX."},
-                                  RequestContext(request))
+        return render(request, 'error.html', {'error': "Must be AJAX."})

@@ -129,7 +129,7 @@ Select:
         <h3 class="titleheader">
             <input id="{{ block.id }}" class="cbx" type="checkbox" value="{{ block.id }}" {% if block.selected %}checked {% endif %}/>
             <span>Block {{ block.num }}: {{ block.block_label }}</span>
-            <span style="float:right; margin-right:5px; margin-top:4px; font-size:75%;"><a href="{% url 'taxii_service.views.download_taxii_content' block.id %}">Download</a></span>
+            <span style="float:right; margin-right:5px; margin-top:4px; font-size:75%;"><a href="{% url 'taxii_service-views-download_taxii_content' block.id %}">Download</a></span>
         </h3>
         <table class="chart" id="block_data" width="100%">
             <colgroup>
@@ -215,7 +215,7 @@ Select:
         }
         $.ajax({
             type: "GET",
-            url: "{% url 'taxii_service.views.select_deselect_block' 'xxx' 'yyy' %}".replace('xxx', this.id).replace("yyy", check),
+            url: "{% url 'taxii_service-views-select_deselect_block' 'xxx' 'yyy' %}".replace('xxx', this.id).replace("yyy", check),
         }).done(function(data) { // run on successful request
             if (!data.success) { // field was updated
                 $("#error_container").children(".taxii_notice").html(data.msg);
@@ -275,7 +275,7 @@ Select:
         var data = JSON.stringify({"checked": chkd, "unchecked": uchkd });
         $.ajax({
             type: "POST",
-            url: "{% url 'taxii_service.views.get_import_preview' 'xxx' 'yyy' 'zzz' %}".replace('xxx', pid).replace("yyy", page).replace("zzz", mult),
+            url: "{% url 'taxii_service-views-get_import_preview' 'xxx' 'yyy' 'zzz' %}".replace('xxx', pid).replace("yyy", page).replace("zzz", mult),
                         data: data,
                         dataType: "json",
         }).done(function(data) { // run on successful request
@@ -298,7 +298,7 @@ Select:
     function select_deselect_all(check) {
         $.ajax({
             type: "GET",
-            url: "{% url 'taxii_service.views.select_deselect_all' '1.1' 'xxx' %}".replace('1.1', pid).replace('xxx', check),
+            url: "{% url 'taxii_service-views-select_deselect_all' '1.1' 'xxx' %}".replace('1.1', pid).replace('xxx', check),
         }).done(function(data) { // run on successful request
             if (!data.success) { // field was updated
                 $("#error_container").children(".taxii_notice").html(data.msg);
@@ -331,7 +331,7 @@ Select:
         var data = JSON.stringify({"poll_id": poll_id, "action": action});
         $.ajax({
             type: "POST",
-            url: "{% url 'taxii_service.views.import_taxii_data' %}",
+            url: "{% url 'taxii_service-views-import_taxii_data' %}",
             data: data,
             dataType: "json"
         }).done(function(data) { // run on successful request

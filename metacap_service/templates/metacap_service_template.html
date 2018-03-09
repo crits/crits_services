@@ -129,7 +129,7 @@
             };
             $.ajax({
                 type: "POST",
-                url: "{% url 'crits.indicators.views.indicator_and_ip' %}",
+                url: "{% url 'crits-indicators-views-indicator_and_ip' %}",
                 data: data,
                 dataType: "json",
                 success: function(data) {
@@ -152,7 +152,7 @@
             var form_data = "bpf=" + filter + "&carve=on";
             $.ajax({
                 type: "POST",
-                url: "{% url 'metacap_service.views.get_pcap_tcpdump' identifier %}",
+                url: "{% url 'metacap_service-views-get_pcap_tcpdump' identifier %}",
                 data: form_data,
                 dataType: "json",
                 success: function(data) {
@@ -308,14 +308,14 @@
                                 <td>
                                     Source<span type="ip" title="Create IP/Indicator" style="float: right;" class="ui-icon ui-icon-plusthick create-ip-indicator" data-value="{{ val.src }}"></span>
                                 <td>
-                                    <a href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&search=Go&force_full=1&q={{ val.src }}" style="display: inline-block;">{{ val.src }}</a>:{{ val.sport }}
+                                    <a href="{% url 'crits-core-views-global_search_listing' %}?search_type=global&search=Go&force_full=1&q={{ val.src }}" style="display: inline-block;">{{ val.src }}</a>:{{ val.sport }}
                                 </td>
                             </tr>
                             <tr>
                                 <td>
                                     Destination<span type="ip" title="Create IP/Indicator" style="float: right;" class="ui-icon ui-icon-plusthick create-ip-indicator" data-value="{{ val.dst }}"></span>
                                 <td>
-                                    <a href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&search=Go&force_full=1&q={{ val.dst }}" style="display: inline-block;">{{ val.dst }}</a>:{{ val.dport }}
+                                    <a href="{% url 'crits-core-views-global_search_listing' %}?search_type=global&search=Go&force_full=1&q={{ val.dst }}" style="display: inline-block;">{{ val.dst }}</a>:{{ val.dport }}
                                 </td>
                             </tr>
                             <tr>

@@ -21,7 +21,7 @@ from mixbox.idgen import set_id_namespace
 
 from django.conf import settings
 from django import forms as dforms
-from django.template.loader import render_to_string
+#from django.template.loader import render_to_string
 from django.utils.safestring import SafeText
 
 # ValidationError moved to errors starting with mongoengine 0.12. or 0.13
@@ -1135,7 +1135,7 @@ def import_content(content_objs, analyst, action=None):
         pids[block.poll_time] = 1 # save unique poll timestamps
 
     if action == "import_delete":
-        taxii.TaxiiContent.objects(poll_time__in=pids.keys(), errors=[]).delete()
+        taxii.TaxiiContent.objects(poll_time__in=pids.keys(), errors=[]).delete_one()
 
     ret.update(tlos) # add the TLO lists to the return dict
 

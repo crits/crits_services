@@ -2,8 +2,7 @@ import json
 
 from django.conf import settings
 from django.contrib.auth.decorators import user_passes_test
-from django.shortcuts import HttpResponse, render_to_response
-from django.template import RequestContext
+from django.shortcuts import HttpResponse, render
 from django.template.loader import render_to_string
 
 from crits.core.user_tools import user_can_view_data
@@ -27,19 +26,17 @@ def diffie_results(request, type_, id_):
                     # Render the results in the template and pass it back.
                     first_html = render_to_string('services_results_default.html',
                                                   {'analysis': data['first']},
-                                                  RequestContext(request))
+                                                  request=request)
                     second_html = render_to_string('services_results_default.html',
                                                    {'analysis': data['second']},
-                                                   RequestContext(request))
+                                                   request=request)
                     data['first'] = first_html
                     data['second'] = second_html
             else:
                 data = {'success': False, 'message': "Invalid form data"}
         return HttpResponse(json.dumps(data), content_type="application/json")
     else:
-        return render_to_response('error.html',
-                                  {'error': "Must be AJAX."},
-                                  RequestContext(request))
+        return render(request, 'error.html', {'error': "Must be AJAX."})
 
 @user_passes_test(user_can_view_data)
 def get_diffie_config_form(request, type_, id_):
@@ -52,9 +49,7 @@ def get_diffie_config_form(request, type_, id_):
         if 'form' in results:
             results['form'] = render_to_string('diffie_service_form.html',
                                                {'form': results['form']},
-                                               RequestContext(request))
+                                               request=request)
         return HttpResponse(json.dumps(results), content_type="application/json")
     else:
-        return render_to_response('error.html',
-                                  {'error': "Must be AJAX."},
-                                  RequestContext(request))
+        return render(request, 'error.html', {'error': "Must be AJAX."})

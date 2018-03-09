@@ -8,7 +8,7 @@ $(document).ready(function() {
       var form_data = $('#tcpdump_config_form').serialize();
       $.ajax({
         type: "POST",
-        url: "{% url 'metacap_service.views.get_pcap_tcpdump' pcap.md5 %}",
+        url: "{% url 'metacap_service-views-get_pcap_tcpdump' pcap.md5 %}",
         data: form_data,
         dataType: "json",
         success: function(data) {
@@ -30,7 +30,7 @@ $(document).ready(function() {
     function get_tcpdump_form() {
         $.ajax({
             type: "GET",
-            url: "{% url 'metacap_service.views.get_tcpdump_config_form' %}",
+            url: "{% url 'metacap_service-views-get_tcpdump_config_form' %}",
             dataType: "json",
             success: function(data) {
                 if (data) {

@@ -31,14 +31,14 @@
     }
 </style>
 
-<a href='{% url "crits.services.views.edit_config" "taxii_service" %}'>Back to TAXII Service Configuration</a>
+<a href='{% url "crits-services-views-edit_config" "taxii_service" %}'>Back to TAXII Service Configuration</a>
 
 <h2>TAXII Server Configuration</h2>
 {% if error %}
     <p><font color="red">{{ error|safe }}</font></p>
 {% endif %}
     <section id="server_config_container" class="taxii-container">
-        <form id="form-taxii-config" action='{% url "taxii_service.views.configure_taxii" %}' method='POST'>
+        <form id="form-taxii-config" action='{% url "taxii_service-views-configure_taxii" %}' method='POST'>
         {% csrf_token %}
             <table id="taxii-config-table" class="form">
                 {{ form }}
@@ -49,7 +49,7 @@
     </section>
 
     <section id="feed_config_container" class="taxii-container" style="display: none;">
-        <form id="form-feed-config" action='{% url "taxii_service.views.configure_taxii" %}' method='POST'>
+        <form id="form-feed-config" action='{% url "taxii_service-views-configure_taxii" %}' method='POST'>
         {% csrf_token %}
             <table id="taxii-feed-table" class="form">
                 {{ form2.as_table }}

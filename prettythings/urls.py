@@ -1,6 +1,8 @@
-from django.conf.urls import patterns
+from django.conf.urls import url
 
-urlpatterns = patterns('prettythings.views',
-    (r'^main/$', 'main'),
-    (r'^campaign_heatmap/$', 'campaign_heatmap'),
-)
+from . import views
+
+urlpatterns = [
+    url(r'^main/$', views.main, name='prettythings-views-main'),
+    url(r'^campaign_heatmap/$', views.campaign_heatmap, name='prettythings-views-campaign_heatmap'),
+]

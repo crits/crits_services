@@ -83,7 +83,7 @@
 function get_members() {
     $.ajax({
         type: "POST",
-        url: "{% url 'threatexchange.views.get_members' %}",
+        url: "{% url 'threatexchange-views-get_members' %}",
         success: function(data) {
             if (data.success) {
                 $('#member_content').append(data.html);
@@ -95,7 +95,7 @@ function get_groups() {
     $.ajax({
         type: "POST",
         data: {'manage': "yes"},
-        url: "{% url 'threatexchange.views.get_groups' %}",
+        url: "{% url 'threatexchange-views-get_groups' %}",
         success: function(data) {
             if (data.success) {
                 $('#owner_group_content').html('');
@@ -122,7 +122,7 @@ $(document).ready(function() {
         $.ajax({
             type: "POST",
             data: data,
-            url: "{% url 'threatexchange.views.add_edit_privacy_group' %}",
+            url: "{% url 'threatexchange-views-add_edit_privacy_group' %}",
             success: function(data) {
                 var results = form.closest('div')
                               .children("#add_edit_privacy_group_results");
@@ -137,7 +137,7 @@ $(document).ready(function() {
     $(document).on('click', '#add_tx_privacy_group', function(e) {
         $.ajax({
             type: "POST",
-            url: "{% url 'threatexchange.views.get_privacy_group_form' %}",
+            url: "{% url 'threatexchange-views-get_privacy_group_form' %}",
             success: function(data) {
                 if (data.success) {
                     dialog = $(data.html).dialog({
@@ -176,7 +176,7 @@ $(document).ready(function() {
         });
         $.ajax({
             type: "POST",
-            url: "{% url 'threatexchange.views.get_privacy_group_form' %}",
+            url: "{% url 'threatexchange-views-get_privacy_group_form' %}",
             success: function(data) {
                 if (data.success) {
                     dialog = $(data.html).dialog({

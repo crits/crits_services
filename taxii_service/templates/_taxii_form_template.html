@@ -1,6 +1,6 @@
 {% if form.rcpts.field.choices|length == 0 %}
 	<tr><td colspan="2">
-		<h3 style="color:red;">Before sending a TAXII message, you must first <a href="{% url 'crits.services.views.detail' 'taxii_service' %}">configure a TAXII server</a> and feed.</h3>
+		<h3 style="color:red;">Before sending a TAXII message, you must first <a href="{% url 'crits-services-views-detail' 'taxii_service' %}">configure a TAXII server</a> and feed.</h3>
 	</td></tr>
 {% else %}
 	<tr>

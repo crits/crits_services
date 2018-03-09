@@ -5,7 +5,7 @@ $(document).ready(function() {
     $("#timeline_service_button").click(function() {
         $.ajax({
             type: "POST",
-            url: "{% url 'timeline_service.views.get_timeline' subscription.type subscription.id %}",
+            url: "{% url 'timeline_service-views-get_timeline' subscription.type subscription.id %}",
             success: function(data) {
                 if (data.success) {
                     $('#timeline_service').html(data.message);

@@ -1,8 +1,7 @@
 import json
 
 from django.contrib.auth.decorators import user_passes_test
-from django.shortcuts import HttpResponse, render_to_response
-from django.template import RequestContext
+from django.shortcuts import HttpResponse, render
 
 from crits.core.user_tools import user_can_view_data
 from . import handlers
@@ -14,4 +13,4 @@ def get_yara_result(request, id_):
         result = handlers.test_yara_rule(id_, rule)
         return HttpResponse(json.dumps(result), content_type="application/json")
     else:
-        return render_to_response("error.html", {"error" : "Expected AJAX POST" }, RequestContext(request))
+        return render(request, "error.html", {"error" : "Expected AJAX POST" })

@@ -7,13 +7,13 @@
     <td>
         {% if exists %}
             {% if type == 'Threat Descriptors' %}
-                <a href="{% url 'crits.core.views.details' 'Indicator' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
+                <a href="{% url 'crits-core-views-details' 'Indicator' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
             {% elif type == 'Threat Indicators' %}
-                <a href="{% url 'crits.core.views.details' 'Indicator' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
+                <a href="{% url 'crits-core-views-details' 'Indicator' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
             {% elif type == 'Malware Analyses' %}
-                <a href="{% url 'crits.core.views.details' 'Sample' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
+                <a href="{% url 'crits-core-views-details' 'Sample' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
             {% elif type == 'Malware Families' %}
-                <a href="{% url 'crits.core.views.details' 'Backdoor' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
+                <a href="{% url 'crits-core-views-details' 'Backdoor' objectid %}" style="display:inline-block; float: right;"><span class="ui-icon ui-icon-alert" title="Object exists already"></span></a>
             {% endif %}
         {% elif no_import  %}
             <span class="ui-icon ui-icon-alert" title="Not enough data to import" style="display:inline-block; float: right";></span>
