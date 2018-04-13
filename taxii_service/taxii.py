@@ -16,6 +16,7 @@ class Taxii(CritsSchemaDocument, CritsDocument, Document):
         # (See http://mongoengine-odm.readthedocs.org/en/latest/guide/defining-documents.html#working-with-existing-data)
         "allow_inheritance": False,
         "collection": 'taxii',
+        "auto_create_index": False,
         "crits_type": 'TAXII',
         "latest_schema_version": 1,
         #NOTE: minify_defaults fields should match the MongoEngine field names, NOT the database fields
@@ -53,6 +54,7 @@ class TaxiiContent(CritsSchemaDocument, CritsDocument, Document):
         # (See http://mongoengine-odm.readthedocs.org/en/latest/guide/defining-documents.html#working-with-existing-data)
         "allow_inheritance": False,
         "collection": 'taxii.content',
+        "auto_create_index": False,
         "crits_type": 'TAXIIContent',
         "latest_schema_version": 2,
         #NOTE: minify_defaults fields should match the MongoEngine field names, NOT the database fields
