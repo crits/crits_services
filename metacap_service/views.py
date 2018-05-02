@@ -19,7 +19,7 @@ def get_pcap_pdml(request, pcap_md5):
                                            {'objects': result['objects'],
                                             'splunk_search_url': settings.SPLUNK_SEARCH_URL,
                                             'subscription': subscription},
-                                           RequestContext(request))
+                                           request=request)
             data = {'html': result['html'], 'object_html': object_html}
         else:
             data = {'html': result['html']}
