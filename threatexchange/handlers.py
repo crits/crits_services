@@ -34,7 +34,6 @@ from pytx.vocabulary import (
 )
 
 from django.template.loader import render_to_string
-from django.template import RequestContext
 
 from crits.config.config import CRITsConfig
 from crits.core.handlers import add_releasability, add_releasability_instance
@@ -157,7 +156,7 @@ def submit_query(request, url, type_, params=None):
                                          'no_import': no_import,
                                          'objectid': objectid
                                      },
-                                     RequestContext(request))
+                                     request=request)
     return {'success': True,
             'html': html,
             'next_url': next_url}
