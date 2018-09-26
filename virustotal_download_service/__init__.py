@@ -180,6 +180,7 @@ class VirusTotalDownloadService(Service):
                 self._add_result("Download Canceled", "CRITs was forbidden from downloading the binary.")
             else:
                 self._error("An HTTP Error occurred: {0}".format(e))
+            return
         except Exception as e:
             logger.error("VirusTotal: Failed connection ({0})".format(e))
             self._error("Failed to get data from VirusTotal: {0}".format(e))
