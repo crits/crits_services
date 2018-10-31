@@ -50,8 +50,9 @@ class clamdService(Service):
             raise ServiceConfigError("Socket path or hostname required.")
 
         # If socket is provided check it exists.
-        if not os.path.exists(clamd_sock_path):
-            raise ServiceConfigError('Socket path not found.')
+        if clamd_sock_path:
+            if not os.path.exists(clamd_sock_path):
+                raise ServiceConfigError('Socket path not found.')
 
     @staticmethod
     def get_config_details(config):
