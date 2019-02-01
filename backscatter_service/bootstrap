@@ -1,0 +1,147 @@
+#!/bin/sh
+# (c) 2016, The MITRE Corporation. All rights reserved.
+# Source code distributed pursuant to license agreement.
+#
+# Usage: bootstrap
+# This script is designed to install all of the necessary dependencies for the
+# service.
+
+. ../funcs.sh
+
+ubuntu_install()
+{
+    printf "${HEAD}Installing dependencies with apt-get${END}\n"
+    #sudo apt-add-repository universe
+    #sudo apt-get update
+    #sudo apt-get install -y --fix-missing libchm1 clamav upx wireshark
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Ubuntu Install Complete${END}\n"
+    else
+      printf "${FAIL}Ubuntu Install Failed${END}\n"
+    fi
+    sudo ldconfig 
+}
+
+debian_install()
+{
+    printf "${HEAD}Installing dependencies with apt-get${END}\n"
+    #sudo apt-add-repository universe
+    #sudo apt-get update
+    #sudo apt-get install -y --fix-missing libchm1 clamav upx wireshark
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Debian Install Complete${END}\n"
+    else
+      printf "${FAIL}Debian Install Failed${END}\n"
+    fi
+    sudo ldconfig
+}
+
+darwin_install()
+{
+    command -v brew >/dev/null 2>&1 || {
+    printf "${HEAD}Installation for OSX requires Homebrew. Please visit http://brew.sh/.${END}\n"
+    exit
+    }
+    #brew install chmlib clamav wireshark upx
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Homebrew Install Complete${END}\n"
+    else
+      printf "${FAIL}Homebrew Install Failed${END}\n"
+    fi
+}
+
+freebsd_install()
+{
+    #printf "${HEAD}Installing Ports${END}\n"
+    #sudo pkg install libchm1 clamav wireshark upx
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Ports Install Complete${END}\n"
+    else
+      printf "${FAIL}Ports Install Failed${END}\n"
+    fi
+}
+
+red_hat_install()
+{
+    #printf "${HEAD}Installing Yum Packages${END}\n"
+    #sudo yum install upx-3.07-1 libchm1 clamav wireshark upx
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Yum Install Complete${END}\n"
+    else
+      printf "${FAIL}Yum Install Failed${END}\n"
+    fi
+}
+
+centos_install()
+{
+    #printf "${HEAD}Installing Yum Packages${END}\n"
+    #sudo yum install upx-3.07-1 libchm1 clamav wireshark upx
+    if [ $? -eq 0 ]
+    then
+      printf "${PASS}Yum Install Complete${END}\n"
+    else
+      printf "${FAIL}Yum Install Failed${END}\n"
+    fi
+}
+#===============================================================
+# This is the Beginning of the Script
+#===============================================================
+# Sees if there is an argument
+if [ -z $1 ];
+then
+    STEP=1
+else
+    STEP=$1
+fi
+
+while [ $STEP -lt 2 ]
+do
+    case $STEP in
+        1)
+            verify
+            if [ "$OS" = 'ubuntu' ]
+            then
+                #printf "${PASS}ubuntu is Supported!${END}\n"
+                ubuntu_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            elif [ "$OS" = 'debian' ]
+            then
+                #printf "${PASS}Debian is Supported!${END}\n"
+                debian_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            elif [ "$OS" = 'darwin' ]
+            then
+                #printf "${PASS}OS X is Supported!${END}\n"
+                darwin_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            elif [ "$OS" = "centos" ]
+            then
+                #printf "${PASS}CentOS is Supported!${END}\n"
+                centos_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            elif [ "$OS" = "red hat" ]
+            then
+                #printf "${PASS}Red Hat is Supported!${END}\n"
+                red_hat_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            elif [ "$OS" = 'freebsd' ]
+            then
+                #printf "${PASS}FreeBSD is Supported${END}\n"
+                freebsd_install || exit_restart $STEP
+                depend_crits ||exit_restart $STEP
+            else
+                printf "${FAIL}OS: $OS, need Ubuntu, Debian, Darwin (OS X), CentOS, Red Hat, or FreeBSD${END}\n"
+                exit
+            fi
+            ;;
+        *)
+            exit
+            ;;
+    esac
+    STEP=$((STEP+1))
+done

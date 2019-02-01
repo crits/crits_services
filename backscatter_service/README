@@ -1,0 +1,5 @@
+This service checks the Backscatter.io database to see if it contains this IP. It will then collect relevant data.
+
+Works on Indicators with the IPv4 Address Indicator Type.
+
+Requires an API key available from backscatter.io
