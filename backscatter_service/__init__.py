@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class BackscatterService(Service):
     """
-    Check the Backscatter database to see if it contains this IP.
+    Check the Backscatter.io database to see if it contains this IP.
 
     Requires an API key available from backscatter.io
     """
@@ -24,7 +24,7 @@ class BackscatterService(Service):
     version = '1.0.0'
     supported_types = ['Indicator']
     required_fields = []
-    description = "Look up an IP in Backscatter"
+    description = "Look up an IP in Backscatter.io"
 
     # Saving for future use if the service needs runtime configuration
     #@staticmethod

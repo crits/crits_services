@@ -6,7 +6,7 @@ class BackscatterConfigForm(forms.Form):
     api_key = forms.CharField(required=True,
                               label="API Key",
                               widget=forms.TextInput(),
-                              help_text="Obtain API key from Backscatter.",
+                              help_text="Obtain API key from Backscatter.io",
                               initial='')
 
     def __init__(self, *args, **kwargs):
