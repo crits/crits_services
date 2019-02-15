@@ -1,0 +1,5 @@
+The Splunk Search service requires the requests library [1] in order to function.
+
+[1] http://docs.python-requests.org/
+
+sudo pip install requests

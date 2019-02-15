@@ -1,0 +1,61 @@
+The Splunk Search service works against Samples, Emails, Indicators, and Raw Data.
+It will grab all metadata of the top-level object (TLO) and use that data to run 
+predetermined Splunk searches found in searches.json.
+
+Additionally, it has the option to parse out the contents of the TLO, and use 
+any domains, IPs, email addresses, hashes, or URLs it may find in additional 
+Splunk searches.
+
+There is also an option to exclude certain filetypes matching a given regex
+if the service is launched based on a triage, rather than being run manually.
+
+For example, if an email is uploaded that contains multiple JPEG attachments 
+(for which a Splunk search of their hash may not be necessary in most cases),
+when the JPEGs are added to CRITs as Sample TLOs, and Splunk is set to run on
+triage, the default regex will tell the service not to execute those Splunk 
+searches. However, if it is determined later that running those searches for a
+particular JPEG may be of some use, manually launching the service will run
+the searches.
+
+### Configuring ###
+
+To configure your custom Splunk searches, modify searches.json with valid JSON,
+maintaining the predetermined structure. TLOs (including emails, samples, and
+indicators) should be referenced with their TLO object attributes. Lists of
+potential indicators (domains, IPs, urls, email address, and hashes) should be
+passed with a set of brackets. 
+
+Additionally, each search name should have a unique value, otherwise it may not
+display properly.
+
+Lastly, ensure any double-quotes are escaped with a backslash.
+
+For example, if you wished to run a search for a sample's MD5 when the service
+is run, you could make the list of 'samples' searches look like this 
+(substituting your own indicies and field names), where {md5} will be replaced
+with the TLO's md5 attribute:
+
+"samples": [
+             {"name":"MD5 Search for {md5}",
+             "search":"index=files  md5=\"{md5}\" | stats values(dest_ip) AS dest_ip values(uid) As uid values(fuid) AS fuid count by src_ip"
+             }
+           ],
+           
+Likewise, for a search that would run against every domain in a list of domains
+extracted from the TLO's data, you could make the list of 'domains' searches
+look like this, where {} will be replaced with the domain:
+
+"domains": [
+            {"name":"HTTP search for {}",
+             "search":"index=http domain=\"{}\" | stats values(src_ip) AS src_ip values(url) AS url count by index"
+            },
+            {"name":"SMTP search for {}",
+             "search":"index=smtp sender_domain=\"*{}\" | stats values(src_ip) AS src_ip values(src_user) AS src_user count by subject"
+            }
+           ],
+           
+Please see searches_example.json for additional examples.
+
+You may use test_searches.py with your configurations manually inputted to test
+your Splunk searches and their results before committing them to your CRITs 
+production instance.

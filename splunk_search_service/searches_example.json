@@ -1,0 +1,713 @@
+{"searches":{"emails":  [
+                         {"name":"Email Sender",
+                         "search":"index=smtp src_user=\"{sender}\" | stats values(src_user) AS src_user values(recipient) AS recipient count by subject"},
+                         {"name":"Email Subject",
+                         "search":"index=smtp subject=\"{subject}\" | stats values(subject) AS subject values(recipient) AS recipient count by src_user"}
+                       ],
+            "samples": [
+                         {"name":"MD5 Search",
+                         "search":"index=files md5=\"{md5}\" | stats values(dest_ip) AS dest_ip values(uid) As uid values(fuid) AS fuid count by src_ip"},
+                         {"name":"Filename Search",
+                         "search":"index=files filename=\"{filename}\" | stats values(dest_ip) AS dest_ip values(uid) As uid values(fuid) AS fuid count by src_ip"}
+                       ],
+            "urls":[
+                     {"name":"{}",
+                      "search":"index=smtp_links url=\"{}\" | stats values(url) AS url values(recipient) AS recipient count by src_user subject"},
+                     {"name":"",
+                      "search":""}
+                   ],
+            "urls_no_proto":[
+                                {"name":"{}",
+                                 "search":"index=http url=\"{}\" | stats values(src_ip) AS src_ip values(dest_ip) AS dest_ip values(url) AS url count by domain"}
+                            ],
+            "domains": [
+                        {"name":"{}",
+                         "search":"index=smtp_links OR index=http domain=\"{}\" | stats values(src_ip) AS src_ip values(url) AS url count by index"},
+                        {"name":"",
+                         "search":""}
+                       ],
+            "ips": [
+                    {"name":"{}",
+                     "search":"index=http dest_ip=TERM({}) | stats values(src_ip) AS src_ip count by dest_ip"},
+                    {"name":"",
+                     "search":""}
+                   ],
+            "email_addy": [
+                           {"name": "{}",
+                            "search": "index=smtp src_user=\"{}\"|stats values(src_user) AS src_user values(subject) AS subject count by recipient"},
+                           {"name": "",
+                            "search": ""}
+                          ],
+            "hashes": {"md5":[
+                                {"name":"{}",
+                                 "search":"index=files md5=\"{}\" | stats values(src_ip) AS src_ip count by filename"},
+                                {"name":"",
+                                 "search":""}
+                             ],
+                        "sha1":[
+                                 {"name":"",
+                                  "search":""}
+                               ]},
+            "indicators": {"API Key":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "AS Name":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "AS Number":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                       ],
+                           "Adjust Token":[
+                                            {"name":"",
+                                            "search":""},
+                                            {"name":"",
+                                            "search":""}
+                                         ],
+                           "Bank account":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Bitcount account":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "CRX":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Certificate Fingerprint":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Certificate Name":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Checksum CRC16":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Command Line":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Company name":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Cookie Name":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Country":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Debug Path":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Debug String":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Destination Port":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Device IO":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Document from URL":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Domain":[
+                                        {"name":"Domain Indicator: {value}",
+                                        "search":"index=http \"{value}\" | stats values(domain) AS domain values(query) AS query count by src_ip"},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email Address":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email Addres From":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email Address Sender":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email Boundary":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email HELO":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email Header Field":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email Message ID":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email Originating IP":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email Reply-To":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email Subject":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email X-Mailer":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Email X-Originating IP":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "File Created":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "File Deleted":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "File Moved":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "File Name":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "File Opened":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "File Path":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "File Read":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "File Written":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "GET Parameter":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "HEX String":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "HTML ID":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "HTTP Request":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "HTTP Response Code":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "IMPHASH":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "IPv4 Address":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "IPv4 Subnet":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "IPv6 Address":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "IPv6 Subnet":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Latitude":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Launch Agent":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Location":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Longitude":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "MAC Address":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "MD5":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Malware Name":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Memory Alloc":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Memory Protect":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Memory Read":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Memory Written":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Mutant Created":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Mutex":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Name Server":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Other File Operation":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "POST Data":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Password":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Password Salt":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Payload Data":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Payload Type":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Pipe":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Process Name":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Protocol":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Referer":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Registrar":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Registry Key":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Registry Key Created":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Registry Key Deleted":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Registry Key Enumerated":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Registry Key Monitored":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Registry Key Opened":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Registry Key Value Created":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Registry Key Value Deleted":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Registry Key Value Modified":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Registry Key Value Queried":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "SHA1":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "SHA256":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "SMS Origin":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "SSDEEP":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Service Name":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Source Port":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "TS End":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "TS Start":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Telephone":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Time Created":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Time Updated":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Tracking ID":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "URI":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "User Agent":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "User ID":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Victim IP":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Volume Queried":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "WHOIS Address 1":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "WHOIS Address 2":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "WHOIS Name":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "WHOIS Registrant Email Address":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "WHOIS Telephone":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Web Payload":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "Webstorage Key":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ],
+                           "XPI":[
+                                        {"name":"",
+                                        "search":""},
+                                        {"name":"",
+                                        "search":""}
+                                     ]
+                           }
+            }
+}

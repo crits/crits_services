@@ -1,0 +1,80 @@
+
+{% load service_tags %}
+
+<style>
+    .potential_indicator {
+        text-align: left;
+    }
+</style>
+
+
+{% regroup analysis.results by subtype as result_list %}
+{% for result_subtype in result_list %}
+    <h4> {{ result_subtype.grouper }} </h4>
+    {% for search_link in result_subtype.list %}
+        {% if forloop.first %}
+        {% for search, url in search_link.full_search_dict.items %}
+            {% if search == result_subtype.grouper %}
+            <a href="{{ url }}" target="_blank">Re-run search in Splunk</a><br/>
+            {% endif %}
+        {% endfor %}
+        {% endif %}
+    {% endfor %}
+    <table class="chart">
+
+    {% for result in result_subtype.list %}
+    {% if forloop.first %}
+    {# Create the header the first time through the loop. #}
+    <thead>
+        <tr>
+            {% if result.fields %}
+            {% for field in result.fields %}
+            <th>{{ field }}</th>
+            {% endfor %}
+            {% else %}
+            <th>Result</th>
+            {% endif %}
+        </tr>
+    </thead>
+    <tbody>
+    {% endif %}
+    
+                {% if result.result%}
+                {% for value in result.result %}
+            <tr>
+                    {% for field in result.fields %}
+                        {% for k,v in value.items %}
+                            {% if k == field %}
+            <td class="potential_indicator">
+                                {% for val in v %}
+                    <a class="potential_link" href="{% url 'crits.core.views.global_search_listing' %}?search_type=global&q={{val|urlencode}}">{{val}}</a><br/>
+                                {% endfor %}
+            </td>       
+                            {% endif %}    
+                        {% endfor %}
+                    {% endfor %}
+                    
+            </tr>
+                {% endfor %}
+                {% endif %}
+            
+        
+    {% endfor %}
+    </tbody>
+    </table>
+{% empty %}
+    {% if analysis.status == 'started' %}
+        <p> This service is still running. </p>
+    {% else %}
+        <p> This service produced no results. </p>
+    {% endif %}
+{% endfor %}
+<div id="django-debug" style="display:none;"><pre>{% filter force_escape %}{# debug #}{% endfilter %}</pre></div>
+
+<div id="create_raw_indicator_dialog" style="display: none;">
+    <form id="form-raw-indicator">
+        <b>Type:</b> <span id="raw_indicator_type"></span><br />
+        <b>Value:</b> <input type="text" id="raw_indicator_value" />
+    </form>
+    <div id="creation_result"></div>
+</div>
