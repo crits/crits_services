@@ -200,9 +200,9 @@ class VirusTotalDownloadService(Service):
                 handle_file(filename = obj.md5,
                             data = data,
                             source = "VirusTotal",
-                            reference = "Binary downloaded from VT based on MD5",
-                            user = "VT Download Service",
-                            method = "VirusTotal Download Service",
+                            source_reference = "Binary downloaded from VT based on MD5",
+                            user = self.current_task.user,
+                            source_method = "VirusTotal Download Service",
                             md5_digest = obj.md5 )
             except Exception as e:
                 logger.error("VirusTotal: Sample creation failed ({0})".format(e))
