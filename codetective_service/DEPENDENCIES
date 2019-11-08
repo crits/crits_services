@@ -1,0 +1,7 @@
+The codetective_service is a wrapper using 
+https://github.com/blackthorne/Codetective
+
+Imports include:
+re, sys, argparse, base64, urlparse, encodings, string, math, collections, datetime, io, struct, os
+
+
